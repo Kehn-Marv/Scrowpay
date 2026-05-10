@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - ScrowPay</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#1c1c1c',
+              green: '#caff04',
+              gray: '#f5f5f7',
+              text: '#111111',
+              subtext: '#666666'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts - Inter -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #ffffff;
+    }
+    
+    /* Custom styles for the account creation flow */
+    .stage-container {
+      display: none;
+    }
+    
+    .stage-container.active {
+      display: block;
+    }
+    
+    /* Button styles */
+    .btn-primary {
+      background-color: #caff04;
+      color: #1c1c1c;
+      font-weight: 600;
+      padding: 1rem 2rem;
+      border-radius: 9999px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+      background-color: #b8e600;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(202, 255, 4, 0.3);
+    }
+    
+    .btn-primary:disabled {
+      background-color: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* Input styles */
+    .input-field {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .input-field:focus {
+      outline: none;
+      border-color: #caff04;
+      box-shadow: 0 0 0 3px rgba(202, 255, 4, 0.1);
+    }
+    
+    .input-field.error {
+      border-color: #ef4444;
+    }
+    
+    /* Card styles */
+    .card {
+      background: #ffffff;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: #ffffff;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Toast styles */
+    .toast {
+      position: fixed;
+      top: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: #1c1c1c;
+      color: #ffffff;
+      padding: 1rem 2rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    
+    .toast.active {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    
+    /* Video container styles for blink detection */
+    .video-container {
+      position: relative;
+      width: 640px;
+      height: 480px;
+      max-width: 100%;
+      margin: 0 auto;
+      border-radius: 1.5rem;
+      overflow: hidden;
+      background: #000;
+    }
+    
+    #video {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    
+    .oval-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 400px;
+      border: 4px solid #caff04;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+  
+  <!-- MediaPipe CDN Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+</head>
+<body class="min-h-screen bg-white">
+  
+  <!-- Main Container -->
+  <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div class="w-full max-w-2xl">
+      
+      <!-- Logo -->
+      <div class="flex items-center justify-center gap-3 mb-8">
+        <div class="w-12 h-12 bg-brand-green rounded-full flex items-center justify-center">
+          <svg fill="none" height="28" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+          </svg>
+        </div>
+        <span class="text-brand-dark text-2xl font-semibold tracking-wider">ScrowPay</span>
+      </div>
+      
+      <!-- Stage Content Container -->
+      <div id="stage-content" class="card">
+        <!-- Stages will be dynamically rendered here -->
+      </div>
+      
+    </div>
+  </div>
+  
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+  
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-title" class="text-2xl font-semibold mb-4 text-brand-dark"></h3>
+      <p id="modal-message" class="text-brand-subtext mb-6"></p>
+      <div id="modal-buttons" class="flex gap-3 justify-end"></div>
+    </div>
+  </div>
+  
+  <!-- Turso libsql Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@libsql/client@0.3.5/dist/index.js"></script>
+  
+  <!-- Environment Configuration (Load FIRST) -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  
+  <!-- TursoDBService -->
+  <script src="turso-db-service.js"></script>
+  
+  <!-- OTPService -->
+  <script src="otp-service.js"></script>
+  
+  <!-- IDValidationService -->
+  <script src="id-validation-service.js"></script>
+  
+  <!-- SquadAPIService -->
+  <script src="squad-api-service.js"></script>
+  
+  <!-- MediaPipeService -->
+  <script src="mediapipe-service.js"></script>
+  
+  <!-- PINService -->
+  <script src="pin-service.js?v=2"></script>
+  
+  <!-- AddressDataService -->
+  <script src="address-data-service.js"></script>
+  
+  <!-- JavaScript -->
+  <script>
+    // PhoneValidationService - Validates Nigerian phone number format
+    class PhoneValidationService {
+      /**
+       * Validates Nigerian phone number format
+       * Accepts: 08135866028 (11 digits with leading 0) or 8135866028 (10 digits without leading 0)
+       * @param {string} phone - Phone number to validate
+       * @returns {boolean} True if valid format, false otherwise
+       */
+      static validateFormat(phone) {
+        if (!phone || typeof phone !== 'string') {
+          return false;
+        }
+        
+        const cleaned = phone.replace(/\D/g, '');
+        
+        // Check for 11 digits with leading 0
+        if (cleaned.length === 11 && cleaned.startsWith('0')) {
+          return true;
+        }
+        
+        // Check for 10 digits without leading 0
+        if (cleaned.length === 10 && !cleaned.startsWith('0')) {
+          return true;
+        }
+        
+        return false;
+      }
+      
+      /**
+       * Normalizes phone number to +234 format
+       * Converts 08135866028 or 8135866028 to +2348135866028
+       * @param {string} phone - Phone number to normalize
+       * @returns {string} Normalized phone number in +234 format
+       */
+      static normalizePhone(phone) {
+        if (!phone || typeof phone !== 'string') {
+          throw new Error('Invalid phone number');
+        }
+        
+        const cleaned = phone.replace(/\D/g, '');
+        
+        // Remove leading 0 if present
+        const withoutLeadingZero = cleaned.startsWith('0') ? cleaned.substring(1) : cleaned;
+        
+        return `+234${withoutLeadingZero}`;
+      }
+    }
+    
+    // Helper function to capitalize words for display
+    function capitalizeWords(str) {
+      if (!str) return '';
+      return str
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    
+    // Registration State Object
+    const registrationState = {
+      currentStage: 1,
+      phoneNumber: null,
+      idType: null, // 'BVN' or 'NIN'
+      idNumber: null,
+      firstName: null,
+      middleName: null,
+      lastName: null,
+      dob: null, // Date of Birth in MM/DD/YYYY format
+      gender: null, // '1' for Male, '2' for Female
+      currentAddress: {
+        state: null,
+        lga: null,
+        area: null,
+        addressText: null,
+        landmark: null
+      },
+      permanentAddress: {
+        state: null,
+        lga: null,
+        area: null,
+        addressText: null
+      },
+      pin: null,
+      virtualAccountNumber: null, // Squad virtual account number
+      bankCode: null, // Bank code (058 for GTBank)
+      verificationStatus: {
+        phoneVerified: false,
+        otpVerified: false,
+        idVerified: false,
+        faceVerified: false
+      }
+    };
+    
+    // Initialize Turso DB Service from CONFIG
+    const dbService = new TursoDBService(
+      window.CONFIG.turso.databaseUrl,
+      window.CONFIG.turso.authToken
+    );
+    
+    // Initialize Squad Virtual Account Service from CONFIG
+    const squadService = new SquadVirtualAccountService(
+      window.CONFIG.squad.secretKey,
+      window.CONFIG.squad.environment
+    );
+    
+    // Initialize Address Data Service
+    const addressDataService = new AddressDataService();
+    let addressDataLoaded = false;
+    
+    // Load address data on page load (silently in background)
+    console.log('[App] Loading address data...');
+    addressDataService.loadData()
+      .then(() => {
+        addressDataLoaded = true;
+        const stats = addressDataService.getDataStats();
+        console.log('[App] ✅ Address data loaded successfully:', stats);
+      })
+      .catch(error => {
+        console.error('[App] ❌ Address data loading failed:', error);
+        // Don't show error toast on page load - only show when user reaches Stage 8
+      });
+    
+    // Connect to database on page load
+    let dbConnected = false;
+    let dbConnectionError = null;
+    
+    console.log('[App] Initializing database connection...');
+    
+    dbService.connect()
+      .then(async () => {
+        dbConnected = true;
+        console.log('[App] ✅ Database connected successfully');
+        
+        // Create schema if it doesn't exist
+        try {
+          await dbService.createSchema();
+          console.log('[App] ✅ Database schema ready');
+        } catch (schemaError) {
+          console.error('[App] ⚠️ Schema creation warning:', schemaError);
+          // Continue even if schema creation fails (table might already exist)
+        }
+      })
+      .catch(error => {
+        dbConnectionError = error;
+        console.error('[App] ❌ Database connection failed:', error);
+        showToast('Database connection failed. Please check your internet connection.', 5000);
+      });
+    
+    // Stage Manager Class
+    class StageManager {
+      constructor() {
+        this.currentStage = 1;
+        this.totalStages = 10;
+      }
+      
+      getCurrentStage() {
+        return this.currentStage;
+      }
+      
+      /**
+       * Validates the current stage data before allowing transition
+       * Returns an object with { isValid: boolean, errors: string[] }
+       */
+      validateCurrentStage() {
+        const errors = [];
+        
+        switch (this.currentStage) {
+          case 1: // Phone Number Entry
+            if (!registrationState.phoneNumber) {
+              errors.push('Please enter a valid phone number');
+            }
+            break;
+            
+          case 2: // OTP Verification
+            if (!registrationState.verificationStatus.otpVerified) {
+              errors.push('Please verify your phone number with the OTP code');
+            }
+            break;
+            
+          case 3: // ID Information Entry
+            if (!registrationState.idType || !registrationState.idNumber) {
+              errors.push('Please enter your BVN or NIN');
+            }
+            break;
+            
+          case 4: // Name Entry
+            if (!registrationState.firstName || !registrationState.lastName) {
+              errors.push('Please enter your first name and last name');
+            }
+            break;
+            
+          case 5: // Squad API Verification
+            if (!registrationState.verificationStatus.idVerified) {
+              errors.push('Identity verification must be completed');
+            }
+            break;
+            
+          case 6: // Face Verification Intro
+            // No validation needed - just informational
+            break;
+            
+          case 7: // Blink Detection
+            if (!registrationState.verificationStatus.faceVerified) {
+              errors.push('Please complete the face verification');
+            }
+            break;
+            
+          case 8: // Address Entry
+            const { currentAddress, permanentAddress } = registrationState;
+            if (!currentAddress.state || !currentAddress.lga || !currentAddress.area || !currentAddress.addressText) {
+              errors.push('Please complete all required address fields');
+            }
+            if (!permanentAddress.state || !permanentAddress.lga || !permanentAddress.area || !permanentAddress.addressText) {
+              errors.push('Please complete permanent address information');
+            }
+            break;
+            
+          case 9: // PIN Setup
+            if (!registrationState.pin) {
+              errors.push('Please set up your 6-digit PIN');
+            }
+            break;
+        }
+        
+        return {
+          isValid: errors.length === 0,
+          errors: errors
+        };
+      }
+      
+      /**
+       * Navigate to a specific stage with validation
+       * @param {number} stageNumber - The stage number to navigate to
+       * @param {boolean} skipValidation - Skip validation (for backward navigation)
+       */
+      goToStage(stageNumber, skipValidation = false) {
+        if (stageNumber < 1 || stageNumber > this.totalStages) {
+          console.error(`Invalid stage number: ${stageNumber}`);
+          return;
+        }
+        
+        // Allow backward navigation without validation
+        if (stageNumber < this.currentStage) {
+          this.currentStage = stageNumber;
+          registrationState.currentStage = stageNumber;
+          this.renderCurrentStage();
+          return;
+        }
+        
+        // For forward navigation, validate unless explicitly skipped
+        if (!skipValidation && stageNumber > this.currentStage) {
+          const validation = this.validateCurrentStage();
+          if (!validation.isValid) {
+            showModal('Validation Error', validation.errors.join('. '), [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+        }
+        
+        this.currentStage = stageNumber;
+        registrationState.currentStage = stageNumber;
+        this.renderCurrentStage();
+      }
+      
+      /**
+       * Navigate to the next stage with validation
+       * @param {boolean} skipValidation - Skip validation (use with caution)
+       */
+      goToNextStage(skipValidation = false) {
+        if (this.currentStage >= this.totalStages) {
+          console.log('Already at the last stage');
+          return;
+        }
+        
+        // Validate current stage before proceeding
+        if (!skipValidation) {
+          const validation = this.validateCurrentStage();
+          if (!validation.isValid) {
+            showModal('Validation Error', validation.errors.join('. '), [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+        }
+        
+        this.currentStage++;
+        registrationState.currentStage = this.currentStage;
+        this.renderCurrentStage();
+      }
+      
+      /**
+       * Navigate to the previous stage (no validation needed)
+       */
+      goToPreviousStage() {
+        if (this.currentStage > 1) {
+          this.currentStage--;
+          registrationState.currentStage = this.currentStage;
+          this.renderCurrentStage();
+        }
+      }
+      
+      renderCurrentStage() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = '';
+        
+        // Render the appropriate stage
+        switch (this.currentStage) {
+          case 1:
+            this.renderStage1();
+            break;
+          case 2:
+            this.renderStage2();
+            break;
+          case 3:
+            this.renderStage3();
+            break;
+          case 4:
+            this.renderStage4();
+            break;
+          case 5:
+            this.renderStage5();
+            break;
+          case 6:
+            this.renderStage6();
+            break;
+          case 7:
+            this.renderStage7();
+            break;
+          case 8:
+            this.renderStage8();
+            break;
+          case 9:
+            this.renderStage9();
+            break;
+          case 10:
+            this.renderStage10();
+            break;
+          default:
+            stageContent.innerHTML = '<p class="text-center text-brand-subtext">Invalid stage</p>';
+        }
+      }
+      
+      // Stage 1: Phone Number Entry
+      renderStage1() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-2">Get a ScrowPay Account</h2>
+          <p class="text-brand-subtext mb-8">Enter your phone number to get started</p>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-brand-dark mb-2">Phone Number</label>
+            <div class="flex items-center gap-2">
+              <span class="text-brand-dark font-medium">🇳🇬 +234</span>
+              <input type="tel" id="phone-input" class="input-field" placeholder="8135866028" maxlength="11">
+            </div>
+            <p id="phone-error" class="text-red-500 text-sm mt-2 hidden"></p>
+          </div>
+          <button id="next-btn" class="btn-primary w-full">Next</button>
+        `;
+        
+        // Add event listeners
+        const phoneInput = document.getElementById('phone-input');
+        const nextBtn = document.getElementById('next-btn');
+        const phoneError = document.getElementById('phone-error');
+        
+        // Pre-fill if phone number exists in state
+        if (registrationState.phoneNumber) {
+          phoneInput.value = registrationState.phoneNumber.replace('+234', '');
+        }
+        
+        // Validate phone on input
+        phoneInput.addEventListener('input', (e) => {
+          const value = e.target.value;
+          // Only allow digits
+          e.target.value = value.replace(/\D/g, '');
+          
+          // Validate format
+          if (e.target.value.length > 0) {
+            const isValid = PhoneValidationService.validateFormat(e.target.value);
+            if (!isValid) {
+              phoneInput.classList.add('error');
+              phoneError.textContent = 'Please enter a valid Nigerian phone number';
+              phoneError.classList.remove('hidden');
+            } else {
+              phoneInput.classList.remove('error');
+              phoneError.classList.add('hidden');
+            }
+          }
+        });
+        
+        // Handle next button click
+        nextBtn.addEventListener('click', async () => {
+          const phoneValue = phoneInput.value.trim();
+          
+          if (!phoneValue) {
+            phoneInput.classList.add('error');
+            phoneError.textContent = 'Phone number is required';
+            phoneError.classList.remove('hidden');
+            return;
+          }
+          
+          if (!PhoneValidationService.validateFormat(phoneValue)) {
+            phoneInput.classList.add('error');
+            phoneError.textContent = 'Please enter a valid Nigerian phone number';
+            phoneError.classList.remove('hidden');
+            return;
+          }
+          
+          // Normalize phone number
+          const normalizedPhone = PhoneValidationService.normalizePhone(phoneValue);
+          
+          // Check for duplicate phone number in database
+          if (dbConnected) {
+            try {
+              nextBtn.disabled = true;
+              nextBtn.textContent = 'Checking...';
+              
+              const isDuplicate = await dbService.checkPhoneDuplicate(normalizedPhone);
+              
+              if (isDuplicate) {
+                showModal('Phone Already Registered', 'This phone number is already registered with another account. Please use a different phone number or log in to your existing account.', [
+                  { text: 'OK', primary: true, onClick: () => {} }
+                ]);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Next';
+                return;
+              }
+              
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Next';
+            } catch (error) {
+              console.error('Duplicate check failed:', error);
+              showModal('Error', 'Failed to verify phone number. Please try again.', [
+                { text: 'OK', primary: true, onClick: () => {} }
+              ]);
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Next';
+              return;
+            }
+          }
+          
+          // Store phone number
+          registrationState.phoneNumber = normalizedPhone;
+          registrationState.verificationStatus.phoneVerified = true;
+          
+          // Proceed to next stage
+          this.goToNextStage();
+        });
+      }
+      
+      // Stage 2: OTP Verification
+      renderStage2() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-8">Verify Your Phone Number</h2>
+          
+          <!-- Step 1 Tile: Message with OTP Icon -->
+          <div class="mb-6 p-4 bg-brand-gray rounded-xl flex items-start gap-3">
+            <div class="flex-shrink-0">
+              <svg class="w-6 h-6 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-brand-subtext text-sm">
+                A verification code has been sent to your phone number ${registrationState.phoneNumber || '+234XXXXXXXXXX'}, please take a look
+              </p>
+            </div>
+          </div>
+          
+          <!-- Step 2 Tile: OTP Entry -->
+          <div class="mb-6 p-6 bg-white border-2 border-gray-200 rounded-xl">
+            <label class="block text-sm font-medium text-brand-dark mb-4">Enter 6-digit OTP</label>
+            <div id="otp-input-container"></div>
+          </div>
+          
+          <button id="verify-btn" class="btn-primary w-full">Verify</button>
+        `;
+        
+        // Show toast notification
+        showToast('A verification code has been sent to your mobile phone');
+        
+        // Create DigitInputBox for OTP
+        const otpInputBox = new DigitInputBox(6);
+        const otpContainer = document.getElementById('otp-input-container');
+        otpContainer.appendChild(otpInputBox.render());
+        
+        // Focus first input
+        otpInputBox.focus();
+        
+        // Handle verify button
+        const verifyBtn = document.getElementById('verify-btn');
+        verifyBtn.addEventListener('click', () => {
+          const otp = otpInputBox.getValue();
+          
+          if (otp.length !== 6) {
+            showModal('Error', 'Please enter the complete 6-digit OTP code', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          // Verify OTP using OTPService
+          if (OTPService.verifyOTP(otp)) {
+            registrationState.verificationStatus.otpVerified = true;
+            showModal('Succeeded!', 'Your Phone Number has been verified successfully!', [
+              { text: 'Continue', primary: true, onClick: () => this.goToNextStage() }
+            ]);
+          } else {
+            showModal('Failed!', 'Verification code error', [
+              { text: 'Retry', primary: true, onClick: () => {
+                // Clear OTP inputs
+                otpInputBox.clear();
+                otpInputBox.focus();
+              }}
+            ]);
+          }
+        });
+      }
+      
+      // Stage 3: ID Information
+      renderStage3() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-4">Enter your ID information</h2>
+          <p class="text-brand-subtext mb-8">Please provide your own BVN/NIN to verify your account opening application</p>
+          <div class="mb-6">
+            <div class="flex gap-4 mb-4">
+              <button id="nin-toggle" class="flex-1 py-3 px-6 rounded-lg border-2 border-gray-300 font-medium transition-all">NIN</button>
+              <button id="bvn-toggle" class="flex-1 py-3 px-6 rounded-lg border-2 border-gray-300 font-medium transition-all">BVN</button>
+            </div>
+            <div id="id-input-container" class="mb-4"></div>
+          </div>
+          <button id="next-btn" class="btn-primary w-full">Next</button>
+        `;
+        
+        const ninToggle = document.getElementById('nin-toggle');
+        const bvnToggle = document.getElementById('bvn-toggle');
+        const nextBtn = document.getElementById('next-btn');
+        
+        // Create DigitInputBox for ID with masked input type (displays dots)
+        const idInputBox = new DigitInputBox(11, null, 'masked');
+        const idContainer = document.getElementById('id-input-container');
+        idContainer.appendChild(idInputBox.render());
+        
+        // Pre-fill if ID number exists in state
+        if (registrationState.idNumber) {
+          idInputBox.setValue(registrationState.idNumber);
+        }
+        
+        // Set initial selection
+        let selectedType = registrationState.idType || 'NIN';
+        const updateToggle = (type) => {
+          selectedType = type;
+          registrationState.idType = type;
+          
+          if (type === 'NIN') {
+            ninToggle.classList.add('bg-brand-green', 'border-brand-green');
+            ninToggle.classList.remove('border-gray-300');
+            bvnToggle.classList.remove('bg-brand-green', 'border-brand-green');
+            bvnToggle.classList.add('border-gray-300');
+          } else {
+            bvnToggle.classList.add('bg-brand-green', 'border-brand-green');
+            bvnToggle.classList.remove('border-gray-300');
+            ninToggle.classList.remove('bg-brand-green', 'border-brand-green');
+            ninToggle.classList.add('border-gray-300');
+          }
+        };
+        
+        updateToggle(selectedType);
+        
+        ninToggle.addEventListener('click', () => {
+          updateToggle('NIN');
+          // Clear input when switching ID type
+          idInputBox.clear();
+          idInputBox.focus();
+        });
+        
+        bvnToggle.addEventListener('click', () => {
+          updateToggle('BVN');
+          // Clear input when switching ID type
+          idInputBox.clear();
+          idInputBox.focus();
+        });
+        
+        // Focus first input
+        idInputBox.focus();
+        
+        // Handle next button
+        nextBtn.addEventListener('click', async () => {
+          const idNumber = idInputBox.getValue();
+          
+          // Validate ID format using IDValidationService
+          let validationResult;
+          if (selectedType === 'BVN') {
+            validationResult = IDValidationService.validateBVN(idNumber);
+          } else {
+            validationResult = IDValidationService.validateNIN(idNumber);
+          }
+          
+          // Display validation error modal if invalid
+          if (!validationResult.isValid) {
+            showModal('Validation Error', validationResult.error, [
+              { text: 'OK', primary: true, onClick: () => {
+                idInputBox.focus();
+              }}
+            ]);
+            return;
+          }
+          
+          // Check for duplicate ID in database
+          if (dbConnected) {
+            try {
+              nextBtn.disabled = true;
+              nextBtn.textContent = 'Checking...';
+              
+              const isDuplicate = await dbService.checkIDDuplicate(idNumber, selectedType);
+              
+              if (isDuplicate) {
+                showModal('ID Already Registered', `This ${selectedType} is already registered with another account. Please use a different ${selectedType} or log in to your existing account.`, [
+                  { text: 'OK', primary: true, onClick: () => {
+                    idInputBox.clear();
+                    idInputBox.focus();
+                  }}
+                ]);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Next';
+                return;
+              }
+              
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Next';
+            } catch (error) {
+              console.error('Duplicate check failed:', error);
+              showModal('Error', 'Failed to verify ID. Please check your internet connection and try again.', [
+                { text: 'Retry', primary: true, onClick: () => {
+                  nextBtn.click();
+                }},
+                { text: 'Cancel', primary: false, onClick: () => {} }
+              ]);
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Next';
+              return;
+            }
+          }
+          
+          // Display confirmation modal with Edit and Confirm buttons
+          showModal('Confirm Your ID', `Please confirm your ${selectedType}:\n\n${idNumber}`, [
+            { text: 'Edit', primary: false, onClick: () => {
+              // Return to ID input - focus the input box
+              idInputBox.focus();
+            }},
+            { text: 'Confirm', primary: true, onClick: () => {
+              // Store ID and proceed to Stage 4
+              registrationState.idNumber = idNumber;
+              registrationState.idType = selectedType;
+              this.goToNextStage();
+            }}
+          ]);
+        });
+      }
+      
+      // Stage 4: Name Entry
+      renderStage4() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-8">Enter Your Details</h2>
+          <div class="space-y-4 mb-8">
+            <div>
+              <label class="block text-sm font-medium text-brand-dark mb-2">First Name</label>
+              <input type="text" id="first-name" class="input-field" placeholder="John" value="${registrationState.firstName || ''}" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-brand-dark mb-2">Middle Name</label>
+              <input type="text" id="middle-name" class="input-field" placeholder="Michael" value="${registrationState.middleName || ''}" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-brand-dark mb-2">Last Name</label>
+              <input type="text" id="last-name" class="input-field" placeholder="Doe" value="${registrationState.lastName || ''}" />
+            </div>
+            
+            <!-- Date of Birth -->
+            <div>
+              <label class="block text-sm font-medium text-brand-dark mb-2">Date of Birth</label>
+              <div class="flex gap-2">
+                <select id="dob-month" class="input-field flex-1">
+                  <option value="">Month</option>
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+                <select id="dob-day" class="input-field flex-1">
+                  <option value="">Day</option>
+                  ${Array.from({length: 31}, (_, i) => {
+                    const day = String(i + 1).padStart(2, '0');
+                    return `<option value="${day}">${i + 1}</option>`;
+                  }).join('')}
+                </select>
+                <select id="dob-year" class="input-field flex-1">
+                  <option value="">Year</option>
+                  ${Array.from({length: 100}, (_, i) => {
+                    const year = new Date().getFullYear() - 18 - i;
+                    return `<option value="${year}">${year}</option>`;
+                  }).join('')}
+                </select>
+              </div>
+              <p class="text-xs text-brand-subtext mt-1">Must match your BVN records exactly</p>
+            </div>
+            
+            <!-- Gender -->
+            <div>
+              <label class="block text-sm font-medium text-brand-dark mb-2">Gender</label>
+              <div class="flex gap-4">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="gender" value="1" id="gender-male" class="mr-2" ${registrationState.gender === '1' ? 'checked' : ''} />
+                  <span>Male</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio" name="gender" value="2" id="gender-female" class="mr-2" ${registrationState.gender === '2' ? 'checked' : ''} />
+                  <span>Female</span>
+                </label>
+              </div>
+              <p class="text-xs text-brand-subtext mt-1">Must match your BVN records exactly</p>
+            </div>
+          </div>
+          <button id="next-btn" class="btn-primary w-full">Next</button>
+        `;
+        
+        const firstNameInput = document.getElementById('first-name');
+        const middleNameInput = document.getElementById('middle-name');
+        const lastNameInput = document.getElementById('last-name');
+        const dobMonthSelect = document.getElementById('dob-month');
+        const dobDaySelect = document.getElementById('dob-day');
+        const dobYearSelect = document.getElementById('dob-year');
+        const genderMaleRadio = document.getElementById('gender-male');
+        const genderFemaleRadio = document.getElementById('gender-female');
+        const nextBtn = document.getElementById('next-btn');
+        
+        // Pre-fill DOB if exists
+        if (registrationState.dob) {
+          const [month, day, year] = registrationState.dob.split('/');
+          dobMonthSelect.value = month;
+          dobDaySelect.value = day;
+          dobYearSelect.value = year;
+        }
+        
+        // Only allow alphabetic characters in name fields
+        [firstNameInput, middleNameInput, lastNameInput].forEach(input => {
+          input.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+          });
+        });
+        
+        nextBtn.addEventListener('click', () => {
+          const firstName = firstNameInput.value.trim();
+          const middleName = middleNameInput.value.trim();
+          const lastName = lastNameInput.value.trim();
+          const dobMonth = dobMonthSelect.value;
+          const dobDay = dobDaySelect.value;
+          const dobYear = dobYearSelect.value;
+          const gender = genderMaleRadio.checked ? '1' : (genderFemaleRadio.checked ? '2' : '');
+          
+          // Validation
+          if (!firstName || !lastName) {
+            showModal('Error', 'Please enter your first name and last name', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          if (!dobMonth || !dobDay || !dobYear) {
+            showModal('Error', 'Please select your complete date of birth', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          if (!gender) {
+            showModal('Error', 'Please select your gender', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          // Store data
+          registrationState.firstName = firstName;
+          registrationState.middleName = middleName;
+          registrationState.lastName = lastName;
+          registrationState.dob = `${dobMonth}/${dobDay}/${dobYear}`;  // Format: MM/DD/YYYY
+          registrationState.gender = gender;  // '1' for Male, '2' for Female
+          
+          this.goToNextStage();
+        });
+      }
+      
+      // Stage 5: Squad API Verification
+      renderStage5() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold text-brand-dark mb-4">Verifying Your Identity</h2>
+            <p class="text-brand-subtext mb-8">Please wait while we verify your ${registrationState.idType}...</p>
+            <div class="flex justify-center mb-8">
+              <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-green"></div>
+            </div>
+          </div>
+        `;
+        
+        // Call Squad API to verify BVN or NIN
+        this.verifyIdentityWithSquadAPI();
+      }
+      
+      // Stage 5: Virtual Account Creation (replaces Squad API Verification)
+      renderStage5() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold text-brand-dark mb-4">Creating Your ScrowPay Account</h2>
+            <p class="text-brand-subtext mb-8">Please wait while we verify your identity and create your account...</p>
+            <div class="flex justify-center mb-8">
+              <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-green"></div>
+            </div>
+            <p id="status-message" class="text-center text-brand-subtext">Connecting to Squad...</p>
+          </div>
+        `;
+        
+        // Auto-start virtual account creation
+        this.createVirtualAccount();
+      }
+      
+      // Create virtual account using Squad API
+      async createVirtualAccount() {
+        const statusMessage = document.getElementById('status-message');
+        
+        try {
+          console.log('[Stage5] Starting virtual account creation...');
+          
+          // Update status
+          statusMessage.textContent = 'Verifying your identity with NIBSS...';
+          
+          // Prepare customer data for Squad API
+          const customerData = {
+            customer_identifier: registrationState.phoneNumber,  // Use phone as unique ID
+            first_name: registrationState.firstName,
+            last_name: registrationState.lastName,
+            middle_name: registrationState.middleName || '',
+            mobile_num: registrationState.phoneNumber.replace('+234', '0'),  // Convert +2348135866028 to 08135866028
+            email: `${registrationState.phoneNumber.replace(/\+/g, '')}@scrowpay.com`,  // Generate email
+            bvn: registrationState.idNumber,  // BVN number (NIN not supported by Squad)
+            dob: registrationState.dob,  // Format: MM/DD/YYYY
+            gender: registrationState.gender,  // '1' or '2'
+            address: `${registrationState.currentAddress.addressText || 'N/A'}, ${registrationState.currentAddress.area || 'N/A'}, ${registrationState.currentAddress.lga || 'N/A'}, ${registrationState.currentAddress.state || 'Nigeria'}`,
+            beneficiary_account: '0123456789'  // Test GTBank account for sandbox (10 digits)
+          };
+          
+          console.log('[Stage5] Customer data:', customerData);
+          
+          // Update status
+          statusMessage.textContent = 'Creating your virtual account...';
+          
+          // Create virtual account
+          const result = await squadService.createVirtualAccount(customerData);
+          
+          console.log('[Stage5] Virtual account creation result:', result);
+          
+          // Handle result
+          if (result.success) {
+            // Store virtual account details
+            registrationState.virtualAccountNumber = result.data.virtual_account_number;
+            registrationState.bankCode = result.data.bank_code;
+            registrationState.verificationStatus.idVerified = true;
+            
+            console.log('[Stage5] ✅ Virtual account created successfully');
+            console.log('[Stage5] Account Number:', result.data.virtual_account_number);
+            console.log('[Stage5] Bank Code:', result.data.bank_code);
+            
+            // Show success modal with account details
+            showModal(
+              'Account Created Successfully! 🎉',
+              `Your ScrowPay account has been created!\n\nAccount Number: ${result.data.virtual_account_number}\nBank: GTBank (${result.data.bank_code})\n\nYou can now receive payments to this account.`,
+              [
+                { text: 'Continue', primary: true, onClick: () => this.goToNextStage() }
+              ]
+            );
+          } else {
+            // Account creation failed
+            console.error('[Stage5] Virtual account creation failed:', result.message);
+            
+            // Determine error message based on error type
+            let errorTitle = 'Account Creation Failed';
+            let errorMessage = result.message;
+            
+            if (result.errorType === 'bvn_mismatch') {
+              errorTitle = 'Identity Verification Failed';
+              errorMessage = 'The information you provided does not match your BVN records. Please ensure:\n\n• Your name matches your BVN exactly\n• Your date of birth is correct\n• Your gender is correct\n• Your phone number is registered with your BVN';
+            } else if (result.errorType === 'timeout') {
+              errorTitle = 'Request Timeout';
+              errorMessage = 'The verification is taking longer than expected. This is normal for BVN validation. Please try again.';
+            } else if (result.errorType === 'network_error') {
+              errorTitle = 'Connection Error';
+              errorMessage = 'Unable to connect to the verification service. Please check your internet connection and try again.';
+            }
+            
+            showModal(
+              errorTitle,
+              errorMessage,
+              [
+                { text: 'Retry', primary: true, onClick: () => this.createVirtualAccount() },
+                { text: 'Go Back', primary: false, onClick: () => this.goToPreviousStage() }
+              ]
+            );
+          }
+          
+        } catch (error) {
+          console.error('[Stage5] Virtual account creation error:', error);
+          
+          // Show error modal with retry option
+          showModal(
+            'Error',
+            'An unexpected error occurred while creating your account. Please try again.',
+            [
+              { text: 'Retry', primary: true, onClick: () => this.createVirtualAccount() },
+              { text: 'Go Back', primary: false, onClick: () => this.goToPreviousStage() }
+            ]
+          );
+        }
+      }
+      
+      // Stage 6: Face Verification Intro
+      renderStage6() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold text-brand-dark mb-4">Face Verification</h2>
+            <p class="text-brand-subtext mb-8">Face verification is used to confirm that you are the BVN holder</p>
+            <div class="mb-8">
+              <svg class="w-32 h-32 mx-auto text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <button id="start-btn" class="btn-primary">Let's Start</button>
+          </div>
+        `;
+        
+        const startBtn = document.getElementById('start-btn');
+        startBtn.addEventListener('click', () => {
+          // Skip validation for this informational stage
+          this.goToNextStage(true);
+        });
+      }
+      
+      // Stage 7: Blink Detection
+      renderStage7() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold text-brand-dark mb-4">Blink Detection</h2>
+            <p class="text-brand-subtext mb-8">Blink your eyes</p>
+            
+            <!-- Video Container with Oval Overlay -->
+            <div class="video-container mb-8">
+              <video id="video" autoplay playsinline></video>
+              <canvas id="canvas" width="640" height="480"></canvas>
+              <div class="oval-overlay"></div>
+            </div>
+            
+            <p id="status-message" class="text-brand-subtext mb-4">Initializing camera...</p>
+          </div>
+        `;
+        
+        // Request camera access and initialize MediaPipe
+        this.initializeBlinkDetection();
+      }
+      
+      async initializeBlinkDetection() {
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const statusMessage = document.getElementById('status-message');
+        
+        try {
+          // Check if MediaPipe libraries are loaded
+          if (!MediaPipeService.isLibraryLoaded()) {
+            throw new Error('MediaPipe libraries not loaded. Please refresh the page.');
+          }
+          
+          // Create MediaPipeService instance
+          const mediaPipeService = new MediaPipeService(videoElement, canvasElement);
+          
+          // Update status
+          statusMessage.textContent = 'Loading face detection...';
+          
+          // Initialize MediaPipe
+          await mediaPipeService.initialize();
+          
+          // Update status
+          statusMessage.textContent = 'Position your face in the oval and blink your eyes';
+          
+          // Start blink detection
+          await mediaPipeService.startDetection(() => {
+            // Blink detected!
+            statusMessage.textContent = 'Blink detected! Processing...';
+            
+            // Stop detection
+            mediaPipeService.stopDetection();
+            
+            // Update registration state
+            registrationState.verificationStatus.faceVerified = true;
+            
+            // Proceed to processing screen (Stage 7.5 - Face Verification Processing)
+            setTimeout(() => {
+              this.renderProcessingScreen();
+            }, 500);
+          });
+          
+        } catch (error) {
+          console.error('Blink detection error:', error);
+          
+          // Handle different error types
+          let errorMessage = 'An error occurred during face verification.';
+          let retryOption = true;
+          
+          // Camera access denied (Requirement 17.3)
+          if (error.name === 'NotAllowedError') {
+            errorMessage = 'Camera access is required for face verification. Please enable camera access and try again.';
+          } 
+          // No camera available (Requirement 17.3)
+          else if (error.name === 'NotFoundError') {
+            errorMessage = 'No camera detected. Please connect a camera and try again.';
+          }
+          // Camera-related errors (Requirement 17.3)
+          else if (error.message.includes('Camera') || error.message.includes('camera')) {
+            errorMessage = 'Camera access is required for face verification. Please enable camera access and try again.';
+          } 
+          // MediaPipe initialization failure (Requirement 17.4)
+          else if (error.message.includes('MediaPipe')) {
+            errorMessage = 'Unable to load face detection library. Please check your internet connection and try again.';
+          }
+          // Face detection failure (Requirement 17.4)
+          else if (error.message.includes('face') || error.message.includes('Face')) {
+            errorMessage = 'Unable to detect your face. Please ensure your face is visible in the camera frame.';
+          }
+          
+          statusMessage.textContent = errorMessage;
+          statusMessage.classList.add('text-red-500');
+          
+          // Show error modal with retry and go back options
+          if (retryOption) {
+            showModal('Error', errorMessage, [
+              { text: 'Retry', primary: true, onClick: () => this.renderStage7() },
+              { text: 'Go Back', primary: false, onClick: () => this.goToPreviousStage() }
+            ]);
+          }
+        }
+      }
+      
+      // Processing Screen: Face Verification Processing (between Stage 7 and 8)
+      renderProcessingScreen() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold text-brand-dark mb-8">Checking...</h2>
+            
+            <!-- Progress Indicator -->
+            <div class="flex justify-center mb-8">
+              <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-green"></div>
+            </div>
+            
+            <!-- Almost Done Message with Percentage -->
+            <p class="text-brand-subtext text-lg mb-4">Almost done</p>
+            <p id="percentage-value" class="text-4xl font-bold text-brand-green">0%</p>
+          </div>
+        `;
+        
+        // Animate percentage from 0% to 100%
+        const percentageElement = document.getElementById('percentage-value');
+        let currentPercentage = 0;
+        
+        // Simulate processing delay between 1.5 and 2 seconds (Requirement 8.3)
+        const processingDelay = 1500 + Math.random() * 500; // Random delay between 1500ms and 2000ms
+        const updateInterval = processingDelay / 100; // Update 100 times to reach 100%
+        
+        const intervalId = setInterval(() => {
+          currentPercentage++;
+          percentageElement.textContent = `${currentPercentage}%`;
+          
+          if (currentPercentage >= 100) {
+            clearInterval(intervalId);
+            
+            // Show success modal after processing completes (Requirement 8.5, 8.6)
+            setTimeout(() => {
+              showModal('Succeeded!', 'Your face has been verified successfully!', [
+                { text: 'Continue', primary: true, onClick: () => this.goToNextStage() }
+              ]);
+            }, 300);
+          }
+        }, updateInterval);
+      }
+      
+      // Stage 8: Address Entry with Cascading Dropdowns
+      renderStage8() {
+        // Check if address data is loaded
+        if (!addressDataLoaded) {
+          // Try to load address data if not already loaded
+          showModal('Loading...', 'Loading address data, please wait...', []);
+          
+          addressDataService.loadData()
+            .then(() => {
+              addressDataLoaded = true;
+              hideModal();
+              // Retry rendering Stage 8 now that data is loaded
+              this.renderStage8();
+            })
+            .catch(error => {
+              console.error('[Stage 8] Failed to load address data:', error);
+              showModal('Error', 'Failed to load address data. Please check your internet connection and try again.', [
+                { text: 'Retry', primary: true, onClick: () => {
+                  // Retry loading
+                  this.renderStage8();
+                }},
+                { text: 'Go Back', primary: false, onClick: () => {
+                  this.goToPreviousStage();
+                }}
+              ]);
+            });
+          return;
+        }
+        
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-8">Residential Address</h2>
+          
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-brand-dark mb-4">Current Address</h3>
+            <div class="space-y-4">
+              <select id="current-state" class="input-field">
+                <option value="">Select State</option>
+              </select>
+              <select id="current-lga" class="input-field" disabled>
+                <option value="">Select LGA</option>
+              </select>
+              <select id="current-area" class="input-field" disabled>
+                <option value="">Select Area</option>
+              </select>
+              <input type="text" id="current-address" class="input-field" placeholder="Street address" />
+              <input type="text" id="current-landmark" class="input-field" placeholder="Landmark/Nearest Bus Stop (Optional)" />
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <label class="flex items-center gap-2 mb-4">
+              <input type="checkbox" id="same-address" class="w-5 h-5" checked />
+              <span class="text-brand-dark font-medium">Same as Current Address</span>
+            </label>
+            
+            <div id="permanent-address-section" class="space-y-4 hidden">
+              <h3 class="text-lg font-semibold text-brand-dark mb-4">Permanent Address</h3>
+              <select id="permanent-state" class="input-field">
+                <option value="">Select State</option>
+              </select>
+              <select id="permanent-lga" class="input-field" disabled>
+                <option value="">Select LGA</option>
+              </select>
+              <select id="permanent-area" class="input-field" disabled>
+                <option value="">Select Area</option>
+              </select>
+              <input type="text" id="permanent-address" class="input-field" placeholder="Street address" />
+            </div>
+          </div>
+          
+          <button id="next-btn" class="btn-primary w-full">Next</button>
+        `;
+        
+        // Get DOM elements
+        const currentStateDropdown = document.getElementById('current-state');
+        const currentLgaDropdown = document.getElementById('current-lga');
+        const currentAreaDropdown = document.getElementById('current-area');
+        const currentAddressInput = document.getElementById('current-address');
+        const currentLandmarkInput = document.getElementById('current-landmark');
+        
+        const permanentStateDropdown = document.getElementById('permanent-state');
+        const permanentLgaDropdown = document.getElementById('permanent-lga');
+        const permanentAreaDropdown = document.getElementById('permanent-area');
+        const permanentAddressInput = document.getElementById('permanent-address');
+        
+        const sameAddressCheckbox = document.getElementById('same-address');
+        const permanentSection = document.getElementById('permanent-address-section');
+        const nextBtn = document.getElementById('next-btn');
+        
+        // Populate state dropdowns with all states
+        const states = addressDataService.getStates();
+        states.forEach(state => {
+          const option = document.createElement('option');
+          option.value = state;
+          option.textContent = capitalizeWords(state);
+          currentStateDropdown.appendChild(option);
+          
+          // Clone for permanent address dropdown
+          const permanentOption = option.cloneNode(true);
+          permanentStateDropdown.appendChild(permanentOption);
+        });
+        
+        // Current Address: State selection handler
+        currentStateDropdown.addEventListener('change', (e) => {
+          const selectedState = e.target.value;
+          
+          // Reset dependent dropdowns
+          currentLgaDropdown.innerHTML = '<option value="">Select LGA</option>';
+          currentAreaDropdown.innerHTML = '<option value="">Select Area</option>';
+          currentAreaDropdown.disabled = true;
+          
+          if (selectedState) {
+            // Get LGAs for selected state
+            const lgas = addressDataService.getLGAsForState(selectedState);
+            
+            // Populate LGA dropdown
+            lgas.forEach(lga => {
+              const option = document.createElement('option');
+              option.value = lga;
+              option.textContent = capitalizeWords(lga);
+              currentLgaDropdown.appendChild(option);
+            });
+            
+            // Enable LGA dropdown
+            currentLgaDropdown.disabled = false;
+          } else {
+            currentLgaDropdown.disabled = true;
+          }
+        });
+        
+        // Current Address: LGA selection handler
+        currentLgaDropdown.addEventListener('change', (e) => {
+          const selectedLga = e.target.value;
+          const selectedState = currentStateDropdown.value;
+          
+          // Reset area dropdown
+          currentAreaDropdown.innerHTML = '<option value="">Select Area</option>';
+          
+          if (selectedLga && selectedState) {
+            // Get wards/areas for selected state and LGA
+            const wards = addressDataService.getWardsForLGA(selectedState, selectedLga);
+            
+            // Populate area dropdown
+            wards.forEach(ward => {
+              const option = document.createElement('option');
+              option.value = ward;
+              option.textContent = capitalizeWords(ward);
+              currentAreaDropdown.appendChild(option);
+            });
+            
+            // Enable area dropdown
+            currentAreaDropdown.disabled = false;
+          } else {
+            currentAreaDropdown.disabled = true;
+          }
+        });
+        
+        // Permanent Address: State selection handler
+        permanentStateDropdown.addEventListener('change', (e) => {
+          const selectedState = e.target.value;
+          
+          // Reset dependent dropdowns
+          permanentLgaDropdown.innerHTML = '<option value="">Select LGA</option>';
+          permanentAreaDropdown.innerHTML = '<option value="">Select Area</option>';
+          permanentAreaDropdown.disabled = true;
+          
+          if (selectedState) {
+            // Get LGAs for selected state
+            const lgas = addressDataService.getLGAsForState(selectedState);
+            
+            // Populate LGA dropdown
+            lgas.forEach(lga => {
+              const option = document.createElement('option');
+              option.value = lga;
+              option.textContent = capitalizeWords(lga);
+              permanentLgaDropdown.appendChild(option);
+            });
+            
+            // Enable LGA dropdown
+            permanentLgaDropdown.disabled = false;
+          } else {
+            permanentLgaDropdown.disabled = true;
+          }
+        });
+        
+        // Permanent Address: LGA selection handler
+        permanentLgaDropdown.addEventListener('change', (e) => {
+          const selectedLga = e.target.value;
+          const selectedState = permanentStateDropdown.value;
+          
+          // Reset area dropdown
+          permanentAreaDropdown.innerHTML = '<option value="">Select Area</option>';
+          
+          if (selectedLga && selectedState) {
+            // Get wards/areas for selected state and LGA
+            const wards = addressDataService.getWardsForLGA(selectedState, selectedLga);
+            
+            // Populate area dropdown
+            wards.forEach(ward => {
+              const option = document.createElement('option');
+              option.value = ward;
+              option.textContent = capitalizeWords(ward);
+              permanentAreaDropdown.appendChild(option);
+            });
+            
+            // Enable area dropdown
+            permanentAreaDropdown.disabled = false;
+          } else {
+            permanentAreaDropdown.disabled = true;
+          }
+        });
+        
+        // "Same as Current Address" checkbox handler
+        sameAddressCheckbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            // Hide permanent address fields
+            permanentSection.classList.add('hidden');
+            
+            // Clear permanent address selections
+            permanentStateDropdown.value = '';
+            permanentLgaDropdown.innerHTML = '<option value="">Select LGA</option>';
+            permanentLgaDropdown.disabled = true;
+            permanentAreaDropdown.innerHTML = '<option value="">Select Area</option>';
+            permanentAreaDropdown.disabled = true;
+            permanentAddressInput.value = '';
+          } else {
+            // Show permanent address fields
+            permanentSection.classList.remove('hidden');
+          }
+        });
+        
+        // Pre-fill dropdowns if user navigates back to this stage
+        if (registrationState.currentAddress.state) {
+          currentStateDropdown.value = registrationState.currentAddress.state;
+          currentStateDropdown.dispatchEvent(new Event('change'));
+          
+          // Wait for LGAs to populate, then set LGA
+          setTimeout(() => {
+            if (registrationState.currentAddress.lga) {
+              currentLgaDropdown.value = registrationState.currentAddress.lga;
+              currentLgaDropdown.dispatchEvent(new Event('change'));
+              
+              // Wait for areas to populate, then set area
+              setTimeout(() => {
+                if (registrationState.currentAddress.area) {
+                  currentAreaDropdown.value = registrationState.currentAddress.area;
+                }
+              }, 50);
+            }
+          }, 50);
+          
+          currentAddressInput.value = registrationState.currentAddress.addressText || '';
+          currentLandmarkInput.value = registrationState.currentAddress.landmark || '';
+        }
+        
+        // Pre-fill permanent address if different from current
+        if (registrationState.permanentAddress.state && 
+            registrationState.permanentAddress.state !== registrationState.currentAddress.state) {
+          sameAddressCheckbox.checked = false;
+          permanentSection.classList.remove('hidden');
+          
+          permanentStateDropdown.value = registrationState.permanentAddress.state;
+          permanentStateDropdown.dispatchEvent(new Event('change'));
+          
+          setTimeout(() => {
+            if (registrationState.permanentAddress.lga) {
+              permanentLgaDropdown.value = registrationState.permanentAddress.lga;
+              permanentLgaDropdown.dispatchEvent(new Event('change'));
+              
+              setTimeout(() => {
+                if (registrationState.permanentAddress.area) {
+                  permanentAreaDropdown.value = registrationState.permanentAddress.area;
+                }
+              }, 50);
+            }
+          }, 50);
+          
+          permanentAddressInput.value = registrationState.permanentAddress.addressText || '';
+        }
+        
+        // Next button handler - validate and submit
+        nextBtn.addEventListener('click', () => {
+          const currentState = currentStateDropdown.value;
+          const currentLga = currentLgaDropdown.value;
+          const currentArea = currentAreaDropdown.value;
+          const currentAddress = currentAddressInput.value.trim();
+          const currentLandmark = currentLandmarkInput.value.trim();
+          
+          // Validate current address fields
+          if (!currentState || !currentLga || !currentArea || !currentAddress) {
+            showModal('Error', 'Please complete all required current address fields (State, LGA, Area, and Street Address)', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          // Store current address
+          registrationState.currentAddress = {
+            state: currentState,
+            lga: currentLga,
+            area: currentArea,
+            addressText: currentAddress,
+            landmark: currentLandmark
+          };
+          
+          // Handle permanent address
+          if (sameAddressCheckbox.checked) {
+            // Copy current address to permanent address (without landmark)
+            registrationState.permanentAddress = {
+              state: currentState,
+              lga: currentLga,
+              area: currentArea,
+              addressText: currentAddress
+            };
+          } else {
+            // Validate permanent address fields
+            const permanentState = permanentStateDropdown.value;
+            const permanentLga = permanentLgaDropdown.value;
+            const permanentArea = permanentAreaDropdown.value;
+            const permanentAddress = permanentAddressInput.value.trim();
+            
+            if (!permanentState || !permanentLga || !permanentArea || !permanentAddress) {
+              showModal('Error', 'Please complete all required permanent address fields (State, LGA, Area, and Street Address)', [
+                { text: 'OK', primary: true, onClick: () => {} }
+              ]);
+              return;
+            }
+            
+            // Store permanent address
+            registrationState.permanentAddress = {
+              state: permanentState,
+              lga: permanentLga,
+              area: permanentArea,
+              addressText: permanentAddress
+            };
+          }
+          
+          // Proceed to next stage
+          this.goToNextStage();
+        });
+      }
+      
+      // Stage 9: PIN Setup
+      renderStage9() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <h2 class="text-3xl font-semibold text-brand-dark mb-2">Set Your 6-Digit Login Password</h2>
+          <p class="text-brand-subtext mb-8">Choose a secure 6-digit password for your account</p>
+          
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-brand-dark mb-2">Set Password</label>
+            <div id="pin-input-container" class="mb-6"></div>
+            
+            <label class="block text-sm font-medium text-brand-dark mb-2">Re-Enter Password</label>
+            <div id="pin-confirm-container"></div>
+          </div>
+          
+          <button id="next-btn" class="btn-primary w-full">Next</button>
+        `;
+        
+        // Create DigitInputBox for PIN entry with masked input (displays dots)
+        const pinInputBox = new DigitInputBox(6, null, 'masked');
+        const pinContainer = document.getElementById('pin-input-container');
+        pinContainer.appendChild(pinInputBox.render());
+        
+        // Create DigitInputBox for PIN confirmation with masked input (displays dots)
+        const pinConfirmInputBox = new DigitInputBox(6, null, 'masked');
+        const pinConfirmContainer = document.getElementById('pin-confirm-container');
+        pinConfirmContainer.appendChild(pinConfirmInputBox.render());
+        
+        // Focus first input
+        pinInputBox.focus();
+        
+        const nextBtn = document.getElementById('next-btn');
+        nextBtn.addEventListener('click', async () => {
+          const pin = pinInputBox.getValue();
+          const pinConfirm = pinConfirmInputBox.getValue();
+          
+          // Validate PIN using PINService
+          const validationResult = PINService.validatePIN(pin);
+          if (!validationResult.isValid) {
+            showModal('Error', validationResult.error, [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          // Check if PINs match
+          if (pin !== pinConfirm) {
+            showModal('Error', 'PINs do not match. Please re-enter.', [
+              { text: 'OK', primary: true, onClick: () => {} }
+            ]);
+            return;
+          }
+          
+          // Store PIN (will be hashed before saving to database)
+          registrationState.pin = pin;
+          
+          // Save user to database
+          if (!dbConnected) {
+            // Try to reconnect if not connected
+            showModal('Connecting...', 'Connecting to database, please wait...', []);
+            
+            try {
+              await dbService.connect();
+              dbConnected = true;
+              hideModal();
+            } catch (error) {
+              console.error('Failed to connect to database:', error);
+              showModal('Connection Error', 'Unable to connect to database. Please check your internet connection and try again.', [
+                { text: 'Retry', primary: true, onClick: () => {
+                  // Trigger the button click again
+                  nextBtn.click();
+                }},
+                { text: 'Cancel', primary: false, onClick: () => {} }
+              ]);
+              return;
+            }
+          }
+          
+          if (dbConnected) {
+            try {
+              nextBtn.disabled = true;
+              nextBtn.textContent = 'Saving...';
+              
+              // Hash PIN using PINService with phone number as salt
+              const hashedPin = await PINService.hashPIN(pin, registrationState.phoneNumber);
+              
+              const userData = {
+                phoneNumber: registrationState.phoneNumber,
+                idType: registrationState.idType,
+                idNumber: registrationState.idNumber,
+                firstName: registrationState.firstName,
+                middleName: registrationState.middleName,
+                lastName: registrationState.lastName,
+                dob: registrationState.dob,
+                gender: registrationState.gender,
+                virtualAccountNumber: registrationState.virtualAccountNumber,
+                bankCode: registrationState.bankCode,
+                currentAddress: registrationState.currentAddress,
+                permanentAddress: registrationState.permanentAddress,
+                hashedPin: hashedPin
+              };
+              
+              const savedUser = await dbService.saveUser(userData);
+              console.log('User saved to database:', savedUser);
+              
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Next';
+              
+              // Proceed to Stage 10 (Success Screen)
+              this.goToNextStage();
+              
+            } catch (error) {
+              console.error('Failed to save user:', error);
+              showModal('Error', 'Failed to create account: ' + error.message, [
+                { text: 'Retry', primary: true, onClick: () => {
+                  nextBtn.click();
+                }},
+                { text: 'Cancel', primary: false, onClick: () => {} }
+              ]);
+              nextBtn.disabled = false;
+              nextBtn.textContent = 'Complete';
+            }
+          }
+        });
+      }
+      
+      // Stage 10: Success Screen
+      renderStage10() {
+        const stageContent = document.getElementById('stage-content');
+        stageContent.innerHTML = `
+          <div class="text-center cursor-pointer" id="success-screen">
+            <!-- Success Checkmark Icon -->
+            <div class="flex justify-center mb-6">
+              <div class="w-24 h-24 bg-brand-green rounded-full flex items-center justify-center">
+                <svg class="w-16 h-16 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Success Message -->
+            <h2 class="text-3xl font-semibold text-brand-dark mb-4">Account Created Successfully!</h2>
+            <p class="text-brand-subtext mb-8">Your ScrowPay account has been created and is ready to use.</p>
+            
+            <!-- Click anywhere hint -->
+            <p class="text-sm text-brand-subtext opacity-75">Click anywhere to continue</p>
+          </div>
+        `;
+        
+        // Add click handler to dismiss success message and navigate to dashboard
+        const successScreen = document.getElementById('success-screen');
+        successScreen.addEventListener('click', () => {
+          this.dismissSuccessScreen();
+        });
+        
+        // Also allow clicking anywhere on the card
+        const stageCard = document.getElementById('stage-content');
+        stageCard.style.cursor = 'pointer';
+        stageCard.addEventListener('click', () => {
+          this.dismissSuccessScreen();
+        });
+      }
+      
+      /**
+       * Dismiss success screen and navigate to dashboard
+       * Requirement 11.2: When the user clicks anywhere on the success screen, dismiss the success message
+       * Requirement 11.3: Navigate to the main app dashboard
+       * Requirement 11.4: Enable user to perform transactions after successful account creation
+       */
+      dismissSuccessScreen() {
+        console.log('[Success] Account creation complete!');
+        console.log('[Success] Registration State:', registrationState);
+        
+        // Trigger a custom event that the parent application can listen to
+        window.dispatchEvent(new CustomEvent('accountCreationComplete', {
+          detail: {
+            phoneNumber: registrationState.phoneNumber,
+            firstName: registrationState.firstName,
+            lastName: registrationState.lastName
+          }
+        }));
+        
+        // Navigate to dashboard with user data
+        const dashboardUrl = `dashboard.html?firstName=${encodeURIComponent(registrationState.firstName)}&phone=${encodeURIComponent(registrationState.phoneNumber)}`;
+        
+        console.log('[Success] Navigating to dashboard:', dashboardUrl);
+        window.location.href = dashboardUrl;
+      }
+    }
+    
+    // DigitInputBox Component Class
+    class DigitInputBox {
+      /**
+       * Creates a reusable digit input component for multi-digit inputs
+       * @param {number} maxDigits - Number of digit input boxes to render
+       * @param {function} onChange - Optional callback function called when value changes
+       * @param {string} inputType - Type of input ('text', 'password', 'masked')
+       */
+      constructor(maxDigits, onChange = null, inputType = 'text') {
+        this.maxDigits = maxDigits;
+        this.onChange = onChange;
+        this.inputType = inputType;
+        this.inputs = [];
+        this.container = null;
+        this.actualValues = []; // Store actual values for masked inputs
+      }
+      
+      /**
+       * Renders the digit input boxes and returns the container element
+       * @returns {HTMLElement} Container element with all digit input boxes
+       */
+      render() {
+        // Create container
+        this.container = document.createElement('div');
+        this.container.className = 'flex gap-2 justify-center';
+        
+        // Create individual input boxes
+        for (let i = 0; i < this.maxDigits; i++) {
+          const input = document.createElement('input');
+          input.type = 'text'; // Always use text type for custom masking
+          input.maxLength = 1;
+          input.className = 'digit-input w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:border-brand-green focus:outline-none';
+          
+          // Initialize actual value storage for masked inputs
+          if (this.inputType === 'masked') {
+            this.actualValues[i] = '';
+          }
+          
+          // Add input event listener for auto-focus
+          input.addEventListener('input', (e) => {
+            // Only allow digits
+            const digitValue = e.target.value.replace(/\D/g, '');
+            
+            // For masked input, store actual value and display dot
+            if (this.inputType === 'masked') {
+              if (digitValue) {
+                this.actualValues[i] = digitValue.charAt(0);
+                e.target.value = '•'; // Display dot instead of digit
+              } else {
+                this.actualValues[i] = '';
+                e.target.value = '';
+              }
+            } else {
+              e.target.value = digitValue;
+            }
+            
+            // Auto-focus next input if value entered
+            if (e.target.value && i < this.maxDigits - 1) {
+              this.inputs[i + 1].focus();
+            }
+            
+            // Call onChange callback if provided
+            if (this.onChange) {
+              this.onChange(this.getValue());
+            }
+          });
+          
+          // Add keydown event listener for backspace handling
+          input.addEventListener('keydown', (e) => {
+            // Move to previous input on backspace if current input is empty
+            if (e.key === 'Backspace' && !e.target.value && i > 0) {
+              this.inputs[i - 1].focus();
+            }
+          });
+          
+          this.inputs.push(input);
+          this.container.appendChild(input);
+        }
+        
+        return this.container;
+      }
+      
+      /**
+       * Gets the current value from all digit inputs as a concatenated string
+       * @returns {string} Concatenated value of all digit inputs
+       */
+      getValue() {
+        // For masked inputs, return actual values instead of displayed dots
+        if (this.inputType === 'masked') {
+          return this.actualValues.join('');
+        }
+        return this.inputs.map(input => input.value).join('');
+      }
+      
+      /**
+       * Sets the value of the digit inputs from a string
+       * @param {string} value - String value to set (will be split into individual digits)
+       */
+      setValue(value) {
+        const digits = value.toString().split('');
+        this.inputs.forEach((input, index) => {
+          if (this.inputType === 'masked') {
+            // Store actual value and display dot
+            this.actualValues[index] = digits[index] || '';
+            input.value = digits[index] ? '•' : '';
+          } else {
+            input.value = digits[index] || '';
+          }
+        });
+      }
+      
+      /**
+       * Focuses the first input box
+       */
+      focus() {
+        if (this.inputs.length > 0) {
+          this.inputs[0].focus();
+        }
+      }
+      
+      /**
+       * Clears all input values
+       */
+      clear() {
+        this.inputs.forEach(input => {
+          input.value = '';
+        });
+        // Clear actual values for masked inputs
+        if (this.inputType === 'masked') {
+          this.actualValues = [];
+        }
+      }
+    }
+    
+    // Modal Component Class
+    class Modal {
+      constructor() {
+        this.modalElement = document.getElementById('modal');
+        this.titleElement = document.getElementById('modal-title');
+        this.messageElement = document.getElementById('modal-message');
+        this.buttonsContainer = document.getElementById('modal-buttons');
+      }
+      
+      /**
+       * Show the modal with specified title, message, and buttons
+       * @param {string} title - Modal title
+       * @param {string} message - Modal message
+       * @param {Array} buttons - Array of button objects with { text, primary, onClick }
+       */
+      show(title, message, buttons = []) {
+        this.titleElement.textContent = title;
+        this.messageElement.textContent = message;
+        this.buttonsContainer.innerHTML = '';
+        
+        buttons.forEach(button => {
+          const btn = document.createElement('button');
+          btn.textContent = button.text;
+          btn.className = button.primary 
+            ? 'btn-primary' 
+            : 'px-4 py-2 text-brand-dark font-medium hover:bg-gray-100 rounded-full transition-colors';
+          
+          btn.onclick = () => {
+            this.hide();
+            if (button.onClick) button.onClick();
+          };
+          
+          this.buttonsContainer.appendChild(btn);
+        });
+        
+        this.modalElement.classList.add('active');
+      }
+      
+      /**
+       * Hide the modal
+       */
+      hide() {
+        this.modalElement.classList.remove('active');
+      }
+    }
+    
+    // Toast Component Class
+    class Toast {
+      constructor() {
+        this.toastElement = document.getElementById('toast');
+        this.timeoutId = null;
+      }
+      
+      /**
+       * Show the toast notification with auto-dismiss after specified duration
+       * @param {string} message - Toast message to display
+       * @param {number} duration - Duration in milliseconds before auto-dismiss (default: 3000)
+       */
+      show(message, duration = 3000) {
+        // Clear any existing timeout
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId);
+        }
+        
+        // Set message and show toast
+        this.toastElement.textContent = message;
+        this.toastElement.classList.add('active');
+        
+        // Auto-dismiss after duration
+        this.timeoutId = setTimeout(() => {
+          this.hide();
+        }, duration);
+      }
+      
+      /**
+       * Hide the toast notification
+       */
+      hide() {
+        this.toastElement.classList.remove('active');
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId);
+          this.timeoutId = null;
+        }
+      }
+    }
+    
+    // Initialize Modal and Toast instances
+    const modal = new Modal();
+    const toast = new Toast();
+    
+    // UI Helper Functions
+    function showToast(message, duration = 3000) {
+      toast.show(message, duration);
+    }
+    
+    // Legacy helper functions for backward compatibility
+    function showModal(title, message, buttons = []) {
+      modal.show(title, message, buttons);
+    }
+    
+    function hideModal() {
+      modal.hide();
+    }
+    
+    // Initialize Stage Manager
+    const stageManager = new StageManager();
+    
+    // Initialize the first stage on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      stageManager.renderCurrentStage();
+    });
+  </script>
+  
+</body>
+</html>

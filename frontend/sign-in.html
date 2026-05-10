@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - ScrowPay</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#1c1c1c',
+              green: '#caff04',
+              gray: '#f5f5f7',
+              text: '#111111',
+              subtext: '#666666'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts - Inter -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #ffffff;
+    }
+    
+    .input-field {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .input-field:focus {
+      outline: none;
+      border-color: #caff04;
+      box-shadow: 0 0 0 3px rgba(202, 255, 4, 0.1);
+    }
+    
+    .input-field.error {
+      border-color: #ef4444;
+    }
+    
+    .btn-primary {
+      background-color: #caff04;
+      color: #1c1c1c;
+      font-weight: 600;
+      padding: 1rem 2rem;
+      border-radius: 9999px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    
+    .btn-primary:hover {
+      background-color: #b8e600;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(202, 255, 4, 0.3);
+    }
+    
+    .btn-primary:disabled {
+      background-color: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .card {
+      background: #ffffff;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: #ffffff;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-white">
+  
+  <!-- Main Container -->
+  <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div class="w-full max-w-md">
+      
+      <!-- Logo -->
+      <div class="flex items-center justify-center gap-3 mb-8">
+        <div class="w-12 h-12 bg-brand-green rounded-full flex items-center justify-center">
+          <svg fill="none" height="28" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+          </svg>
+        </div>
+        <span class="text-brand-dark text-2xl font-semibold tracking-wider">ScrowPay</span>
+      </div>
+      
+      <!-- Sign In Card -->
+      <div class="card">
+        <h2 class="text-3xl font-semibold text-brand-dark mb-2">Welcome Back</h2>
+        <p class="text-brand-subtext mb-8">Sign in to your ScrowPay account</p>
+        
+        <!-- Phone Number Input -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-brand-dark mb-2">Phone Number</label>
+          <div class="flex items-center gap-2">
+            <span class="text-brand-dark font-medium">🇳🇬 +234</span>
+            <input type="tel" id="phone-input" class="input-field" placeholder="8135866028" maxlength="11">
+          </div>
+          <p id="phone-error" class="text-red-500 text-sm mt-2 hidden"></p>
+        </div>
+        
+        <!-- PIN Input -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-brand-dark mb-2">6-Digit PIN</label>
+          <div id="pin-input-container"></div>
+          <p id="pin-error" class="text-red-500 text-sm mt-2 hidden"></p>
+        </div>
+        
+        <!-- Sign In Button -->
+        <button id="signin-btn" class="btn-primary">Sign In</button>
+        
+        <!-- Create Account Link -->
+        <div class="mt-6 text-center">
+          <p class="text-brand-subtext text-sm">
+            Don't have an account? 
+            <a href="account-creation.html" class="text-brand-dark font-semibold hover:text-brand-green transition-colors">Create Account</a>
+          </p>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-title" class="text-2xl font-semibold mb-4 text-brand-dark"></h3>
+      <p id="modal-message" class="text-brand-subtext mb-6"></p>
+      <div id="modal-buttons" class="flex gap-3 justify-end"></div>
+    </div>
+  </div>
+  
+  <!-- Turso libsql Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@libsql/client@0.3.5/dist/index.js"></script>
+  
+  <!-- Environment Configuration (Load FIRST) -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  
+  <!-- Services -->
+  <script src="turso-db-service.js"></script>
+  <script src="pin-service.js?v=2"></script>
+  
+  <!-- JavaScript -->
+  <script>
+    // PhoneValidationService
+    class PhoneValidationService {
+      static validateFormat(phone) {
+        if (!phone || typeof phone !== 'string') {
+          return false;
+        }
+        
+        const cleaned = phone.replace(/\D/g, '');
+        
+        if (cleaned.length === 11 && cleaned.startsWith('0')) {
+          return true;
+        }
+        
+        if (cleaned.length === 10 && !cleaned.startsWith('0')) {
+          return true;
+        }
+        
+        return false;
+      }
+      
+      static normalizePhone(phone) {
+        if (!phone || typeof phone !== 'string') {
+          throw new Error('Invalid phone number');
+        }
+        
+        const cleaned = phone.replace(/\D/g, '');
+        const withoutLeadingZero = cleaned.startsWith('0') ? cleaned.substring(1) : cleaned;
+        
+        return `+234${withoutLeadingZero}`;
+      }
+    }
+    
+    // DigitInputBox Component
+    class DigitInputBox {
+      constructor(maxDigits, onChange = null, inputType = 'text') {
+        this.maxDigits = maxDigits;
+        this.onChange = onChange;
+        this.inputType = inputType;
+        this.inputs = [];
+        this.container = null;
+        this.actualValues = [];
+      }
+      
+      render() {
+        this.container = document.createElement('div');
+        this.container.className = 'flex gap-2 justify-center';
+        
+        for (let i = 0; i < this.maxDigits; i++) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.maxLength = 1;
+          input.className = 'digit-input w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:border-brand-green focus:outline-none';
+          
+          if (this.inputType === 'masked') {
+            this.actualValues[i] = '';
+          }
+          
+          input.addEventListener('input', (e) => {
+            const digitValue = e.target.value.replace(/\D/g, '');
+            
+            if (this.inputType === 'masked') {
+              if (digitValue) {
+                this.actualValues[i] = digitValue.charAt(0);
+                e.target.value = '•';
+              } else {
+                this.actualValues[i] = '';
+                e.target.value = '';
+              }
+            } else {
+              e.target.value = digitValue;
+            }
+            
+            if (e.target.value && i < this.maxDigits - 1) {
+              this.inputs[i + 1].focus();
+            }
+            
+            if (this.onChange) {
+              this.onChange(this.getValue());
+            }
+          });
+          
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && i > 0) {
+              this.inputs[i - 1].focus();
+            }
+          });
+          
+          this.inputs.push(input);
+          this.container.appendChild(input);
+        }
+        
+        return this.container;
+      }
+      
+      getValue() {
+        if (this.inputType === 'masked') {
+          return this.actualValues.join('');
+        }
+        return this.inputs.map(input => input.value).join('');
+      }
+      
+      setValue(value) {
+        const digits = value.toString().split('');
+        this.inputs.forEach((input, index) => {
+          if (this.inputType === 'masked') {
+            this.actualValues[index] = digits[index] || '';
+            input.value = digits[index] ? '•' : '';
+          } else {
+            input.value = digits[index] || '';
+          }
+        });
+      }
+      
+      focus() {
+        if (this.inputs.length > 0) {
+          this.inputs[0].focus();
+        }
+      }
+      
+      clear() {
+        this.inputs.forEach(input => {
+          input.value = '';
+        });
+        if (this.inputType === 'masked') {
+          this.actualValues = [];
+        }
+      }
+    }
+    
+    // Modal functions
+    function showModal(title, message, buttons = []) {
+      const modal = document.getElementById('modal');
+      const titleElement = document.getElementById('modal-title');
+      const messageElement = document.getElementById('modal-message');
+      const buttonsContainer = document.getElementById('modal-buttons');
+      
+      titleElement.textContent = title;
+      messageElement.textContent = message;
+      buttonsContainer.innerHTML = '';
+      
+      buttons.forEach(button => {
+        const btn = document.createElement('button');
+        btn.textContent = button.text;
+        btn.className = button.primary 
+          ? 'btn-primary' 
+          : 'px-4 py-2 text-brand-dark font-medium hover:bg-gray-100 rounded-full transition-colors';
+        
+        btn.onclick = () => {
+          hideModal();
+          if (button.onClick) button.onClick();
+        };
+        
+        buttonsContainer.appendChild(btn);
+      });
+      
+      modal.classList.add('active');
+    }
+    
+    function hideModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.remove('active');
+    }
+    
+    // Initialize Turso DB Service from CONFIG
+    const dbService = new TursoDBService(
+      window.CONFIG.turso.databaseUrl,
+      window.CONFIG.turso.authToken
+    );
+    
+    let dbConnected = false;
+    
+    // Connect to database
+    dbService.connect()
+      .then(() => {
+        dbConnected = true;
+        console.log('[Sign In] Database connected');
+      })
+      .catch(error => {
+        console.error('[Sign In] Database connection failed:', error);
+      });
+    
+    // Initialize UI
+    const phoneInput = document.getElementById('phone-input');
+    const phoneError = document.getElementById('phone-error');
+    const pinError = document.getElementById('pin-error');
+    const signinBtn = document.getElementById('signin-btn');
+    
+    // Create PIN input
+    const pinInputBox = new DigitInputBox(6, null, 'masked');
+    const pinContainer = document.getElementById('pin-input-container');
+    pinContainer.appendChild(pinInputBox.render());
+    
+    // Phone input validation
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+      
+      if (e.target.value.length > 0) {
+        const isValid = PhoneValidationService.validateFormat(e.target.value);
+        if (!isValid) {
+          phoneInput.classList.add('error');
+          phoneError.textContent = 'Please enter a valid Nigerian phone number';
+          phoneError.classList.remove('hidden');
+        } else {
+          phoneInput.classList.remove('error');
+          phoneError.classList.add('hidden');
+        }
+      }
+    });
+    
+    // Sign In button handler
+    signinBtn.addEventListener('click', async () => {
+      const phoneValue = phoneInput.value.trim();
+      const pinValue = pinInputBox.getValue();
+      
+      // Validate phone
+      if (!phoneValue) {
+        phoneInput.classList.add('error');
+        phoneError.textContent = 'Phone number is required';
+        phoneError.classList.remove('hidden');
+        return;
+      }
+      
+      if (!PhoneValidationService.validateFormat(phoneValue)) {
+        phoneInput.classList.add('error');
+        phoneError.textContent = 'Please enter a valid Nigerian phone number';
+        phoneError.classList.remove('hidden');
+        return;
+      }
+      
+      // Validate PIN
+      if (!pinValue || pinValue.length !== 6) {
+        pinError.textContent = 'Please enter your 6-digit PIN';
+        pinError.classList.remove('hidden');
+        return;
+      }
+      
+      // Normalize phone
+      const normalizedPhone = PhoneValidationService.normalizePhone(phoneValue);
+      
+      // Check database connection
+      if (!dbConnected) {
+        showModal('Connection Error', 'Unable to connect to database. Please check your internet connection and try again.', [
+          { text: 'Retry', primary: true, onClick: () => {
+            signinBtn.click();
+          }},
+          { text: 'Cancel', primary: false, onClick: () => {} }
+        ]);
+        return;
+      }
+      
+      try {
+        signinBtn.disabled = true;
+        signinBtn.textContent = 'Signing In...';
+        
+        // Get user from database
+        const user = await dbService.getUserByPhone(normalizedPhone);
+        
+        if (!user) {
+          showModal('Account Not Found', 'No account found with this phone number. Please create an account first.', [
+            { text: 'Create Account', primary: true, onClick: () => {
+              window.location.href = 'account-creation.html';
+            }},
+            { text: 'Try Again', primary: false, onClick: () => {} }
+          ]);
+          signinBtn.disabled = false;
+          signinBtn.textContent = 'Sign In';
+          return;
+        }
+        
+        // Verify PIN
+        const isPINValid = await PINService.verifyPIN(pinValue, normalizedPhone, user.hashed_pin);
+        
+        if (!isPINValid) {
+          showModal('Incorrect PIN', 'The PIN you entered is incorrect. Please try again.', [
+            { text: 'OK', primary: true, onClick: () => {
+              pinInputBox.clear();
+              pinInputBox.focus();
+            }}
+          ]);
+          signinBtn.disabled = false;
+          signinBtn.textContent = 'Sign In';
+          return;
+        }
+        
+        // Success! Store user session and redirect to dashboard
+        sessionStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('isLoggedIn', 'true');
+        
+        showModal('Welcome Back!', `Welcome back, ${user.first_name}! Redirecting to your dashboard...`, [
+          { text: 'Continue', primary: true, onClick: () => {
+            window.location.href = 'dashboard.html';
+          }}
+        ]);
+        
+        // Auto-redirect after 2 seconds
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Sign in error:', error);
+        showModal('Error', 'An error occurred during sign in. Please try again.', [
+          { text: 'OK', primary: true, onClick: () => {} }
+        ]);
+        signinBtn.disabled = false;
+        signinBtn.textContent = 'Sign In';
+      }
+    });
+    
+    // Enter key handler
+    phoneInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        signinBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>

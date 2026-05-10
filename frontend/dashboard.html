@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - ScrowPay</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#1c1c1c',
+              green: '#caff04',
+              gray: '#f5f5f7',
+              text: '#111111',
+              subtext: '#666666'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts - Inter -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f5f5f7;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-brand-gray">
+  
+  <!-- Header -->
+  <header class="bg-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-brand-green rounded-full flex items-center justify-center">
+            <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+              <path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+              <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+            </svg>
+          </div>
+          <span class="text-brand-dark text-xl font-semibold tracking-wider">ScrowPay</span>
+        </div>
+        
+        <!-- User Info -->
+        <div class="flex items-center gap-4">
+          <span id="user-name" class="text-brand-dark font-medium">Welcome!</span>
+          <button class="px-4 py-2 text-brand-dark hover:bg-brand-gray rounded-lg transition-colors">
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Welcome Card -->
+    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+      <div class="flex items-center gap-4 mb-6">
+        <div class="w-16 h-16 bg-brand-green rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-brand-dark">Welcome to ScrowPay!</h1>
+          <p class="text-brand-subtext mt-1">Your account has been successfully created and verified.</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div class="bg-brand-gray rounded-xl p-6">
+          <div class="text-brand-subtext text-sm mb-2">Account Status</div>
+          <div class="text-2xl font-bold text-brand-dark">Verified ✓</div>
+        </div>
+        <div class="bg-brand-gray rounded-xl p-6">
+          <div class="text-brand-subtext text-sm mb-2">Phone Number</div>
+          <div class="text-lg font-semibold text-brand-dark" id="user-phone">+234XXXXXXXXXX</div>
+        </div>
+        <div class="bg-brand-gray rounded-xl p-6">
+          <div class="text-brand-subtext text-sm mb-2">Account Type</div>
+          <div class="text-lg font-semibold text-brand-dark">Personal</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+      <h2 class="text-2xl font-bold text-brand-dark mb-6">Quick Actions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <button class="flex flex-col items-center gap-3 p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md">
+          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span class="font-semibold text-brand-dark">Create Escrow</span>
+        </button>
+        
+        <button class="flex flex-col items-center gap-3 p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md">
+          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          <span class="font-semibold text-brand-dark">View Transactions</span>
+        </button>
+        
+        <button class="flex flex-col items-center gap-3 p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md">
+          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          <span class="font-semibold text-brand-dark">Add Funds</span>
+        </button>
+        
+        <button class="flex flex-col items-center gap-3 p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md">
+          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span class="font-semibold text-brand-dark">Settings</span>
+        </button>
+        
+      </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-2xl shadow-lg p-8">
+      <h2 class="text-2xl font-bold text-brand-dark mb-6">Recent Activity</h2>
+      <div class="text-center py-12">
+        <svg class="w-16 h-16 text-brand-subtext mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="text-brand-subtext">No transactions yet</p>
+        <p class="text-sm text-brand-subtext mt-2">Start by creating your first escrow transaction</p>
+      </div>
+    </div>
+    
+  </main>
+  
+  <script>
+    // Get user data from URL parameters or localStorage
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const firstName = urlParams.get('firstName') || localStorage.getItem('firstName') || 'User';
+      const phoneNumber = urlParams.get('phone') || localStorage.getItem('phoneNumber') || '+234XXXXXXXXXX';
+      
+      // Update UI with user data
+      document.getElementById('user-name').textContent = `Welcome, ${firstName}!`;
+      document.getElementById('user-phone').textContent = phoneNumber;
+      
+      // Store in localStorage for future use
+      if (urlParams.get('firstName')) {
+        localStorage.setItem('firstName', firstName);
+      }
+      if (urlParams.get('phone')) {
+        localStorage.setItem('phoneNumber', phoneNumber);
+      }
+    });
+  </script>
+  
+</body>
+</html>
