@@ -72,172 +72,13 @@
     }
   </script>
   
-  <!-- Google Fonts - DM Sans & Syne -->
+  <!-- Google Fonts - Inter -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     body {
-      font-family: 'DM Sans', sans-serif;
-      background-color: #f2f2f0;
-    }
-    
-    /* ========== BALANCE CARD STYLES ========== */
-    .balance-card {
-      background: #111111;
-      border-radius: 20px;
-      padding: 32px 28px;
-      position: relative;
-      overflow: hidden;
-      animation: slideUp 0.5s ease both;
-      margin-bottom: 24px;
-    }
-
-    .balance-card::before {
-      content: '';
-      position: absolute;
-      top: -60px;
-      right: -60px;
-      width: 200px;
-      height: 200px;
-      background: #caff04;
-      border-radius: 50%;
-      opacity: 0.08;
-    }
-
-    .balance-card::after {
-      content: '';
-      position: absolute;
-      bottom: -80px;
-      left: 30%;
-      width: 160px;
-      height: 160px;
-      background: #caff04;
-      border-radius: 50%;
-      opacity: 0.05;
-    }
-
-    .balance-label {
-      font-size: 13px;
-      color: rgba(255,255,255,0.5);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .balance-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .balance-amount {
-      font-family: 'Syne', sans-serif;
-      font-size: 44px;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1;
-      letter-spacing: -1px;
-    }
-
-    .balance-amount.hidden-balance {
-      letter-spacing: 4px;
-      font-size: 32px;
-      color: rgba(255,255,255,0.4);
-    }
-
-    .eye-btn {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-    .eye-btn:hover { background: rgba(255,255,255,0.15); }
-    .eye-btn svg { width: 18px; height: 18px; stroke: rgba(255,255,255,0.6); fill: none; }
-
-    .balance-meta {
-      display: flex;
-      gap: 24px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .balance-meta-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .balance-meta-label {
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .balance-meta-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: rgba(255,255,255,0.85);
-    }
-
-    .verified-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(202,255,4,0.12);
-      border: 1px solid rgba(202,255,4,0.25);
-      color: #caff04;
-      border-radius: 20px;
-      padding: 4px 12px;
-      font-size: 12px;
-      font-weight: 500;
-      position: absolute;
-      top: 28px;
-      right: 28px;
-      z-index: 1;
-    }
-    .verified-badge svg { width: 12px; height: 12px; stroke: #caff04; fill: none; flex-shrink: 0; }
-
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 700px) {
-      .balance-card { padding: 24px 20px; }
-      .balance-amount { font-size: 36px; }
-      .balance-meta { gap: 16px; flex-wrap: wrap; }
-      .verified-badge { font-size: 11px; padding: 3px 10px; top: 20px; right: 16px; }
-      
-      /* Mobile: Stack trust score and balance vertically */
-      .balance-card > div:first-child {
-        grid-template-columns: 1fr !important;
-        gap: 20px !important;
-      }
-      
-      /* Center trust score on mobile */
-      .balance-card > div:first-child > div:first-child {
-        flex-direction: row !important;
-        justify-content: center !important;
-        gap: 16px !important;
-        padding-top: 0 !important;
-      }
-    }
-
-    @media (max-width: 420px) {
-      .balance-amount { font-size: 30px; }
+      font-family: 'Inter', sans-serif;
+      background-color: #f5f5f7;
     }
     
     /* Toast Notifications */
@@ -502,120 +343,171 @@
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     
-    <!-- Balance Display Section with Integrated Trust Score - Beautiful Design -->
-    <div class="balance-card">
-      <!-- Main Content Grid -->
-      <div style="display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: start; position: relative; z-index: 1;">
-        
-        <!-- LEFT: Trust Score Section -->
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 8px;">
-          <!-- Score Circle -->
-          <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #ffd93d;">
-            <div class="text-center">
-              <div id="trust-score-value" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #111111; line-height: 1;">50</div>
-              <div style="font-size: 9px; font-weight: 500; color: #111111; margin-top: 2px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">Trust</div>
-            </div>
+    <!-- Welcome Card - Responsive Design -->
+    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4 sm:mb-6">
+        <div class="w-12 h-12 sm:w-16 sm:h-16 bg-brand-green rounded-full flex items-center justify-center flex-shrink-0">
+          <svg class="w-8 h-8 sm:w-10 sm:h-10 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-brand-dark">Welcome to ScrowPay!</h1>
+          <p class="text-brand-subtext mt-1 text-sm sm:text-base">Your account has been successfully created and verified.</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8">
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Account Status</div>
+          <div class="text-xl sm:text-2xl font-bold text-brand-dark">Verified ✓</div>
+        </div>
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Phone Number</div>
+          <div class="text-base sm:text-lg font-semibold text-brand-dark break-all" id="user-phone">+234XXXXXXXXXX</div>
+        </div>
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-brand-subtext text-xs sm:text-sm">Account Number</div>
+            <button id="btn-copy-account" class="text-brand-dark hover:text-brand-green transition-colors" title="Copy account number">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
           </div>
-          
-          <!-- Trust Label -->
-          <div style="text-align: center;">
-            <div class="flex items-center justify-center gap-1 mb-1">
-              <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #ffd93d;"></div>
-              <span id="trust-score-label" style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);">Medium</span>
+          <div class="text-base sm:text-lg font-semibold text-brand-dark break-all" id="user-account-number">Loading...</div>
+          <div class="text-xs text-brand-subtext mt-1">GTBank</div>
+        </div>
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Account Type</div>
+          <div class="text-base sm:text-lg font-semibold text-brand-dark">Personal</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Balance Display Section - Responsive Design -->
+    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
+      <div class="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 class="text-xl sm:text-2xl font-bold text-brand-dark">Account Balance</h2>
+        <div id="balance-loading-indicator" class="hidden">
+          <svg class="animate-spin h-5 w-5 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Available Balance -->
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-brand-subtext text-xs sm:text-sm">Available Balance</div>
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div id="available-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
+          <div id="available-balance-status" class="text-xs text-brand-subtext"></div>
+        </div>
+        
+        <!-- Locked Balance -->
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-brand-subtext text-xs sm:text-sm">Locked Balance</div>
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+          </div>
+          <div id="locked-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
+          <div class="text-xs text-brand-subtext">In active transactions</div>
+        </div>
+        
+        <!-- Total Balance -->
+        <div class="bg-brand-gray rounded-xl p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-brand-subtext text-xs sm:text-sm">Total Balance</div>
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <div id="total-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
+          <div id="balance-invariant-status" class="text-xs text-green-600">✓ Balance verified</div>
+        </div>
+      </div>
+      
+      <!-- Staleness Indicator (Hidden by default) -->
+      <div id="staleness-indicator" class="hidden mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div class="flex items-start gap-2 sm:gap-3">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <div class="flex-1">
+            <p class="text-xs sm:text-sm font-medium text-yellow-900">Using Cached Balance</p>
+            <p id="staleness-message" class="text-xs text-yellow-800 mt-1">Squad API is temporarily unreachable. Displaying last known balance.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Trust Score Display Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-brand-dark">Trust Score</h2>
+        <div id="trust-score-loading-indicator" class="hidden">
+          <svg class="animate-spin h-5 w-5 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-8">
+        <!-- Trust Score Display -->
+        <div class="flex-1">
+          <div class="flex items-center gap-6">
+            <!-- Score Circle -->
+            <div id="trust-score-circle" class="relative w-32 h-32 rounded-full flex items-center justify-center" style="background-color: #ffd93d;">
+              <div class="text-center">
+                <div id="trust-score-value" class="text-4xl font-bold text-brand-dark">50</div>
+                <div class="text-xs font-medium text-brand-dark mt-1">out of 100</div>
+              </div>
             </div>
-            <div style="display: flex; gap: 12px; font-size: 10px; color: rgba(255,255,255,0.4);">
-              <div>
-                <span id="trust-score-successful-txns" style="color: #caff04; font-weight: 600;">0</span>/<span id="trust-score-total-txns">0</span>
+            
+            <!-- Score Details -->
+            <div class="flex-1">
+              <div class="mb-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <div id="trust-score-indicator-dot" class="w-3 h-3 rounded-full" style="background-color: #ffd93d;"></div>
+                  <span id="trust-score-label" class="text-lg font-semibold text-brand-dark">Medium Trust</span>
+                </div>
+                <p class="text-sm text-brand-subtext">Your reputation score based on transaction history</p>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-brand-gray rounded-lg p-3">
+                  <div class="text-xs text-brand-subtext mb-1">Total Transactions</div>
+                  <div id="trust-score-total-txns" class="text-lg font-bold text-brand-dark">0</div>
+                </div>
+                <div class="bg-brand-gray rounded-lg p-3">
+                  <div class="text-xs text-brand-subtext mb-1">Successful</div>
+                  <div id="trust-score-successful-txns" class="text-lg font-bold text-green-600">0</div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <!-- Loading Indicator for Trust Score -->
-          <div id="trust-score-loading-indicator" class="hidden" style="position: absolute; top: 8px; left: 8px;">
-            <svg class="animate-spin h-4 w-4" style="stroke: rgba(255,255,255,0.4);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
         </div>
-        
-        <!-- RIGHT: Wallet Balance Section -->
-        <div style="flex: 1;">
-          <div class="balance-label">Wallet Balance</div>
-
-          <div class="balance-row">
-            <div class="balance-amount" id="balance-display">₦0.00</div>
-            <button class="eye-btn" id="eye-btn-toggle" onclick="toggleBalanceVisibility()" aria-label="Toggle balance visibility">
-              <svg id="eye-icon" viewBox="0 0 24 24" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
-                <circle cx="12" cy="12" r="3" stroke-linecap="round"/>
-              </svg>
-            </button>
-            <div id="balance-loading-indicator" class="hidden" style="margin-left: auto;">
-              <svg class="animate-spin h-5 w-5" style="stroke: rgba(255,255,255,0.6);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          </div>
-
-          <div class="balance-meta">
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Phone</span>
-              <span class="balance-meta-value" id="user-phone-balance">+234XXXXXXXXXX</span>
-            </div>
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Account Type</span>
-              <span class="balance-meta-value">Personal</span>
-            </div>
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Member Since</span>
-              <span class="balance-meta-value" id="join-date-balance">—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Verified Badge (Top Right) -->
-      <div class="verified-badge">
-        <svg viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        Verified
       </div>
       
       <!-- New User Notice (Hidden by default) -->
-      <div id="new-user-notice" class="hidden" style="margin-top: 16px; padding: 10px 14px; background: rgba(202,255,4,0.08); border: 1px solid rgba(202,255,4,0.15); border-radius: 10px; position: relative; z-index: 1;">
-        <div class="flex items-start gap-2">
-          <svg style="width: 14px; height: 14px; stroke: #caff04; flex-shrink: 0; margin-top: 1px;" fill="none" viewBox="0 0 24 24">
+      <div id="new-user-notice" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <div class="flex-1">
-            <p style="font-size: 11px; font-weight: 600; color: #caff04; margin-bottom: 2px;">New User</p>
-            <p style="font-size: 10px; color: rgba(202,255,4,0.6); line-height: 1.4;">Default trust score of 50. Complete transactions to improve.</p>
+            <p class="text-sm font-medium text-blue-900">New User</p>
+            <p class="text-xs text-blue-800 mt-1">You have a default trust score of 50. Complete transactions successfully to improve your score.</p>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hidden elements for balance tracking (keep existing functionality) -->
-    <div style="display: none;">
-      <div id="available-balance">₦0.00</div>
-      <div id="locked-balance">₦0.00</div>
-      <div id="total-balance">₦0.00</div>
-      <div id="available-balance-status"></div>
-      <div id="balance-invariant-status">✓ Balance verified</div>
-      <div id="user-phone">+234XXXXXXXXXX</div>
-      <div id="user-account-number">Loading...</div>
-    </div>
-    
-    <!-- Staleness Indicator (Hidden by default) -->
-    <div id="staleness-indicator" class="hidden mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg" style="border-radius: 12px;">
-      <div class="flex items-start gap-2 sm:gap-3">
-        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-        </svg>
-        <div class="flex-1">
-          <p class="text-xs sm:text-sm font-medium text-yellow-900">Using Cached Balance</p>
-          <p id="staleness-message" class="text-xs text-yellow-800 mt-1">Squad API is temporarily unreachable. Displaying last known balance.</p>
         </div>
       </div>
     </div>
@@ -1669,38 +1561,6 @@
     if (window.CONFIG) {
       console.log('[Diagnostic] CONFIG:', window.CONFIG);
     }
-    
-    // Balance visibility toggle function - defined early for onclick handler
-    let balanceVisible = true;
-    function toggleBalanceVisibility() {
-      console.log('[Balance Toggle] Clicked! Current state:', balanceVisible);
-      balanceVisible = !balanceVisible;
-      const el = document.getElementById('balance-display');
-      const icon = document.getElementById('eye-icon');
-      
-      console.log('[Balance Toggle] Elements found:', { el: !!el, icon: !!icon });
-      
-      if (!el || !icon) {
-        console.error('[Balance Toggle] Elements not found!');
-        return;
-      }
-      
-      if (balanceVisible) {
-        // Show balance - get current total balance
-        const totalBalance = document.getElementById('total-balance').textContent;
-        console.log('[Balance Toggle] Showing balance:', totalBalance);
-        el.textContent = totalBalance;
-        el.className = 'balance-amount';
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" stroke-linecap="round"/>';
-      } else {
-        // Hide balance
-        console.log('[Balance Toggle] Hiding balance');
-        el.textContent = '• • • • •';
-        el.className = 'balance-amount hidden-balance';
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line stroke-linecap="round" x1="1" y1="1" x2="23" y2="23"/>';
-      }
-      console.log('[Balance Toggle] Toggle complete. New state:', balanceVisible);
-    }
   </script>
   
   <script src="turso-db-service.js"></script>
@@ -1721,37 +1581,6 @@
     function showErrorNotification(message, duration = 0) {
       if (window.toastService) {
         window.toastService.showError(message);
-        return;
-      }
-      
-      // Fallback to inline implementation
-      const toast = document.createElement('div');
-      toast.className = 'toast toast-error';
-      toast.innerHTML = `
-        <div class="toast-content">
-          <span class="toast-icon">⚠️</span>
-          <span class="toast-message">${message}</span>
-          <button class="toast-close">×</button>
-        </div>
-      `;
-      
-      // Add click handler to close button
-      const closeBtn = toast.querySelector('.toast-close');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', () => toast.remove());
-      }
-      
-      document.body.appendChild(toast);
-      
-      if (duration > 0) {
-        setTimeout(() => toast.remove(), duration);
-      }
-    }
-    
-    // Toast Notification Functions (Legacy - kept for backward compatibility)
-    // New code should use window.toastService instead
-    function showErrorNotification(message, duration = 0) {
-      if (window.toastService) {
         return;
       }
       
@@ -2193,13 +2022,7 @@
         const lockedBalanceFormatted = balanceService.formatBalance(result.locked);
         const totalBalanceFormatted = balanceService.formatBalance(result.total);
         
-        // Update main balance display (new design)
-        const balanceDisplayEl = document.getElementById('balance-display');
-        if (balanceDisplayEl && !balanceDisplayEl.classList.contains('hidden-balance')) {
-          balanceDisplayEl.textContent = totalBalanceFormatted;
-        }
-        
-        // Update hidden balance tracking elements
+        // Update balance displays
         document.getElementById('available-balance').textContent = availableBalanceFormatted;
         document.getElementById('locked-balance').textContent = lockedBalanceFormatted;
         document.getElementById('total-balance').textContent = totalBalanceFormatted;
@@ -2506,18 +2329,6 @@
       document.getElementById('user-phone').textContent = phoneNumber;
       document.getElementById('user-account-number').textContent = virtualAccountNumber;
       
-      // Update new balance card design
-      const userPhoneBalance = document.getElementById('user-phone-balance');
-      if (userPhoneBalance) {
-        userPhoneBalance.textContent = phoneNumber;
-      }
-      
-      const joinDateBalance = document.getElementById('join-date-balance');
-      if (joinDateBalance) {
-        const now = new Date();
-        joinDateBalance.textContent = now.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' });
-      }
-      
       console.log('[Dashboard] User data loaded:', {
         userId: currentUserId,
         firstName: firstName,
@@ -2526,24 +2337,30 @@
       });
       
       // ========================================
-      // COPY ACCOUNT NUMBER FUNCTIONALITY (Moved to Settings)
+      // COPY ACCOUNT NUMBER FUNCTIONALITY
       // ========================================
-      // Note: Account number copy functionality is now in Settings modal
-      // Keeping this commented for reference
-      /*
-      const btnCopyAccount = document.getElementById('btn-copy-account');
-      if (btnCopyAccount) {
-        btnCopyAccount.addEventListener('click', async () => {
+      document.getElementById('btn-copy-account').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(virtualAccountNumber);
+          showSuccessNotification('Account number copied to clipboard!');
+        } catch (error) {
+          console.error('Failed to copy account number:', error);
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = virtualAccountNumber;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.select();
           try {
-            await navigator.clipboard.writeText(virtualAccountNumber);
+            document.execCommand('copy');
             showSuccessNotification('Account number copied to clipboard!');
-          } catch (error) {
-            console.error('Failed to copy account number:', error);
+          } catch (err) {
             showErrorNotification('Failed to copy account number');
           }
-        });
-      }
-      */
+          document.body.removeChild(textArea);
+        }
+      });
       
       // ========================================
       // LOGOUT BUTTON HANDLER (Requirement 13.5)
@@ -3585,6 +3402,16 @@
             e.stopPropagation();
             openDisputeModal(txn.transaction_id);
           };
+          actionsContainer.appendChild(disputeButton);
+        }
+        
+        return card;
+      }
+          
+          const disputeButton = document.createElement('button');
+          disputeButton.className = 'flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
+          disputeButton.textContent = 'Dispute Item';
+          disputeButton.onclick = () => openDisputeModal(txn.transaction_id);
           actionsContainer.appendChild(disputeButton);
         }
         
