@@ -1,13 +1,14 @@
 /**
- * ErrorHandlerService - Centralized error handling for ScrowPay Account Creation
+ * ErrorHandlerService - Centralized error handling for ScrowPay
  * 
  * This service provides:
  * - Consistent error message constants
  * - Error classification and handling
- * - Retry mechanisms for transient failures
+ * - Retry mechanisms for transient failures with exponential backoff
  * - User-friendly error messages
+ * - Integration with ToastNotificationService
  * 
- * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
+ * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 7.5, 7.6
  */
 
 class ErrorHandlerService {
@@ -16,17 +17,26 @@ class ErrorHandlerService {
    * Requirement 17.1, 17.2, 17.3, 17.4, 17.5
    */
   static ERROR_MESSAGES = {
-    // Network errors (Requirement 17.1)
-    NETWORK_ERROR: 'Unable to connect to the server. Please check your internet connection and try again.',
-    SQUAD_API_NETWORK_ERROR: 'Unable to verify your identity. Please check your internet connection and try again.',
-    SQUAD_API_TIMEOUT: 'Verification request timed out. Please try again.',
-    SQUAD_API_SERVER_ERROR: 'Verification service is temporarily unavailable. Please try again later.',
+    // Network errors (Requirement 17.4)
+    NETWORK_ERROR: 'No internet connection. Please check your network.',
+    
+    // Squad API errors (Requirement 17.1)
+    SQUAD_API_AUTH_ERROR: 'Authentication failed. Please contact support.',
+    SQUAD_API_BAD_REQUEST: 'Invalid request. Please check your details.',
+    SQUAD_API_SERVER_ERROR: 'Service unavailable. Please try again later.',
+    SQUAD_API_NETWORK_ERROR: 'Unable to connect to payment service. Please check your internet connection.',
+    SQUAD_API_TIMEOUT: 'Payment request timed out. Please try again.',
     
     // Database errors (Requirement 17.2)
-    DATABASE_ERROR: 'An error occurred while saving your information. Please try again later.',
-    DATABASE_CONNECTION_ERROR: 'Unable to connect to the database. Please check your internet connection and try again.',
-    DATABASE_SAVE_ERROR: 'Failed to save your account information. Please try again.',
-    DATABASE_QUERY_ERROR: 'Failed to verify your information. Please try again.',
+    DATABASE_ERROR: 'Unable to load data. Please refresh.',
+    DATABASE_CONNECTION_ERROR: 'Unable to connect to database. Please check your internet connection.',
+    DATABASE_SAVE_ERROR: 'Failed to save data. Please try again.',
+    DATABASE_QUERY_ERROR: 'Failed to load data. Please refresh.',
+    
+    // AI Engine errors (Requirement 17.3)
+    AI_ENGINE_UNAVAILABLE: 'Risk scoring unavailable. Transaction blocked.',
+    AI_ENGINE_TIMEOUT: 'Risk scoring unavailable. Transaction blocked.',
+    AI_ENGINE_ERROR: 'Risk scoring unavailable. Transaction blocked.',
     
     // Camera and MediaPipe errors (Requirement 17.3, 17.4)
     CAMERA_ACCESS_DENIED: 'Camera access is required for face verification. Please enable camera access in your browser settings and try again.',
@@ -257,6 +267,7 @@ class ErrorHandlerService {
   
   /**
    * Creates a retry wrapper for async functions with exponential backoff
+   * Requirement 17.5: Retry logic with exponential backoff (3 retries: 1s, 2s, 4s)
    * @param {Function} asyncFn - Async function to retry
    * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
    * @param {number} initialDelay - Initial delay in milliseconds (default: 1000)
@@ -290,13 +301,124 @@ class ErrorHandlerService {
           
           // Wait before retrying with exponential backoff
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 2; // Exponential backoff
+          delay *= 2; // Exponential backoff: 1s, 2s, 4s
         }
       }
       
       // All retries failed, throw the last error
       throw lastError;
     };
+  }
+  
+  /**
+   * Retries a Squad API operation with exponential backoff
+   * Requirement 17.5, 7.5, 7.6: Retry Squad API with exponential backoff (3 retries: 1s, 2s, 4s)
+   * @param {Function} squadApiCall - Squad API function to retry
+   * @param {Object} options - Retry options
+   * @returns {Promise<Object>} Result from Squad API
+   */
+  static async retrySquadAPI(squadApiCall, options = {}) {
+    const maxRetries = options.maxRetries || 3;
+    const initialDelay = options.initialDelay || 1000;
+    const showToast = options.showToast !== false; // Default to true
+    
+    let lastError;
+    let delay = initialDelay;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[ErrorHandler] Squad API attempt ${attempt + 1}/${maxRetries + 1}`);
+        
+        // Show loading indicator if toast service is available
+        let loadingId;
+        if (showToast && window.toastService && attempt > 0) {
+          loadingId = window.toastService.showLoading(
+            `Retrying... (${attempt}/${maxRetries})`
+          );
+        }
+        
+        const result = await squadApiCall();
+        
+        // Hide loading indicator
+        if (loadingId && window.toastService) {
+          window.toastService.hideLoading(loadingId);
+        }
+        
+        // Check if result indicates an error
+        if (result.success === false) {
+          // Determine if error is retryable
+          const isRetryable = result.errorType === 'server_error' || 
+                             result.errorType === 'timeout' ||
+                             result.errorType === 'network_error';
+          
+          if (!isRetryable || attempt === maxRetries) {
+            // Not retryable or max retries reached
+            if (showToast && window.toastService) {
+              const message = window.toastService.mapSquadAPIError(result, result.statusCode || 500);
+              window.toastService.showError(message);
+            }
+            return result;
+          }
+          
+          // Retryable error, continue to next attempt
+          lastError = new Error(result.message);
+          lastError.result = result;
+          
+        } else {
+          // Success
+          return result;
+        }
+        
+      } catch (error) {
+        lastError = error;
+        
+        // Hide loading indicator if shown
+        if (window.toastService) {
+          // Hide any active loading indicators
+          const loadingIndicators = Array.from(window.toastService.loadingIndicators.keys());
+          loadingIndicators.forEach(id => window.toastService.hideLoading(id));
+        }
+        
+        // Don't retry on last attempt
+        if (attempt === maxRetries) {
+          break;
+        }
+        
+        // Classify error to determine if it's retryable
+        const errorInfo = ErrorHandlerService.classifyError(error, 'squad_api');
+        
+        // Don't retry if error is not retryable
+        if (!errorInfo.canRetry) {
+          if (showToast && window.toastService) {
+            window.toastService.showError(errorInfo.message);
+          }
+          throw error;
+        }
+      }
+      
+      // Wait before retrying with exponential backoff (1s, 2s, 4s)
+      if (attempt < maxRetries) {
+        console.log(`[ErrorHandler] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+      }
+    }
+    
+    // All retries failed
+    console.error('[ErrorHandler] All Squad API retries failed:', lastError);
+    
+    if (showToast && window.toastService) {
+      const message = lastError.result 
+        ? window.toastService.mapSquadAPIError(lastError.result, lastError.result.statusCode || 500)
+        : 'Payment service unavailable. Please try again later.';
+      window.toastService.showError(message);
+    }
+    
+    // Return error result or throw
+    if (lastError.result) {
+      return lastError.result;
+    }
+    throw lastError;
   }
   
   /**
@@ -334,6 +456,51 @@ class ErrorHandlerService {
         onClick: retryCallback
       }
     ]);
+  }
+  
+  /**
+   * Handles and displays an error using the toast notification service
+   * @param {Error} error - Error to handle
+   * @param {string} context - Context where error occurred ('squad_api', 'database', 'ai_engine', 'network')
+   * @param {Object} options - Additional options
+   * @returns {Object} Error information
+   */
+  static handleErrorWithToast(error, context = '', options = {}) {
+    const errorInfo = this.classifyError(error, context);
+    
+    console.error(`[ErrorHandler] Handling ${errorInfo.type} error in context ${context}:`, errorInfo.message);
+    
+    // Show error toast if toast service is available
+    if (window.toastService) {
+      let message = errorInfo.message;
+      
+      // Map error based on context
+      if (context === 'squad_api') {
+        message = window.toastService.mapSquadAPIError(error, error.statusCode || 500);
+      } else if (context === 'database') {
+        message = window.toastService.mapTursoDBError(error);
+      } else if (context === 'ai_engine') {
+        message = window.toastService.mapAIEngineError(error);
+      } else if (context === 'network') {
+        message = window.toastService.mapNetworkError(error);
+      }
+      
+      // Show error toast
+      if (options.retryCallback && errorInfo.canRetry) {
+        // Show error with retry option
+        window.toastService.showErrorWithRetry(
+          message,
+          options.retryCallback,
+          options.retryCount || 0,
+          options.maxRetries || 3
+        );
+      } else {
+        // Show simple error
+        window.toastService.showError(message);
+      }
+    }
+    
+    return errorInfo;
   }
 }
 

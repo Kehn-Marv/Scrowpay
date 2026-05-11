@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StateMachineService Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    h1 {
+      color: #1c1c1c;
+      border-bottom: 3px solid #caff04;
+      padding-bottom: 10px;
+    }
+    
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-section h2 {
+      color: #1c1c1c;
+      margin-top: 0;
+    }
+    
+    button {
+      background: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+    }
+    
+    button:hover {
+      background: #b8e600;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
+    .log {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>StateMachineService Test Suite</h1>
+  
+  <div class="test-section">
+    <h2>Configuration</h2>
+    <p>This test suite validates the StateMachineService implementation.</p>
+    <div id="config-status" class="result info">Loading configuration...</div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 1: Valid State Transitions</h2>
+    <p>Tests that the service correctly validates valid state transitions.</p>
+    <button onclick="testValidTransitions()">Run Test</button>
+    <div id="test1-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 2: Invalid State Transitions</h2>
+    <p>Tests that the service correctly rejects invalid state transitions.</p>
+    <button onclick="testInvalidTransitions()">Run Test</button>
+    <div id="test2-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 3: User Permission Validation</h2>
+    <p>Tests that the service correctly validates user permissions for state changes.</p>
+    <button onclick="testUserPermissions()">Run Test</button>
+    <div id="test3-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 4: State History Recording</h2>
+    <p>Tests that state transitions are recorded in the history table.</p>
+    <button onclick="testStateHistory()">Run Test</button>
+    <div id="test4-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 5: Auto-Release Timer Scheduling</h2>
+    <p>Tests that auto-release timers are scheduled correctly for In_Transit state.</p>
+    <button onclick="testAutoReleaseScheduling()">Run Test</button>
+    <div id="test5-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Console Log</h2>
+    <div id="console-log" class="log"></div>
+  </div>
+  
+  <!-- Load dependencies -->
+  <script src="turso-db-service.js"></script>
+  <script src="squad-api-service.js"></script>
+  <script src="StateMachineService.js"></script>
+  
+  <script>
+    // Capture console logs
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const logContainer = document.getElementById('console-log');
+    
+    function addLogEntry(type, ...args) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.style.color = type === 'error' ? '#dc3545' : type === 'warn' ? '#ffc107' : '#6c757d';
+      entry.textContent = `[${type.toUpperCase()}] ${args.join(' ')}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      addLogEntry('log', ...args);
+    };
+    
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      addLogEntry('error', ...args);
+    };
+    
+    console.warn = function(...args) {
+      originalWarn.apply(console, args);
+      addLogEntry('warn', ...args);
+    };
+    
+    // Configuration
+    let stateMachineService;
+    
+    async function initializeService() {
+      try {
+        // Load config from env.js
+        if (typeof CONFIG === 'undefined') {
+          throw new Error('CONFIG not loaded. Make sure env.js is included.');
+        }
+        
+        stateMachineService = new StateMachineService({
+          turso: {
+            databaseUrl: CONFIG.turso.databaseUrl,
+            authToken: CONFIG.turso.authToken
+          },
+          squad: {
+            secretKey: CONFIG.squad.secretKey,
+            environment: CONFIG.squad.environment
+          },
+          holdingAccount: CONFIG.holdingAccount || 'HOLDING_ACCOUNT_NUMBER'
+        });
+        
+        document.getElementById('config-status').innerHTML = 
+          '<div class="success">✅ StateMachineService initialized successfully</div>';
+        
+      } catch (error) {
+        document.getElementById('config-status').innerHTML = 
+          `<div class="error">❌ Initialization failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Test 1: Valid State Transitions
+    async function testValidTransitions() {
+      const resultDiv = document.getElementById('test1-result');
+      resultDiv.innerHTML = '<div class="info">Running test...</div>';
+      
+      try {
+        const validTransitions = [
+          { from: 'Created', to: 'Funded_Locked', expected: true },
+          { from: 'Funded_Locked', to: 'In_Transit', expected: true },
+          { from: 'In_Transit', to: 'Completed', expected: true },
+          { from: 'In_Transit', to: 'Disputed', expected: true },
+          { from: 'Disputed', to: 'Completed', expected: true }
+        ];
+        
+        let allPassed = true;
+        let results = [];
+        
+        for (const test of validTransitions) {
+          const isValid = stateMachineService.isValidTransition(test.from, test.to);
+          const passed = isValid === test.expected;
+          allPassed = allPassed && passed;
+          
+          results.push(`${passed ? '✅' : '❌'} ${test.from} → ${test.to}: ${isValid ? 'VALID' : 'INVALID'}`);
+        }
+        
+        resultDiv.innerHTML = `
+          <div class="${allPassed ? 'success' : 'error'}">
+            ${allPassed ? '✅ All valid transitions passed' : '❌ Some tests failed'}
+            <pre>${results.join('\n')}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Test failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Test 2: Invalid State Transitions
+    async function testInvalidTransitions() {
+      const resultDiv = document.getElementById('test2-result');
+      resultDiv.innerHTML = '<div class="info">Running test...</div>';
+      
+      try {
+        const invalidTransitions = [
+          { from: 'Created', to: 'In_Transit', expected: false },
+          { from: 'Created', to: 'Completed', expected: false },
+          { from: 'Funded_Locked', to: 'Disputed', expected: false },
+          { from: 'Completed', to: 'In_Transit', expected: false },
+          { from: 'Completed', to: 'Disputed', expected: false }
+        ];
+        
+        let allPassed = true;
+        let results = [];
+        
+        for (const test of invalidTransitions) {
+          const isValid = stateMachineService.isValidTransition(test.from, test.to);
+          const passed = isValid === test.expected;
+          allPassed = allPassed && passed;
+          
+          results.push(`${passed ? '✅' : '❌'} ${test.from} → ${test.to}: ${isValid ? 'VALID' : 'INVALID'} (expected: ${test.expected ? 'VALID' : 'INVALID'})`);
+        }
+        
+        resultDiv.innerHTML = `
+          <div class="${allPassed ? 'success' : 'error'}">
+            ${allPassed ? '✅ All invalid transitions correctly rejected' : '❌ Some tests failed'}
+            <pre>${results.join('\n')}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Test failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Test 3: User Permission Validation
+    async function testUserPermissions() {
+      const resultDiv = document.getElementById('test3-result');
+      resultDiv.innerHTML = '<div class="info">Running test...</div>';
+      
+      try {
+        const mockTransaction = {
+          transaction_id: 'TXN-test-123',
+          seller_id: 1,
+          buyer_id: 2,
+          state: 'Created',
+          price: 10000
+        };
+        
+        let results = [];
+        let allPassed = true;
+        
+        // Test 1: Seller cannot fund their own transaction
+        try {
+          stateMachineService.validateUserPermission(mockTransaction, 'Funded_Locked', 1);
+          results.push('❌ Seller should not be able to fund their own transaction');
+          allPassed = false;
+        } catch (error) {
+          results.push('✅ Seller correctly prevented from funding: ' + error.message);
+        }
+        
+        // Test 2: Non-seller can fund (become buyer)
+        try {
+          stateMachineService.validateUserPermission(mockTransaction, 'Funded_Locked', 3);
+          results.push('✅ Non-seller can fund transaction');
+        } catch (error) {
+          results.push('❌ Non-seller should be able to fund: ' + error.message);
+          allPassed = false;
+        }
+        
+        // Test 3: Only seller can mark as shipped
+        mockTransaction.state = 'Funded_Locked';
+        try {
+          stateMachineService.validateUserPermission(mockTransaction, 'In_Transit', 2);
+          results.push('❌ Non-seller should not be able to mark as shipped');
+          allPassed = false;
+        } catch (error) {
+          results.push('✅ Non-seller correctly prevented from shipping: ' + error.message);
+        }
+        
+        // Test 4: Seller can mark as shipped
+        try {
+          stateMachineService.validateUserPermission(mockTransaction, 'In_Transit', 1);
+          results.push('✅ Seller can mark as shipped');
+        } catch (error) {
+          results.push('❌ Seller should be able to mark as shipped: ' + error.message);
+          allPassed = false;
+        }
+        
+        resultDiv.innerHTML = `
+          <div class="${allPassed ? 'success' : 'error'}">
+            ${allPassed ? '✅ All permission validations passed' : '❌ Some tests failed'}
+            <pre>${results.join('\n')}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Test failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Test 4: State History Recording
+    async function testStateHistory() {
+      const resultDiv = document.getElementById('test4-result');
+      resultDiv.innerHTML = '<div class="info">Running test...</div>';
+      
+      try {
+        // This test requires database connection
+        await stateMachineService.connect();
+        
+        // Try to get state history for a test transaction
+        const history = await stateMachineService.getStateHistory('TXN-test-123');
+        
+        resultDiv.innerHTML = `
+          <div class="success">
+            ✅ State history retrieval works
+            <pre>Retrieved ${history.length} history entries</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Test failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Test 5: Auto-Release Timer Scheduling
+    async function testAutoReleaseScheduling() {
+      const resultDiv = document.getElementById('test5-result');
+      resultDiv.innerHTML = '<div class="info">Running test...</div>';
+      
+      try {
+        const mockTransaction = {
+          transaction_id: 'TXN-test-autorelease',
+          shipped_at: new Date().toISOString(),
+          inspection_window_days: 7
+        };
+        
+        // Schedule auto-release
+        stateMachineService.scheduleAutoRelease(mockTransaction);
+        
+        // Check if timer was created
+        const hasTimer = stateMachineService.autoReleaseTimers.has(mockTransaction.transaction_id);
+        
+        // Cancel the timer
+        stateMachineService.cancelAutoRelease(mockTransaction.transaction_id);
+        
+        // Check if timer was removed
+        const timerRemoved = !stateMachineService.autoReleaseTimers.has(mockTransaction.transaction_id);
+        
+        resultDiv.innerHTML = `
+          <div class="${hasTimer && timerRemoved ? 'success' : 'error'}">
+            ${hasTimer ? '✅' : '❌'} Auto-release timer scheduled
+            ${timerRemoved ? '✅' : '❌'} Auto-release timer cancelled
+          </div>
+        `;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">❌ Test failed: ${error.message}</div>`;
+      }
+    }
+    
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', initializeService);
+  </script>
+</body>
+</html>

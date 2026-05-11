@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input Validation Test - ScrowPay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .test-result {
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border-radius: 0.5rem;
+      font-family: monospace;
+      font-size: 0.875rem;
+    }
+    .test-pass {
+      background-color: #d1fae5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+    .test-fail {
+      background-color: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">Input Validation & Sanitization Tests</h1>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-2xl font-semibold mb-4">XSS Prevention Tests</h2>
+      <div id="xss-tests"></div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-2xl font-semibold mb-4">SQL Injection Detection Tests</h2>
+      <div id="sql-tests"></div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-2xl font-semibold mb-4">Input Validation Tests</h2>
+      <div id="validation-tests"></div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-2xl font-semibold mb-4">Transaction Form Validation Test</h2>
+      <div id="form-tests"></div>
+    </div>
+  </div>
+  
+  <script src="InputValidationService.js"></script>
+  <script>
+    const validationService = new InputValidationService();
+    
+    function displayResult(containerId, testName, passed, details) {
+      const container = document.getElementById(containerId);
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `test-result ${passed ? 'test-pass' : 'test-fail'}`;
+      resultDiv.innerHTML = `
+        <strong>${passed ? '✓ PASS' : '✗ FAIL'}</strong>: ${testName}<br>
+        <span style="font-size: 0.75rem;">${details}</span>
+      `;
+      container.appendChild(resultDiv);
+    }
+    
+    // XSS Prevention Tests
+    function runXSSTests() {
+      const xssInputs = [
+        { input: '<script>alert("XSS")</script>', name: 'Script tag injection' },
+        { input: '<img src=x onerror="alert(\'XSS\')">', name: 'Image onerror injection' },
+        { input: '<a href="javascript:alert(\'XSS\')">Click</a>', name: 'JavaScript URL' },
+        { input: '<div onclick="alert(\'XSS\')">Click</div>', name: 'Event handler injection' },
+        { input: '"><script>alert(String.fromCharCode(88,83,83))</script>', name: 'Attribute escape injection' }
+      ];
+      
+      xssInputs.forEach(test => {
+        const sanitized = validationService.sanitizeHtml(test.input);
+        const escaped = validationService.escapeHtml(test.input);
+        const stripped = validationService.stripHtmlTags(test.input);
+        
+        // Check if dangerous content is neutralized
+        const passed = !sanitized.includes('<script') && 
+                      !escaped.includes('<script') && 
+                      !stripped.includes('<script');
+        
+        displayResult('xss-tests', test.name, passed, 
+          `Input: ${test.input}<br>Sanitized: ${sanitized}<br>Escaped: ${escaped}<br>Stripped: ${stripped}`);
+      });
+      
+      // URL sanitization test
+      const dangerousUrls = [
+        { url: 'javascript:alert("XSS")', name: 'JavaScript URL' },
+        { url: 'data:text/html,<script>alert("XSS")</script>', name: 'Data URL' }
+      ];
+      
+      dangerousUrls.forEach(test => {
+        const sanitized = validationService.sanitizeUrl(test.url);
+        const passed = sanitized === '';
+        displayResult('xss-tests', `URL: ${test.name}`, passed, 
+          `Input: ${test.url}<br>Sanitized: ${sanitized || '(blocked)'}`);
+      });
+    }
+    
+    // SQL Injection Detection Tests
+    function runSQLTests() {
+      const sqlInputs = [
+        { input: "' OR '1'='1", name: 'Classic OR injection' },
+        { input: "'; DROP TABLE users; --", name: 'Drop table injection' },
+        { input: "' UNION SELECT * FROM users --", name: 'Union injection' },
+        { input: "admin'--", name: 'Comment injection' },
+        { input: "1' AND '1'='1", name: 'AND injection' }
+      ];
+      
+      sqlInputs.forEach(test => {
+        const detected = validationService.containsSqlInjectionPattern(test.input);
+        displayResult('sql-tests', test.name, detected, 
+          `Input: ${test.input}<br>Detected: ${detected ? 'YES (logged)' : 'NO'}`);
+      });
+    }
+    
+    // Input Validation Tests
+    function runValidationTests() {
+      // Price validation
+      const priceTests = [
+        { value: 99, expected: false, name: 'Price below minimum (₦99)' },
+        { value: 100, expected: true, name: 'Price at minimum (₦100)' },
+        { value: 5000, expected: true, name: 'Price in valid range (₦5,000)' },
+        { value: 10000000, expected: true, name: 'Price at maximum (₦10,000,000)' },
+        { value: 10000001, expected: false, name: 'Price above maximum (₦10,000,001)' },
+        { value: -100, expected: false, name: 'Negative price' },
+        { value: 'abc', expected: false, name: 'Non-numeric price' }
+      ];
+      
+      priceTests.forEach(test => {
+        const result = validationService.validatePrice(test.value);
+        const passed = result.valid === test.expected;
+        displayResult('validation-tests', test.name, passed, 
+          `Value: ${test.value}<br>Expected: ${test.expected ? 'VALID' : 'INVALID'}<br>Result: ${result.valid ? 'VALID' : 'INVALID'}<br>Errors: ${result.errors.join(', ') || 'None'}`);
+      });
+      
+      // Description validation
+      const descTests = [
+        { value: 'Short', expected: false, name: 'Description too short' },
+        { value: 'This is a valid description for testing', expected: true, name: 'Valid description' },
+        { value: 'A'.repeat(501), expected: false, name: 'Description too long' },
+        { value: '<script>alert("XSS")</script>Valid description', expected: true, name: 'Description with HTML (should be stripped)' }
+      ];
+      
+      descTests.forEach(test => {
+        const result = validationService.validateTransactionDescription(test.value);
+        const passed = result.valid === test.expected;
+        displayResult('validation-tests', test.name, passed, 
+          `Value length: ${test.value.length}<br>Expected: ${test.expected ? 'VALID' : 'INVALID'}<br>Result: ${result.valid ? 'VALID' : 'INVALID'}<br>Sanitized: ${result.sanitized.substring(0, 50)}...<br>Errors: ${result.errors.join(', ') || 'None'}`);
+      });
+      
+      // Delivery timeline validation
+      const deliveryTests = [
+        { value: 0, expected: false, name: 'Delivery timeline below minimum (0 days)' },
+        { value: 1, expected: true, name: 'Delivery timeline at minimum (1 day)' },
+        { value: 45, expected: true, name: 'Delivery timeline in valid range (45 days)' },
+        { value: 90, expected: true, name: 'Delivery timeline at maximum (90 days)' },
+        { value: 91, expected: false, name: 'Delivery timeline above maximum (91 days)' },
+        { value: 1.5, expected: false, name: 'Non-integer delivery timeline' }
+      ];
+      
+      deliveryTests.forEach(test => {
+        const result = validationService.validateDeliveryTimeline(test.value);
+        const passed = result.valid === test.expected;
+        displayResult('validation-tests', test.name, passed, 
+          `Value: ${test.value}<br>Expected: ${test.expected ? 'VALID' : 'INVALID'}<br>Result: ${result.valid ? 'VALID' : 'INVALID'}<br>Errors: ${result.errors.join(', ') || 'None'}`);
+      });
+      
+      // Transaction ID validation
+      const txnIdTests = [
+        { value: 'TXN-12345678-1234-1234-1234-123456789ABC', expected: true, name: 'Valid transaction ID' },
+        { value: 'txn-12345678-1234-1234-1234-123456789abc', expected: true, name: 'Valid transaction ID (lowercase)' },
+        { value: 'INVALID-ID', expected: false, name: 'Invalid transaction ID format' },
+        { value: '12345678-1234-1234-1234-123456789ABC', expected: false, name: 'Missing TXN prefix' }
+      ];
+      
+      txnIdTests.forEach(test => {
+        const result = validationService.validateTransactionId(test.value);
+        const passed = result.valid === test.expected;
+        displayResult('validation-tests', test.name, passed, 
+          `Value: ${test.value}<br>Expected: ${test.expected ? 'VALID' : 'INVALID'}<br>Result: ${result.valid ? 'VALID' : 'INVALID'}<br>Errors: ${result.errors.join(', ') || 'None'}`);
+      });
+    }
+    
+    // Transaction Form Validation Test
+    function runFormTests() {
+      const formTests = [
+        {
+          name: 'Valid form data',
+          data: {
+            sellerId: 1,
+            itemDescription: 'Brand new iPhone 15 Pro Max in excellent condition',
+            price: 500000,
+            deliveryTimelineDays: 7,
+            inspectionWindowDays: 3
+          },
+          expected: true
+        },
+        {
+          name: 'Invalid form data (price too low)',
+          data: {
+            sellerId: 1,
+            itemDescription: 'Brand new iPhone 15 Pro Max in excellent condition',
+            price: 50,
+            deliveryTimelineDays: 7,
+            inspectionWindowDays: 3
+          },
+          expected: false
+        },
+        {
+          name: 'Form with XSS attempt in description',
+          data: {
+            sellerId: 1,
+            itemDescription: '<script>alert("XSS")</script>Brand new iPhone 15 Pro Max',
+            price: 500000,
+            deliveryTimelineDays: 7,
+            inspectionWindowDays: 3
+          },
+          expected: true // Should be valid after sanitization
+        },
+        {
+          name: 'Form with SQL injection attempt in description',
+          data: {
+            sellerId: 1,
+            itemDescription: "'; DROP TABLE transactions; -- Brand new iPhone",
+            price: 500000,
+            deliveryTimelineDays: 7,
+            inspectionWindowDays: 3
+          },
+          expected: false // Should be detected and rejected
+        }
+      ];
+      
+      formTests.forEach(test => {
+        const result = validationService.validateTransactionForm(test.data);
+        const passed = result.valid === test.expected;
+        
+        let details = `Expected: ${test.expected ? 'VALID' : 'INVALID'}<br>Result: ${result.valid ? 'VALID' : 'INVALID'}<br>`;
+        
+        if (result.valid) {
+          details += `Sanitized Description: ${result.sanitized.itemDescription}<br>`;
+          details += `Sanitized Price: ₦${result.sanitized.price.toLocaleString()}<br>`;
+        } else {
+          details += `Errors: ${JSON.stringify(result.errors, null, 2)}`;
+        }
+        
+        displayResult('form-tests', test.name, passed, details);
+      });
+    }
+    
+    // Run all tests
+    runXSSTests();
+    runSQLTests();
+    runValidationTests();
+    runFormTests();
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+# Docker Compose Configuration for ScrowPay
+# Complete local development environment
+# Includes: AI Risk Engine + Frontend (via nginx)
+
+services:
+  # AI Risk Engine - Python microservice for anomaly detection
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    container_name: scrowpay-ai-engine
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persist trained models across container restarts
+      - ./ai-engine/models:/app/models
+      # Mount synthetic data (optional)
+      - ./ai-engine/synthetic_transactions.csv:/app/synthetic_transactions.csv
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - scrowpay-network
+
+  # Frontend - Static file server with nginx
+  frontend:
+    image: nginx:alpine
+    container_name: scrowpay-frontend
+    ports:
+      - "8080:80"
+    volumes:
+      # Mount frontend files
+      - ./frontend:/usr/share/nginx/html:ro
+      # Custom nginx configuration (optional)
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - ai-engine
+    restart: unless-stopped
+    networks:
+      - scrowpay-network
+
+networks:
+  scrowpay-network:
+    driver: bridge
+
+# Usage Instructions:
+# 
+# Start all services:
+#   docker-compose up -d
+#
+# View logs:
+#   docker-compose logs -f
+#   docker-compose logs -f ai-engine
+#   docker-compose logs -f frontend
+#
+# Stop all services:
+#   docker-compose down
+#
+# Rebuild after code changes:
+#   docker-compose up -d --build
+#
+# Access the application:
+#   Frontend: http://localhost:8080
+#   AI Engine: http://localhost:5000
+#   Health Check: http://localhost:5000/health
+#
+# Environment Variables:
+#   Create a .env file in the project root with your credentials
+#   See .env.example for required variables

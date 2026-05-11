@@ -26,6 +26,14 @@ const CONFIG = {
     environment: window.ENV?.SQUAD_ENVIRONMENT || 'sandbox'
   },
   
+  // AI Risk Engine Configuration
+  aiEngine: {
+    url: window.ENV?.AI_ENGINE_URL || 'http://localhost:5000'
+  },
+  
+  // Holding Account Configuration
+  holdingAccount: window.ENV?.HOLDING_ACCOUNT || 'HOLDING_ACCOUNT_NUMBER',
+  
   // Helper methods
   isProduction() {
     return this.squad.environment === 'production';

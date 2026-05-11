@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DashboardService Test Suite</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1c1c1c;
+      color: #ffffff;
+    }
+    
+    h1 {
+      color: #caff04;
+      border-bottom: 2px solid #caff04;
+      padding-bottom: 10px;
+    }
+    
+    h2 {
+      color: #caff04;
+      margin-top: 30px;
+    }
+    
+    .test-section {
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .test-result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    
+    .test-result.success {
+      background-color: #1a4d1a;
+      border-left: 4px solid #caff04;
+    }
+    
+    .test-result.error {
+      background-color: #4d1a1a;
+      border-left: 4px solid #ff6b6b;
+    }
+    
+    .test-result.info {
+      background-color: #1a3a4d;
+      border-left: 4px solid #4ecdc4;
+    }
+    
+    button {
+      background-color: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    
+    button:hover {
+      background-color: #b8e600;
+    }
+    
+    button:disabled {
+      background-color: #666;
+      color: #999;
+      cursor: not-allowed;
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+    }
+    
+    pre {
+      background-color: #1a1a1a;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      border: 1px solid #444;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    
+    .status-badge.running {
+      background-color: #ffd93d;
+      color: #1c1c1c;
+    }
+    
+    .status-badge.passed {
+      background-color: #caff04;
+      color: #1c1c1c;
+    }
+    
+    .status-badge.failed {
+      background-color: #ff6b6b;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 DashboardService Test Suite</h1>
+  
+  <div class="controls">
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="clearResults()">Clear Results</button>
+    <button onclick="testInitialize()">Test Initialize</button>
+    <button onclick="testRefreshBalances()">Test Refresh Balances</button>
+    <button onclick="testRefreshTransactions()">Test Refresh Transactions</button>
+    <button onclick="testPolling()">Test Polling</button>
+    <button onclick="testTransactionActions()">Test Transaction Actions</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <!-- Load dependencies -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="turso-config.js"></script>
+  <script src="turso-db-service.js"></script>
+  <script src="squad-api-service.js"></script>
+  <script src="transaction-service.js"></script>
+  <script src="BalanceService.js"></script>
+  <script src="TrustScoreService.js"></script>
+  <script src="StateMachineService.js"></script>
+  <script src="DashboardService.js"></script>
+  
+  <script>
+    let dashboardService;
+    let testUserId = 1;
+    let testResults = [];
+    
+    // Test configuration
+    const testConfig = {
+      turso: {
+        databaseUrl: window.CONFIG.turso.databaseUrl,
+        authToken: window.CONFIG.turso.authToken
+      },
+      squad: {
+        secretKey: window.CONFIG.squad.secretKey,
+        environment: window.CONFIG.squad.environment
+      },
+      holdingAccount: '1234567890'  // Test holding account
+    };
+    
+    function logResult(message, type = 'info') {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `test-result ${type}`;
+      resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      document.getElementById('results').appendChild(resultDiv);
+      
+      // Auto-scroll to bottom
+      window.scrollTo(0, document.body.scrollHeight);
+      
+      testResults.push({ message, type, timestamp: new Date() });
+    }
+    
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+      testResults = [];
+      logResult('Results cleared', 'info');
+    }
+    
+    async function runAllTests() {
+      logResult('========================================', 'info');
+      logResult('Starting DashboardService Test Suite', 'info');
+      logResult('========================================', 'info');
+      
+      try {
+        await testInitialize();
+        await testRefreshBalances();
+        await testRefreshTransactions();
+        await testRefreshTrustScore();
+        await testPolling();
+        await testTransactionActions();
+        await testCleanup();
+        
+        logResult('========================================', 'info');
+        logResult('✅ All tests completed', 'success');
+        logResult('========================================', 'info');
+        
+      } catch (error) {
+        logResult('❌ Test suite failed: ' + error.message, 'error');
+      }
+    }
+    
+    async function testInitialize() {
+      logResult('', 'info');
+      logResult('TEST: Initialize Dashboard', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        // Create new DashboardService instance
+        dashboardService = new DashboardService(testConfig);
+        logResult('✅ DashboardService instance created', 'success');
+        
+        // Initialize with test user ID
+        logResult('Initializing dashboard for user ID: ' + testUserId, 'info');
+        const result = await dashboardService.initialize(testUserId);
+        
+        if (result.success) {
+          logResult('✅ Dashboard initialized successfully', 'success');
+          logResult('User data: ' + JSON.stringify(result.userData, null, 2), 'info');
+        } else {
+          logResult('❌ Dashboard initialization failed: ' + result.message, 'error');
+        }
+        
+        // Verify state
+        if (dashboardService.initialized) {
+          logResult('✅ Dashboard state is initialized', 'success');
+        } else {
+          logResult('❌ Dashboard state is not initialized', 'error');
+        }
+        
+        if (dashboardService.isPolling) {
+          logResult('✅ Polling is active', 'success');
+        } else {
+          logResult('⚠️ Polling is not active', 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Initialize test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testRefreshBalances() {
+      logResult('', 'info');
+      logResult('TEST: Refresh Balances', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService || !dashboardService.initialized) {
+          logResult('⚠️ Dashboard not initialized, initializing first...', 'info');
+          await testInitialize();
+        }
+        
+        logResult('Refreshing balances...', 'info');
+        const result = await dashboardService.refreshBalances();
+        
+        if (result.success) {
+          logResult('✅ Balances refreshed successfully', 'success');
+          logResult('Available: ₦' + result.balances.available.toFixed(2), 'info');
+          logResult('Locked: ₦' + result.balances.locked.toFixed(2), 'info');
+          logResult('Total: ₦' + result.balances.total.toFixed(2), 'info');
+          logResult('Cached: ' + result.balances.cached, 'info');
+          logResult('Stale: ' + (result.balances.stale || false), 'info');
+          
+          if (result.balances.invariantValid) {
+            logResult('✅ Balance invariant is valid', 'success');
+          } else {
+            logResult('❌ Balance invariant violation detected!', 'error');
+          }
+        } else {
+          logResult('❌ Refresh balances failed: ' + result.message, 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Refresh balances test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testRefreshTransactions() {
+      logResult('', 'info');
+      logResult('TEST: Refresh Transactions', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService || !dashboardService.initialized) {
+          logResult('⚠️ Dashboard not initialized, initializing first...', 'info');
+          await testInitialize();
+        }
+        
+        logResult('Refreshing transactions...', 'info');
+        const result = await dashboardService.refreshTransactions();
+        
+        if (result.success) {
+          logResult('✅ Transactions refreshed successfully', 'success');
+          logResult('Awaiting Funding: ' + result.transactions.awaitingFunding.length, 'info');
+          logResult('Funded: ' + result.transactions.funded.length, 'info');
+          logResult('In Transit: ' + result.transactions.inTransit.length, 'info');
+          logResult('Disputed: ' + result.transactions.disputed.length, 'info');
+          
+          // Display sample transactions
+          if (result.transactions.awaitingFunding.length > 0) {
+            logResult('Sample transaction: ' + JSON.stringify(result.transactions.awaitingFunding[0], null, 2), 'info');
+          }
+        } else {
+          logResult('❌ Refresh transactions failed: ' + result.message, 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Refresh transactions test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testRefreshTrustScore() {
+      logResult('', 'info');
+      logResult('TEST: Refresh Trust Score', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService || !dashboardService.initialized) {
+          logResult('⚠️ Dashboard not initialized, initializing first...', 'info');
+          await testInitialize();
+        }
+        
+        logResult('Refreshing trust score...', 'info');
+        const result = await dashboardService.refreshTrustScore();
+        
+        if (result.success) {
+          logResult('✅ Trust score refreshed successfully', 'success');
+          logResult('Score: ' + result.trustScore.score, 'info');
+          logResult('Indicator: ' + result.trustScore.indicator.label + ' (' + result.trustScore.indicator.color + ')', 'info');
+          logResult('Total Transactions: ' + result.trustScore.totalTransactions, 'info');
+          logResult('Successful Transactions: ' + result.trustScore.successfulTransactions, 'info');
+          logResult('Cached: ' + result.trustScore.cached, 'info');
+        } else {
+          logResult('❌ Refresh trust score failed: ' + result.message, 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Refresh trust score test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testPolling() {
+      logResult('', 'info');
+      logResult('TEST: Polling Mechanism', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService || !dashboardService.initialized) {
+          logResult('⚠️ Dashboard not initialized, initializing first...', 'info');
+          await testInitialize();
+        }
+        
+        // Check if polling is active
+        if (dashboardService.isPolling) {
+          logResult('✅ Polling is active', 'success');
+          logResult('Squad API interval: ' + dashboardService.pollingIntervals.squadAPI + 'ms', 'info');
+          logResult('Turso DB interval: ' + dashboardService.pollingIntervals.tursoDB + 'ms', 'info');
+        } else {
+          logResult('❌ Polling is not active', 'error');
+        }
+        
+        // Listen for dashboard update events
+        logResult('Setting up event listener for dashboard updates...', 'info');
+        
+        let eventCount = 0;
+        const eventListener = (event) => {
+          eventCount++;
+          logResult('📡 Dashboard update event received: ' + event.detail.type, 'info');
+          logResult('Event data: ' + JSON.stringify(event.detail.data, null, 2), 'info');
+        };
+        
+        window.addEventListener('dashboardUpdate', eventListener);
+        
+        // Wait for a few seconds to observe polling
+        logResult('Waiting 15 seconds to observe polling behavior...', 'info');
+        await new Promise(resolve => setTimeout(resolve, 15000));
+        
+        window.removeEventListener('dashboardUpdate', eventListener);
+        
+        if (eventCount > 0) {
+          logResult('✅ Received ' + eventCount + ' dashboard update events', 'success');
+        } else {
+          logResult('⚠️ No dashboard update events received (this may be normal if no data changed)', 'info');
+        }
+        
+        // Test stop polling
+        logResult('Testing stop polling...', 'info');
+        dashboardService.stopPolling();
+        
+        if (!dashboardService.isPolling) {
+          logResult('✅ Polling stopped successfully', 'success');
+        } else {
+          logResult('❌ Polling is still active', 'error');
+        }
+        
+        // Restart polling
+        logResult('Restarting polling...', 'info');
+        dashboardService.startPolling();
+        
+        if (dashboardService.isPolling) {
+          logResult('✅ Polling restarted successfully', 'success');
+        } else {
+          logResult('❌ Polling failed to restart', 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Polling test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testTransactionActions() {
+      logResult('', 'info');
+      logResult('TEST: Transaction Actions', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService || !dashboardService.initialized) {
+          logResult('⚠️ Dashboard not initialized, initializing first...', 'info');
+          await testInitialize();
+        }
+        
+        // Test create transaction
+        logResult('Testing create transaction...', 'info');
+        const createResult = await dashboardService.createTransaction({
+          itemDescription: 'Test item for DashboardService test',
+          price: 5000,
+          deliveryTimelineDays: 7,
+          inspectionWindowDays: 3
+        });
+        
+        if (createResult.success) {
+          logResult('✅ Transaction created: ' + createResult.transaction.transaction_id, 'success');
+          
+          const transactionId = createResult.transaction.transaction_id;
+          
+          // Test get transaction
+          logResult('Testing get transaction...', 'info');
+          const getResult = await dashboardService.getTransaction(transactionId);
+          
+          if (getResult.success) {
+            logResult('✅ Transaction retrieved successfully', 'success');
+            logResult('Transaction details: ' + JSON.stringify(getResult.transaction, null, 2), 'info');
+          } else {
+            logResult('❌ Get transaction failed: ' + getResult.message, 'error');
+          }
+          
+        } else {
+          logResult('❌ Create transaction failed: ' + createResult.message, 'error');
+        }
+        
+        // Test get transaction history
+        logResult('Testing get transaction history...', 'info');
+        const historyResult = await dashboardService.getTransactionHistory({
+          page: 1,
+          pageSize: 10
+        });
+        
+        if (historyResult.success) {
+          logResult('✅ Transaction history retrieved', 'success');
+          logResult('Total transactions: ' + historyResult.history.totalCount, 'info');
+          logResult('Page: ' + historyResult.history.page + ' of ' + historyResult.history.totalPages, 'info');
+        } else {
+          logResult('❌ Get transaction history failed: ' + historyResult.message, 'error');
+        }
+        
+      } catch (error) {
+        logResult('❌ Transaction actions test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCleanup() {
+      logResult('', 'info');
+      logResult('TEST: Cleanup', 'info');
+      logResult('----------------------------', 'info');
+      
+      try {
+        if (!dashboardService) {
+          logResult('⚠️ No dashboard service to clean up', 'info');
+          return;
+        }
+        
+        logResult('Cleaning up dashboard service...', 'info');
+        await dashboardService.cleanup();
+        
+        if (!dashboardService.isPolling) {
+          logResult('✅ Polling stopped', 'success');
+        } else {
+          logResult('❌ Polling still active', 'error');
+        }
+        
+        if (!dashboardService.initialized) {
+          logResult('✅ Dashboard state reset', 'success');
+        } else {
+          logResult('❌ Dashboard state not reset', 'error');
+        }
+        
+        logResult('✅ Cleanup completed', 'success');
+        
+      } catch (error) {
+        logResult('❌ Cleanup test failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    // Auto-run tests on page load
+    window.addEventListener('load', () => {
+      logResult('DashboardService Test Suite loaded', 'info');
+      logResult('Click "Run All Tests" to start testing', 'info');
+    });
+  </script>
+</body>
+</html>

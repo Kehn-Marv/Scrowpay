@@ -21,11 +21,29 @@ class AddressDataService {
    * Load and parse the state-lga-area.json file
    * Caches the parsed data in memory for instant filtering
    * 
+   * Uses window.ADDRESS_DATA if available (loaded via script tag),
+   * otherwise falls back to fetch() for http:// protocol
+   * 
    * @returns {Promise<void>}
    * @throws {Error} If the JSON file fails to load or parse
    */
   async loadData() {
     try {
+      // Check if data is already loaded via script tag (works with file:// protocol)
+      if (window.ADDRESS_DATA) {
+        console.log('[AddressDataService] Using pre-loaded address data');
+        this.data = window.ADDRESS_DATA;
+        this.isLoaded = true;
+        
+        console.log('[AddressDataService] Address data loaded successfully:', {
+          states: this.data.length,
+          totalLGAs: this.data.reduce((sum, state) => sum + state.lgas.length, 0)
+        });
+        return;
+      }
+      
+      // Fallback to fetch() for http:// protocol
+      console.log('[AddressDataService] Loading via fetch...');
       const response = await fetch('state-lga-area.json');
       
       if (!response.ok) {
@@ -35,12 +53,12 @@ class AddressDataService {
       this.data = await response.json();
       this.isLoaded = true;
       
-      console.log('Address data loaded successfully:', {
+      console.log('[AddressDataService] Address data loaded successfully:', {
         states: this.data.length,
         totalLGAs: this.data.reduce((sum, state) => sum + state.lgas.length, 0)
       });
     } catch (error) {
-      console.error('Error loading address data:', error);
+      console.error('[AddressDataService] Error loading address data:', error);
       throw new Error('Unable to load address data. Please refresh the page and try again.');
     }
   }
