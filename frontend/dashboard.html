@@ -101,7 +101,8 @@
       height: 200px;
       background: #caff04;
       border-radius: 50%;
-      opacity: 0.08;
+      opacity: 0;
+      display: none;
     }
 
     .balance-card::after {
@@ -221,18 +222,12 @@
       .balance-meta { gap: 16px; flex-wrap: wrap; }
       .verified-badge { font-size: 11px; padding: 3px 10px; top: 20px; right: 16px; }
       
-      /* Mobile: Stack trust score and balance vertically */
-      .balance-card > div:first-child {
-        grid-template-columns: 1fr !important;
-        gap: 20px !important;
-      }
-      
-      /* Center trust score on mobile */
-      .balance-card > div:first-child > div:first-child {
-        flex-direction: row !important;
-        justify-content: center !important;
-        gap: 16px !important;
-        padding-top: 0 !important;
+      /* Mobile: Reposition trust score below balance content */
+      .balance-card > div:nth-child(2) {
+        position: static !important;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255,255,255,0.1);
       }
     }
 
@@ -426,7 +421,7 @@
 <body class="min-h-screen bg-brand-gray">
   
   <!-- Header -->
-  <header class="bg-white shadow-sm sticky top-0 z-50">
+  <header class="bg-black shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex items-center justify-between">
         <!-- Logo -->
@@ -438,19 +433,19 @@
               <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
             </svg>
           </div>
-          <span class="text-brand-dark text-xl font-semibold tracking-wider">ScrowPay</span>
+          <span class="text-white text-xl font-semibold tracking-wider">ScrowPay</span>
         </div>
         
         <!-- Desktop User Info (hidden on mobile) -->
         <div class="hidden md:flex items-center gap-4">
-          <span id="user-name" class="text-brand-dark font-medium">Welcome!</span>
-          <button id="btn-logout" class="px-4 py-2 text-brand-dark hover:bg-brand-gray rounded-lg transition-colors">
+          <span id="user-name" class="text-white font-medium">Welcome!</span>
+          <button id="btn-logout" class="px-4 py-2 text-white border border-white border-opacity-30 rounded-full transition-colors hover:bg-white hover:bg-opacity-10 hover:border-opacity-60">
             Logout
           </button>
         </div>
         
         <!-- Mobile Menu Button (visible on mobile only) - Requirement 18.4 -->
-        <button id="btn-mobile-menu" class="md:hidden p-2 text-brand-dark hover:bg-brand-gray rounded-lg transition-colors">
+        <button id="btn-mobile-menu" class="md:hidden p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
@@ -459,41 +454,41 @@
     </div>
     
     <!-- Mobile Navigation Menu (hidden by default) - Requirement 18.4 -->
-    <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-200">
+    <div id="mobile-menu" class="hidden md:hidden bg-black border-t border-gray-700">
       <div class="max-w-7xl mx-auto px-4 py-4 space-y-3">
         <!-- User Info -->
-        <div class="pb-3 border-b border-gray-200">
-          <p id="user-name-mobile" class="text-brand-dark font-medium mb-1">Welcome!</p>
-          <p id="user-phone-mobile" class="text-sm text-brand-subtext">+234XXXXXXXXXX</p>
+        <div class="pb-3 border-b border-gray-700">
+          <p id="user-name-mobile" class="text-white font-medium mb-1">Welcome!</p>
+          <p id="user-phone-mobile" class="text-sm text-gray-400">+234XXXXXXXXXX</p>
         </div>
         
         <!-- Quick Actions -->
-        <button id="btn-create-escrow-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-create-escrow-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Create Escrow</span>
+          <span class="font-medium text-white">Create Escrow</span>
         </button>
         
-        <button id="btn-join-transaction-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-join-transaction-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Join Transaction</span>
+          <span class="font-medium text-white">Join Transaction</span>
         </button>
         
-        <button id="btn-view-history-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-view-history-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Transaction History</span>
+          <span class="font-medium text-white">Transaction History</span>
         </button>
         
-        <button id="btn-logout-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-logout-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-red-900 bg-opacity-20 hover:bg-red-900 hover:bg-opacity-30 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
           </svg>
-          <span class="font-medium text-red-600">Logout</span>
+          <span class="font-medium text-red-400">Logout</span>
         </button>
       </div>
     </div>
@@ -504,82 +499,73 @@
     
     <!-- Balance Display Section with Integrated Trust Score - Beautiful Design -->
     <div class="balance-card">
-      <!-- Main Content Grid -->
-      <div style="display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: start; position: relative; z-index: 1;">
+      <!-- Verified Badge (Top Right) -->
+      <div class="verified-badge">
+        <svg viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        Verified
+      </div>
+      
+      <!-- Trust Score Section (Below Verified Badge, Top Right) -->
+      <div style="position: absolute; top: 70px; right: 28px; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+        <!-- Score Circle -->
+        <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #ffd93d;">
+          <div class="text-center">
+            <div id="trust-score-value" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #111111; line-height: 1;">50</div>
+            <div style="font-size: 9px; font-weight: 500; color: #111111; margin-top: 2px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">Trust</div>
+          </div>
+        </div>
         
-        <!-- LEFT: Trust Score Section -->
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 8px;">
-          <!-- Score Circle -->
-          <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #ffd93d;">
-            <div class="text-center">
-              <div id="trust-score-value" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #111111; line-height: 1;">50</div>
-              <div style="font-size: 9px; font-weight: 500; color: #111111; margin-top: 2px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">Trust</div>
-            </div>
+        <!-- Trust Label -->
+        <div style="text-align: center;">
+          <div class="flex items-center justify-center gap-1">
+            <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #ffd93d;"></div>
+            <span id="trust-score-label" style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);">Medium</span>
           </div>
-          
-          <!-- Trust Label -->
-          <div style="text-align: center;">
-            <div class="flex items-center justify-center gap-1 mb-1">
-              <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #ffd93d;"></div>
-              <span id="trust-score-label" style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);">Medium</span>
-            </div>
-            <div style="display: flex; gap: 12px; font-size: 10px; color: rgba(255,255,255,0.4);">
-              <div>
-                <span id="trust-score-successful-txns" style="color: #caff04; font-weight: 600;">0</span>/<span id="trust-score-total-txns">0</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Loading Indicator for Trust Score -->
-          <div id="trust-score-loading-indicator" class="hidden" style="position: absolute; top: 8px; left: 8px;">
-            <svg class="animate-spin h-4 w-4" style="stroke: rgba(255,255,255,0.4);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        </div>
+        
+        <!-- Loading Indicator for Trust Score -->
+        <div id="trust-score-loading-indicator" class="hidden" style="position: absolute; top: 0; right: -30px;">
+          <svg class="animate-spin h-4 w-4" style="stroke: rgba(255,255,255,0.4);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </div>
+      
+      <!-- Main Content: Wallet Balance Section -->
+      <div style="position: relative; z-index: 1;">
+        <div class="balance-label">Wallet Balance</div>
+
+        <div class="balance-row">
+          <div class="balance-amount" id="balance-display">₦0.00</div>
+          <button class="eye-btn" id="eye-btn-toggle" onclick="toggleBalanceVisibility()" aria-label="Toggle balance visibility">
+            <svg id="eye-icon" viewBox="0 0 24 24" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div id="balance-loading-indicator" class="hidden" style="margin-left: auto;">
+            <svg class="animate-spin h-5 w-5" style="stroke: rgba(255,255,255,0.6);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </div>
         </div>
-        
-        <!-- RIGHT: Wallet Balance Section -->
-        <div style="flex: 1;">
-          <div class="balance-label">Wallet Balance</div>
 
-          <div class="balance-row">
-            <div class="balance-amount" id="balance-display">₦0.00</div>
-            <button class="eye-btn" id="eye-btn-toggle" onclick="toggleBalanceVisibility()" aria-label="Toggle balance visibility">
-              <svg id="eye-icon" viewBox="0 0 24 24" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
-                <circle cx="12" cy="12" r="3" stroke-linecap="round"/>
-              </svg>
-            </button>
-            <div id="balance-loading-indicator" class="hidden" style="margin-left: auto;">
-              <svg class="animate-spin h-5 w-5" style="stroke: rgba(255,255,255,0.6);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
+        <div class="balance-meta">
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Phone</span>
+            <span class="balance-meta-value" id="user-phone-balance">+234XXXXXXXXXX</span>
           </div>
-
-          <div class="balance-meta">
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Phone</span>
-              <span class="balance-meta-value" id="user-phone-balance">+234XXXXXXXXXX</span>
-            </div>
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Account Type</span>
-              <span class="balance-meta-value">Personal</span>
-            </div>
-            <div class="balance-meta-item">
-              <span class="balance-meta-label">Member Since</span>
-              <span class="balance-meta-value" id="join-date-balance">—</span>
-            </div>
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Account Type</span>
+            <span class="balance-meta-value">Personal</span>
+          </div>
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Member Since</span>
+            <span class="balance-meta-value" id="join-date-balance">—</span>
           </div>
         </div>
-      </div>
-
-      <!-- Verified Badge (Top Right) -->
-      <div class="verified-badge">
-        <svg viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        Verified
       </div>
       
       <!-- New User Notice (Hidden by default) -->
