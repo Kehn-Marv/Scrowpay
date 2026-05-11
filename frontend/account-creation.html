@@ -255,8 +255,14 @@
   <!-- PINService -->
   <script src="pin-service.js?v=2"></script>
   
+  <!-- Address Data (Pre-loaded for file:// protocol compatibility) -->
+  <script src="state-lga-area-data.js"></script>
+  
   <!-- AddressDataService -->
   <script src="address-data-service.js"></script>
+  
+  <!-- SessionService -->
+  <script src="SessionService.js"></script>
   
   <!-- JavaScript -->
   <script>
@@ -1376,18 +1382,22 @@
           addressDataService.loadData()
             .then(() => {
               addressDataLoaded = true;
+              console.log('[Stage 8] Address data loaded successfully');
               hideModal();
               // Retry rendering Stage 8 now that data is loaded
               this.renderStage8();
             })
             .catch(error => {
               console.error('[Stage 8] Failed to load address data:', error);
+              hideModal();
               showModal('Error', 'Failed to load address data. Please check your internet connection and try again.', [
                 { text: 'Retry', primary: true, onClick: () => {
+                  hideModal();
                   // Retry loading
                   this.renderStage8();
                 }},
                 { text: 'Go Back', primary: false, onClick: () => {
+                  hideModal();
                   this.goToPreviousStage();
                 }}
               ]);
@@ -1877,25 +1887,71 @@
        * Requirement 11.2: When the user clicks anywhere on the success screen, dismiss the success message
        * Requirement 11.3: Navigate to the main app dashboard
        * Requirement 11.4: Enable user to perform transactions after successful account creation
+       * Requirement 20.1: Redirect to dashboard with session token after account creation
        */
-      dismissSuccessScreen() {
+      async dismissSuccessScreen() {
         console.log('[Success] Account creation complete!');
         console.log('[Success] Registration State:', registrationState);
         
-        // Trigger a custom event that the parent application can listen to
-        window.dispatchEvent(new CustomEvent('accountCreationComplete', {
-          detail: {
-            phoneNumber: registrationState.phoneNumber,
-            firstName: registrationState.firstName,
-            lastName: registrationState.lastName
+        try {
+          // Create session for the new user (Requirement 20.1, 20.2)
+          const sessionService = new SessionService({
+            turso: {
+              databaseUrl: CONFIG.turso.databaseUrl,
+              authToken: CONFIG.turso.authToken
+            }
+          });
+          
+          // Fetch user data from database to create session
+          await sessionService.dbService.connect();
+          const user = await sessionService.dbService.getUserByPhone(registrationState.phoneNumber);
+          
+          if (!user) {
+            console.error('[Success] User not found in database after creation');
+            // Fallback to URL parameters if session creation fails
+            const dashboardUrl = `dashboard.html?firstName=${encodeURIComponent(registrationState.firstName)}&phone=${encodeURIComponent(registrationState.phoneNumber)}&newUser=true`;
+            window.location.href = dashboardUrl;
+            return;
           }
-        }));
-        
-        // Navigate to dashboard with user data
-        const dashboardUrl = `dashboard.html?firstName=${encodeURIComponent(registrationState.firstName)}&phone=${encodeURIComponent(registrationState.phoneNumber)}`;
-        
-        console.log('[Success] Navigating to dashboard:', dashboardUrl);
-        window.location.href = dashboardUrl;
+          
+          // Create session (stores in localStorage)
+          const sessionResult = sessionService.createSession(user);
+          
+          if (!sessionResult.success) {
+            console.error('[Success] Failed to create session:', sessionResult.message);
+            // Fallback to URL parameters
+            const dashboardUrl = `dashboard.html?firstName=${encodeURIComponent(registrationState.firstName)}&phone=${encodeURIComponent(registrationState.phoneNumber)}&newUser=true`;
+            window.location.href = dashboardUrl;
+            return;
+          }
+          
+          console.log('[Success] ✅ Session created successfully');
+          
+          // Mark as first-time user for onboarding (Requirement 20.7)
+          localStorage.setItem('scrowpay_first_time_user', 'true');
+          
+          // Trigger a custom event that the parent application can listen to
+          window.dispatchEvent(new CustomEvent('accountCreationComplete', {
+            detail: {
+              phoneNumber: registrationState.phoneNumber,
+              firstName: registrationState.firstName,
+              lastName: registrationState.lastName,
+              userId: user.id
+            }
+          }));
+          
+          // Navigate to dashboard (session token is in localStorage)
+          console.log('[Success] Navigating to dashboard with session token');
+          window.location.href = 'dashboard.html';
+          
+        } catch (error) {
+          console.error('[Success] Error during session creation:', error);
+          
+          // Fallback to URL parameters if session creation fails
+          const dashboardUrl = `dashboard.html?firstName=${encodeURIComponent(registrationState.firstName)}&phone=${encodeURIComponent(registrationState.phoneNumber)}&newUser=true`;
+          console.log('[Success] Falling back to URL parameters:', dashboardUrl);
+          window.location.href = dashboardUrl;
+        }
       }
     }
     

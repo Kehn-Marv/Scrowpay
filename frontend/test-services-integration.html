@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services Integration Test - ScrowPay Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #1c1c1c;
+      color: #ffffff;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #caff04;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+    
+    .subtitle {
+      color: #888;
+      margin-bottom: 30px;
+      font-size: 1rem;
+    }
+    
+    .test-section {
+      background-color: #2a2a2a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #3a3a3a;
+    }
+    
+    .test-section h2 {
+      color: #caff04;
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+    
+    .test-section p {
+      color: #ccc;
+      margin-bottom: 15px;
+    }
+    
+    button {
+      background-color: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background-color: #b8e600;
+      transform: translateY(-1px);
+    }
+    
+    button:disabled {
+      background-color: #555;
+      color: #888;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .result.success {
+      background-color: #1a3a1a;
+      border: 1px solid #2a5a2a;
+      color: #caff04;
+    }
+    
+    .result.error {
+      background-color: #3a1a1a;
+      border: 1px solid #5a2a2a;
+      color: #ff6b6b;
+    }
+    
+    .result.info {
+      background-color: #1a2a3a;
+      border: 1px solid #2a3a5a;
+      color: #4ecdc4;
+    }
+    
+    .result.warning {
+      background-color: #3a3a1a;
+      border: 1px solid #5a5a2a;
+      color: #ffd93d;
+    }
+    
+    .config-form {
+      display: grid;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-group label {
+      color: #caff04;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    
+    .form-group input {
+      background-color: #1c1c1c;
+      border: 1px solid #3a3a3a;
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 0.95rem;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #caff04;
+    }
+    
+    .service-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .service-card {
+      background-color: #1c1c1c;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #3a3a3a;
+    }
+    
+    .service-card h3 {
+      color: #caff04;
+      font-size: 1rem;
+      margin-bottom: 5px;
+    }
+    
+    .service-card .status {
+      font-size: 0.85rem;
+      color: #888;
+    }
+    
+    .service-card .status.ready {
+      color: #caff04;
+    }
+    
+    .service-card .status.error {
+      color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Services Integration Test</h1>
+    <p class="subtitle">Checkpoint 3: Verify all 6 frontend services integration</p>
+    
+    <!-- Configuration Section -->
+    <div class="test-section">
+      <h2>Configuration</h2>
+      <p>Enter your Turso DB and Squad API credentials to initialize the services.</p>
+      
+      <div class="config-form">
+        <div class="form-group">
+          <label for="tursoUrl">Turso Database URL</label>
+          <input type="text" id="tursoUrl" placeholder="libsql://your-database.turso.io">
+        </div>
+        
+        <div class="form-group">
+          <label for="tursoToken">Turso Auth Token</label>
+          <input type="password" id="tursoToken" placeholder="eyJ...">
+        </div>
+        
+        <div class="form-group">
+          <label for="squadKey">Squad Secret Key</label>
+          <input type="password" id="squadKey" placeholder="sk_test_...">
+        </div>
+        
+        <div class="form-group">
+          <label for="squadEnv">Squad Environment</label>
+          <input type="text" id="squadEnv" value="sandbox" placeholder="sandbox or production">
+        </div>
+        
+        <div class="form-group">
+          <label for="holdingAccount">Holding Account Number</label>
+          <input type="text" id="holdingAccount" placeholder="1234567890">
+        </div>
+        
+        <div class="form-group">
+          <label for="aiEngineUrl">AI Engine URL (optional)</label>
+          <input type="text" id="aiEngineUrl" placeholder="http://localhost:5000">
+        </div>
+      </div>
+      
+      <button onclick="initializeServices()">Initialize Services</button>
+      <div id="init-result"></div>
+      
+      <div class="service-status" id="service-status" style="display: none;">
+        <div class="service-card">
+          <h3>TransactionService</h3>
+          <div class="status" id="status-transaction">Not initialized</div>
+        </div>
+        <div class="service-card">
+          <h3>BalanceService</h3>
+          <div class="status" id="status-balance">Not initialized</div>
+        </div>
+        <div class="service-card">
+          <h3>TrustScoreService</h3>
+          <div class="status" id="status-trustscore">Not initialized</div>
+        </div>
+        <div class="service-card">
+          <h3>AIRiskService</h3>
+          <div class="status" id="status-airisk">Not initialized</div>
+        </div>
+        <div class="service-card">
+          <h3>StateMachineService</h3>
+          <div class="status" id="status-statemachine">Not initialized</div>
+        </div>
+        <div class="service-card">
+          <h3>DashboardService</h3>
+          <div class="status" id="status-dashboard">Not initialized</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Test 1: Service Instantiation -->
+    <div class="test-section">
+      <h2>Test 1: Service Instantiation</h2>
+      <p>Verify that all 6 services can be instantiated with test configuration.</p>
+      <button onclick="testServiceInstantiation()" id="test1-btn" disabled>Run Test</button>
+      <div id="test1-result"></div>
+    </div>
+    
+    <!-- Test 2: Service Dependencies -->
+    <div class="test-section">
+      <h2>Test 2: Service Dependencies</h2>
+      <p>Verify that DashboardService correctly wires all other services.</p>
+      <button onclick="testServiceDependencies()" id="test2-btn" disabled>Run Test</button>
+      <div id="test2-result"></div>
+    </div>
+    
+    <!-- Test 3: Basic Service Methods -->
+    <div class="test-section">
+      <h2>Test 3: Basic Service Methods</h2>
+      <p>Test basic methods from each service with mock data.</p>
+      <button onclick="testBasicMethods()" id="test3-btn" disabled>Run Test</button>
+      <div id="test3-result"></div>
+    </div>
+    
+    <!-- Test 4: Database Connectivity -->
+    <div class="test-section">
+      <h2>Test 4: Database Connectivity</h2>
+      <p>Verify that services can connect to Turso DB.</p>
+      <button onclick="testDatabaseConnectivity()" id="test4-btn" disabled>Run Test</button>
+      <div id="test4-result"></div>
+    </div>
+    
+    <!-- Test 5: Service Integration -->
+    <div class="test-section">
+      <h2>Test 5: Service Integration</h2>
+      <p>Test that services work together correctly (e.g., DashboardService using TransactionService).</p>
+      <button onclick="testServiceIntegration()" id="test5-btn" disabled>Run Test</button>
+      <div id="test5-result"></div>
+    </div>
+    
+    <!-- Test 6: Run All Tests -->
+    <div class="test-section">
+      <h2>Run All Tests</h2>
+      <p>Execute all tests in sequence.</p>
+      <button onclick="runAllTests()" id="test-all-btn" disabled>Run All Tests</button>
+      <div id="test-all-result"></div>
+    </div>
+  </div>
+  
+  <!-- Load all service files -->
+  <script src="turso-db-service.js"></script>
+  <script src="squad-api-service.js"></script>
+  <script src="transaction-service.js"></script>
+  <script src="BalanceService.js"></script>
+  <script src="TrustScoreService.js"></script>
+  <script src="StateMachineService.js"></script>
+  <script src="DashboardService.js"></script>
+  
+  <script>
+    // Global variables
+    let config = null;
+    let services = {
+      transaction: null,
+      balance: null,
+      trustScore: null,
+      aiRisk: null,
+      stateMachine: null,
+      dashboard: null
+    };
+    
+    // Helper function to display results
+    function displayResult(elementId, message, type = 'info') {
+      const element = document.getElementById(elementId);
+      element.className = `result ${type}`;
+      element.textContent = message;
+    }
+    
+    // Helper function to update service status
+    function updateServiceStatus(serviceName, status, isReady = false) {
+      const element = document.getElementById(`status-${serviceName}`);
+      element.textContent = status;
+      element.className = isReady ? 'status ready' : (status.includes('Error') ? 'status error' : 'status');
+    }
+    
+    // Initialize services
+    async function initializeServices() {
+      try {
+        displayResult('init-result', 'Initializing services...', 'info');
+        
+        // Get configuration from form
+        config = {
+          turso: {
+            databaseUrl: document.getElementById('tursoUrl').value,
+            authToken: document.getElementById('tursoToken').value
+          },
+          squad: {
+            secretKey: document.getElementById('squadKey').value,
+            environment: document.getElementById('squadEnv').value
+          },
+          holdingAccount: document.getElementById('holdingAccount').value,
+          aiEngine: {
+            url: document.getElementById('aiEngineUrl').value || null
+          }
+        };
+        
+        // Validate configuration
+        if (!config.turso.databaseUrl || !config.turso.authToken) {
+          throw new Error('Turso DB credentials are required');
+        }
+        
+        if (!config.squad.secretKey) {
+          throw new Error('Squad API secret key is required');
+        }
+        
+        if (!config.holdingAccount) {
+          throw new Error('Holding account number is required');
+        }
+        
+        // Show service status cards
+        document.getElementById('service-status').style.display = 'grid';
+        
+        // Initialize each service
+        try {
+          services.transaction = new TransactionService(config);
+          updateServiceStatus('transaction', 'Ready ✓', true);
+        } catch (error) {
+          updateServiceStatus('transaction', `Error: ${error.message}`, false);
+          throw new Error(`TransactionService: ${error.message}`);
+        }
+        
+        try {
+          services.balance = new BalanceService(config);
+          updateServiceStatus('balance', 'Ready ✓', true);
+        } catch (error) {
+          updateServiceStatus('balance', `Error: ${error.message}`, false);
+          throw new Error(`BalanceService: ${error.message}`);
+        }
+        
+        try {
+          services.trustScore = new TrustScoreService(config);
+          updateServiceStatus('trustscore', 'Ready ✓', true);
+        } catch (error) {
+          updateServiceStatus('trustscore', `Error: ${error.message}`, false);
+          throw new Error(`TrustScoreService: ${error.message}`);
+        }
+        
+        try {
+          services.stateMachine = new StateMachineService(config);
+          updateServiceStatus('statemachine', 'Ready ✓', true);
+        } catch (error) {
+          updateServiceStatus('statemachine', `Error: ${error.message}`, false);
+          throw new Error(`StateMachineService: ${error.message}`);
+        }
+        
+        try {
+          // AIRiskService is optional
+          if (config.aiEngine.url) {
+            // Note: AIRiskService doesn't exist yet, so we'll skip it
+            updateServiceStatus('airisk', 'Not implemented (optional)', false);
+          } else {
+            updateServiceStatus('airisk', 'Skipped (no AI engine URL)', false);
+          }
+        } catch (error) {
+          updateServiceStatus('airisk', `Error: ${error.message}`, false);
+        }
+        
+        try {
+          services.dashboard = new DashboardService(config);
+          updateServiceStatus('dashboard', 'Ready ✓', true);
+        } catch (error) {
+          updateServiceStatus('dashboard', `Error: ${error.message}`, false);
+          throw new Error(`DashboardService: ${error.message}`);
+        }
+        
+        // Enable test buttons
+        document.getElementById('test1-btn').disabled = false;
+        document.getElementById('test2-btn').disabled = false;
+        document.getElementById('test3-btn').disabled = false;
+        document.getElementById('test4-btn').disabled = false;
+        document.getElementById('test5-btn').disabled = false;
+        document.getElementById('test-all-btn').disabled = false;
+        
+        displayResult('init-result', '✅ All services initialized successfully!', 'success');
+        
+      } catch (error) {
+        displayResult('init-result', `❌ Initialization failed: ${error.message}`, 'error');
+        console.error('Initialization error:', error);
+      }
+    }
+    
+    // Test 1: Service Instantiation
+    async function testServiceInstantiation() {
+      try {
+        displayResult('test1-result', 'Running test...', 'info');
+        
+        const results = [];
+        
+        // Check TransactionService
+        if (services.transaction && typeof services.transaction.createTransaction === 'function') {
+          results.push('✓ TransactionService instantiated with createTransaction method');
+        } else {
+          throw new Error('TransactionService missing createTransaction method');
+        }
+        
+        // Check BalanceService
+        if (services.balance && typeof services.balance.getBalances === 'function') {
+          results.push('✓ BalanceService instantiated with getBalances method');
+        } else {
+          throw new Error('BalanceService missing getBalances method');
+        }
+        
+        // Check TrustScoreService
+        if (services.trustScore && typeof services.trustScore.calculateTrustScore === 'function') {
+          results.push('✓ TrustScoreService instantiated with calculateTrustScore method');
+        } else {
+          throw new Error('TrustScoreService missing calculateTrustScore method');
+        }
+        
+        // Check StateMachineService
+        if (services.stateMachine && typeof services.stateMachine.transitionState === 'function') {
+          results.push('✓ StateMachineService instantiated with transitionState method');
+        } else {
+          throw new Error('StateMachineService missing transitionState method');
+        }
+        
+        // Check DashboardService
+        if (services.dashboard && typeof services.dashboard.initialize === 'function') {
+          results.push('✓ DashboardService instantiated with initialize method');
+        } else {
+          throw new Error('DashboardService missing initialize method');
+        }
+        
+        displayResult('test1-result', '✅ Test Passed!\n\n' + results.join('\n'), 'success');
+        
+      } catch (error) {
+        displayResult('test1-result', `❌ Test Failed: ${error.message}`, 'error');
+        console.error('Test 1 error:', error);
+      }
+    }
+    
+    // Test 2: Service Dependencies
+    async function testServiceDependencies() {
+      try {
+        displayResult('test2-result', 'Running test...', 'info');
+        
+        const results = [];
+        
+        // Check DashboardService has all required services
+        if (services.dashboard.transactionService) {
+          results.push('✓ DashboardService has transactionService');
+        } else {
+          throw new Error('DashboardService missing transactionService');
+        }
+        
+        if (services.dashboard.balanceService) {
+          results.push('✓ DashboardService has balanceService');
+        } else {
+          throw new Error('DashboardService missing balanceService');
+        }
+        
+        if (services.dashboard.trustScoreService) {
+          results.push('✓ DashboardService has trustScoreService');
+        } else {
+          throw new Error('DashboardService missing trustScoreService');
+        }
+        
+        if (services.dashboard.stateMachineService) {
+          results.push('✓ DashboardService has stateMachineService');
+        } else {
+          throw new Error('DashboardService missing stateMachineService');
+        }
+        
+        // AIRiskService is optional
+        results.push('✓ DashboardService aiRiskService is optional (may be null)');
+        
+        displayResult('test2-result', '✅ Test Passed!\n\n' + results.join('\n'), 'success');
+        
+      } catch (error) {
+        displayResult('test2-result', `❌ Test Failed: ${error.message}`, 'error');
+        console.error('Test 2 error:', error);
+      }
+    }
+    
+    // Test 3: Basic Service Methods
+    async function testBasicMethods() {
+      try {
+        displayResult('test3-result', 'Running test...', 'info');
+        
+        const results = [];
+        
+        // Test TransactionService.generateTransactionId
+        if (typeof services.transaction.generateTransactionId === 'function') {
+          const txnId = services.transaction.generateTransactionId();
+          if (txnId && txnId.startsWith('TXN-')) {
+            results.push(`✓ TransactionService.generateTransactionId() = ${txnId}`);
+          } else {
+            throw new Error('Invalid transaction ID format');
+          }
+        }
+        
+        // Test BalanceService.formatBalance
+        if (typeof services.balance.formatBalance === 'function') {
+          const formatted = services.balance.formatBalance(1234.56);
+          if (formatted && formatted.includes('₦')) {
+            results.push(`✓ BalanceService.formatBalance(1234.56) = ${formatted}`);
+          } else {
+            throw new Error('Invalid balance format');
+          }
+        }
+        
+        // Test TrustScoreService.getVisualIndicator
+        if (typeof services.trustScore.getVisualIndicator === 'function') {
+          const indicator = services.trustScore.getVisualIndicator(75);
+          if (indicator && indicator.color && indicator.label) {
+            results.push(`✓ TrustScoreService.getVisualIndicator(75) = ${indicator.label} (${indicator.color})`);
+          } else {
+            throw new Error('Invalid visual indicator');
+          }
+        }
+        
+        // Test StateMachineService.isValidTransition
+        if (typeof services.stateMachine.isValidTransition === 'function') {
+          const isValid = services.stateMachine.isValidTransition('Created', 'Funded_Locked');
+          if (isValid === true) {
+            results.push('✓ StateMachineService.isValidTransition("Created", "Funded_Locked") = true');
+          } else {
+            throw new Error('Invalid transition validation');
+          }
+        }
+        
+        // Test DashboardService polling configuration
+        if (services.dashboard.pollingIntervals) {
+          results.push(`✓ DashboardService.pollingIntervals.squadAPI = ${services.dashboard.pollingIntervals.squadAPI}ms`);
+          results.push(`✓ DashboardService.pollingIntervals.tursoDB = ${services.dashboard.pollingIntervals.tursoDB}ms`);
+        }
+        
+        displayResult('test3-result', '✅ Test Passed!\n\n' + results.join('\n'), 'success');
+        
+      } catch (error) {
+        displayResult('test3-result', `❌ Test Failed: ${error.message}`, 'error');
+        console.error('Test 3 error:', error);
+      }
+    }
+    
+    // Test 4: Database Connectivity
+    async function testDatabaseConnectivity() {
+      try {
+        displayResult('test4-result', 'Running test...', 'info');
+        
+        const results = [];
+        
+        // Test TransactionService connection
+        await services.transaction.connect();
+        results.push('✓ TransactionService connected to Turso DB');
+        
+        // Test BalanceService connection
+        await services.balance.connect();
+        results.push('✓ BalanceService connected to Turso DB');
+        
+        // Test TrustScoreService connection
+        await services.trustScore.connect();
+        results.push('✓ TrustScoreService connected to Turso DB');
+        
+        // Test StateMachineService connection
+        await services.stateMachine.connect();
+        results.push('✓ StateMachineService connected to Turso DB');
+        
+        displayResult('test4-result', '✅ Test Passed!\n\n' + results.join('\n'), 'success');
+        
+      } catch (error) {
+        displayResult('test4-result', `❌ Test Failed: ${error.message}\n\nPlease check your Turso DB credentials.`, 'error');
+        console.error('Test 4 error:', error);
+      }
+    }
+    
+    // Test 5: Service Integration
+    async function testServiceIntegration() {
+      try {
+        displayResult('test5-result', 'Running test...', 'info');
+        
+        const results = [];
+        
+        // Test that DashboardService can use TransactionService
+        if (services.dashboard.transactionService === services.transaction) {
+          results.push('✓ DashboardService uses the same TransactionService instance');
+        } else {
+          results.push('⚠ DashboardService has its own TransactionService instance (expected)');
+        }
+        
+        // Test that services share the same configuration
+        if (services.transaction.dbService && services.balance.dbService) {
+          results.push('✓ Services have database service instances');
+        }
+        
+        // Test that DashboardService methods exist
+        const dashboardMethods = [
+          'initialize',
+          'refreshBalances',
+          'refreshTransactions',
+          'refreshTrustScore',
+          'startPolling',
+          'stopPolling',
+          'createTransaction',
+          'fundTransaction',
+          'markAsShipped',
+          'acceptDelivery',
+          'disputeTransaction'
+        ];
+        
+        for (const method of dashboardMethods) {
+          if (typeof services.dashboard[method] === 'function') {
+            results.push(`✓ DashboardService.${method}() exists`);
+          } else {
+            throw new Error(`DashboardService missing ${method} method`);
+          }
+        }
+        
+        displayResult('test5-result', '✅ Test Passed!\n\n' + results.join('\n'), 'success');
+        
+      } catch (error) {
+        displayResult('test5-result', `❌ Test Failed: ${error.message}`, 'error');
+        console.error('Test 5 error:', error);
+      }
+    }
+    
+    // Run all tests
+    async function runAllTests() {
+      try {
+        displayResult('test-all-result', 'Running all tests...', 'info');
+        
+        await testServiceInstantiation();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await testServiceDependencies();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await testBasicMethods();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await testDatabaseConnectivity();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await testServiceIntegration();
+        
+        displayResult('test-all-result', '✅ All tests completed! Check individual test results above.', 'success');
+        
+      } catch (error) {
+        displayResult('test-all-result', `❌ Test suite failed: ${error.message}`, 'error');
+        console.error('Test suite error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

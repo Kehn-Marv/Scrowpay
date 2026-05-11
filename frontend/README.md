@@ -166,21 +166,31 @@ CREATE TABLE users (
 
 ## 📝 Environment Variables
 
-Update these in the respective service files:
+Environment variables are managed through `config.js` and `env.js`:
 
-### Turso Database
+### config.js
+Reads from `window.ENV` object (loaded from `env.js`) or falls back to defaults.
+
+### env.js (Local Development)
+Create `env.js` in the frontend directory:
+
 ```javascript
-// turso-db-service.js
-const dbUrl = 'your-database-url';
-const authToken = 'your-auth-token';
+// env.js - Local development environment variables
+window.ENV = {
+  TURSO_DATABASE_URL: 'libsql://your-database-name.turso.io',
+  TURSO_AUTH_TOKEN: 'your-turso-auth-token',
+  SQUAD_SECRET_KEY: 'sandbox_sk_your-secret-key',
+  SQUAD_PUBLIC_KEY: 'sandbox_pk_your-public-key',
+  SQUAD_ENVIRONMENT: 'sandbox',
+  AI_ENGINE_URL: 'http://localhost:5000',
+  HOLDING_ACCOUNT: 'your-holding-account-number'
+};
 ```
 
-### Squad API
-```javascript
-// squad-api-service.js
-const secretKey = 'your-secret-key';
-const publicKey = 'your-public-key';
-```
+**Note:** `env.js` should be in `.gitignore` to prevent committing credentials.
+
+### Production Deployment
+For production (Vercel/Netlify), set environment variables in the platform dashboard. The build process will inject them at build time.
 
 ## 🧪 Testing
 
@@ -201,19 +211,43 @@ const publicKey = 'your-public-key';
 ### Option 1: Vercel (Recommended)
 ```bash
 npm install -g vercel
+cd frontend
 vercel
 ```
+
+**Environment Variables in Vercel:**
+1. Go to project settings
+2. Navigate to Environment Variables
+3. Add all variables from `config.js`
+4. Redeploy
 
 ### Option 2: Netlify
 ```bash
 npm install -g netlify-cli
+cd frontend
 netlify deploy
 ```
+
+**Environment Variables in Netlify:**
+1. Go to Site settings → Build & deploy → Environment
+2. Add all variables from `config.js`
+3. Redeploy
 
 ### Option 3: GitHub Pages
 1. Push to GitHub
 2. Enable GitHub Pages in settings
 3. Select branch and folder
+
+### Option 4: Docker (with nginx)
+See root `docker-compose.yml` for complete setup with AI engine.
+
+```bash
+# From project root
+docker-compose up -d
+# Frontend available at: http://localhost:8080
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](../DEPLOYMENT.md) in the project root.
 
 ## 📦 Dependencies
 

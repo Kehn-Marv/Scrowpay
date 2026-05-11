@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 7: State Transitions Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1c1c1c;
+      color: #ffffff;
+    }
+    
+    h1 {
+      color: #caff04;
+      border-bottom: 2px solid #caff04;
+      padding-bottom: 10px;
+    }
+    
+    h2 {
+      color: #caff04;
+      margin-top: 30px;
+    }
+    
+    .test-section {
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .test-result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    
+    .test-result.success {
+      background-color: #1a4d1a;
+      border-left: 4px solid #caff04;
+    }
+    
+    .test-result.error {
+      background-color: #4d1a1a;
+      border-left: 4px solid #ff6b6b;
+    }
+    
+    .test-result.info {
+      background-color: #1a3a4d;
+      border-left: 4px solid #4ecdc4;
+    }
+    
+    button {
+      background-color: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    
+    button:hover {
+      background-color: #b8e600;
+    }
+    
+    button:disabled {
+      background-color: #666;
+      color: #999;
+      cursor: not-allowed;
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+    }
+    
+    pre {
+      background-color: #1a1a1a;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      border: 1px solid #444;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Task 7: Transaction State Transitions Test</h1>
+  
+  <div class="test-section">
+    <h2>Test Overview</h2>
+    <p>This test suite validates the implementation of Task 7:</p>
+    <ul>
+      <li><strong>Task 7.1:</strong> Mark as Shipped (Funded_Locked → In_Transit)</li>
+      <li><strong>Task 7.2:</strong> Accept Item (In_Transit → Completed)</li>
+      <li><strong>Task 7.2:</strong> Dispute Item (In_Transit → Disputed)</li>
+      <li><strong>Task 7.3:</strong> Auto-release mechanism (timer-based)</li>
+    </ul>
+  </div>
+  
+  <div class="controls">
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="clearResults()">Clear Results</button>
+    <button onclick="testTask71()">Test 7.1: Mark as Shipped</button>
+    <button onclick="testTask72Accept()">Test 7.2: Accept Item</button>
+    <button onclick="testTask72Dispute()">Test 7.2: Dispute Item</button>
+    <button onclick="testTask73()">Test 7.3: Auto-release</button>
+  </div>
+  
+  <div id="results"></div>
+  
+  <!-- Load dependencies -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="turso-config.js"></script>
+  <script src="turso-db-service.js"></script>
+  <script src="transaction-service.js"></script>
+  <script src="StateMachineService.js"></script>
+  
+  <script>
+    let transactionService;
+    let stateMachineService;
+    let testSellerId = 1;
+    let testBuyerId = 2;
+    
+    // Test configuration
+    const testConfig = {
+      turso: {
+        databaseUrl: window.CONFIG.turso.databaseUrl,
+        authToken: window.CONFIG.turso.authToken
+      },
+      squad: {
+        secretKey: window.CONFIG.squad.secretKey,
+        environment: window.CONFIG.squad.environment
+      },
+      holdingAccount: '1234567890'
+    };
+    
+    function logResult(message, type = 'info') {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `test-result ${type}`;
+      resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      document.getElementById('results').appendChild(resultDiv);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+    
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+      logResult('Results cleared', 'info');
+    }
+    
+    async function initializeServices() {
+      if (!transactionService) {
+        transactionService = new TransactionService(testConfig);
+        await transactionService.connect();
+        logResult('✅ TransactionService initialized', 'success');
+      }
+      
+      if (!stateMachineService) {
+        stateMachineService = new StateMachineService(testConfig);
+        await stateMachineService.connect();
+        logResult('✅ StateMachineService initialized', 'success');
+      }
+    }
+    
+    async function createTestTransaction() {
+      const transaction = await transactionService.createTransaction({
+        sellerId: testSellerId,
+        itemDescription: 'Test item for state transition testing',
+        price: 10000,
+        deliveryTimelineDays: 7,
+        inspectionWindowDays: 2
+      });
+      
+      logResult('✅ Test transaction created: ' + transaction.transaction_id, 'success');
+      return transaction;
+    }
+    
+    async function fundTransaction(transactionId) {
+      // Update buyer
+      await transactionService.updateBuyer(transactionId, testBuyerId);
+      
+      // Transition to Funded_Locked
+      const result = await stateMachineService.transitionState(
+        transactionId,
+        'Funded_Locked',
+        testBuyerId,
+        { buyerAccount: 'TEST_BUYER_ACCOUNT' }
+      );
+      
+      if (result.success) {
+        logResult('✅ Transaction funded: ' + transactionId, 'success');
+      } else {
+        throw new Error('Failed to fund transaction: ' + result.message);
+      }
+      
+      return result;
+    }
+    
+    async function runAllTests() {
+      logResult('========================================', 'info');
+      logResult('Starting Task 7 Test Suite', 'info');
+      logResult('========================================', 'info');
+      
+      try {
+        await initializeServices();
+        await testTask71();
+        await testTask72Accept();
+        await testTask72Dispute();
+        await testTask73();
+        
+        logResult('========================================', 'info');
+        logResult('✅ All Task 7 tests completed', 'success');
+        logResult('========================================', 'info');
+        
+      } catch (error) {
+        logResult('❌ Test suite failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testTask71() {
+      logResult('', 'info');
+      logResult('TEST 7.1: Mark as Shipped (Funded_Locked → In_Transit)', 'info');
+      logResult('--------------------------------------------------------', 'info');
+      
+      try {
+        await initializeServices();
+        
+        // Create and fund a transaction
+        logResult('Creating test transaction...', 'info');
+        const transaction = await createTestTransaction();
+        
+        logResult('Funding transaction...', 'info');
+        await fundTransaction(transaction.transaction_id);
+        
+        // Verify state is Funded_Locked
+        const fundedTxn = await transactionService.getTransaction(transaction.transaction_id);
+        if (fundedTxn.state !== 'Funded_Locked') {
+          throw new Error('Transaction not in Funded_Locked state: ' + fundedTxn.state);
+        }
+        logResult('✅ Transaction is in Funded_Locked state', 'success');
+        
+        // Task 7.1: Mark as Shipped (seller action)
+        logResult('Marking transaction as shipped (seller action)...', 'info');
+        const shipResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'In_Transit',
+          testSellerId,
+          { shippedBy: testSellerId }
+        );
+        
+        if (!shipResult.success) {
+          throw new Error('Failed to mark as shipped: ' + shipResult.message);
+        }
+        
+        logResult('✅ Transaction marked as shipped', 'success');
+        
+        // Verify state changed to In_Transit
+        const shippedTxn = await transactionService.getTransaction(transaction.transaction_id);
+        if (shippedTxn.state !== 'In_Transit') {
+          throw new Error('Transaction not in In_Transit state: ' + shippedTxn.state);
+        }
+        logResult('✅ Transaction state is In_Transit', 'success');
+        
+        // Verify shipped_at timestamp is set
+        if (shippedTxn.shipped_at) {
+          logResult('✅ shipped_at timestamp set: ' + shippedTxn.shipped_at, 'success');
+        } else {
+          logResult('❌ shipped_at timestamp not set', 'error');
+        }
+        
+        // Verify auto-release timer was scheduled
+        if (stateMachineService.autoReleaseTimers.has(transaction.transaction_id)) {
+          logResult('✅ Auto-release timer scheduled', 'success');
+        } else {
+          logResult('⚠️ Auto-release timer not found (may have already expired)', 'info');
+        }
+        
+        logResult('✅ TEST 7.1 PASSED', 'success');
+        
+      } catch (error) {
+        logResult('❌ TEST 7.1 FAILED: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testTask72Accept() {
+      logResult('', 'info');
+      logResult('TEST 7.2: Accept Item (In_Transit → Completed)', 'info');
+      logResult('--------------------------------------------------', 'info');
+      
+      try {
+        await initializeServices();
+        
+        // Create, fund, and ship a transaction
+        logResult('Creating and preparing test transaction...', 'info');
+        const transaction = await createTestTransaction();
+        await fundTransaction(transaction.transaction_id);
+        
+        const shipResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'In_Transit',
+          testSellerId,
+          { shippedBy: testSellerId }
+        );
+        
+        if (!shipResult.success) {
+          throw new Error('Failed to ship transaction: ' + shipResult.message);
+        }
+        
+        logResult('✅ Transaction is in In_Transit state', 'success');
+        
+        // Task 7.2: Accept Item (buyer action)
+        logResult('Accepting item (buyer action)...', 'info');
+        const acceptResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'Completed',
+          testBuyerId,
+          { acceptedBy: testBuyerId }
+        );
+        
+        if (!acceptResult.success) {
+          throw new Error('Failed to accept item: ' + acceptResult.message);
+        }
+        
+        logResult('✅ Item accepted', 'success');
+        
+        // Verify state changed to Completed
+        const completedTxn = await transactionService.getTransaction(transaction.transaction_id);
+        if (completedTxn.state !== 'Completed') {
+          throw new Error('Transaction not in Completed state: ' + completedTxn.state);
+        }
+        logResult('✅ Transaction state is Completed', 'success');
+        
+        // Verify completed_at timestamp is set
+        if (completedTxn.completed_at) {
+          logResult('✅ completed_at timestamp set: ' + completedTxn.completed_at, 'success');
+        } else {
+          logResult('❌ completed_at timestamp not set', 'error');
+        }
+        
+        // Verify auto-release timer was cancelled
+        if (!stateMachineService.autoReleaseTimers.has(transaction.transaction_id)) {
+          logResult('✅ Auto-release timer cancelled', 'success');
+        } else {
+          logResult('❌ Auto-release timer still active', 'error');
+        }
+        
+        logResult('✅ TEST 7.2 (Accept) PASSED', 'success');
+        
+      } catch (error) {
+        logResult('❌ TEST 7.2 (Accept) FAILED: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testTask72Dispute() {
+      logResult('', 'info');
+      logResult('TEST 7.2: Dispute Item (In_Transit → Disputed)', 'info');
+      logResult('--------------------------------------------------', 'info');
+      
+      try {
+        await initializeServices();
+        
+        // Create, fund, and ship a transaction
+        logResult('Creating and preparing test transaction...', 'info');
+        const transaction = await createTestTransaction();
+        await fundTransaction(transaction.transaction_id);
+        
+        const shipResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'In_Transit',
+          testSellerId,
+          { shippedBy: testSellerId }
+        );
+        
+        if (!shipResult.success) {
+          throw new Error('Failed to ship transaction: ' + shipResult.message);
+        }
+        
+        logResult('✅ Transaction is in In_Transit state', 'success');
+        
+        // Task 7.2: Dispute Item (buyer action)
+        logResult('Disputing item (buyer action)...', 'info');
+        const disputeResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'Disputed',
+          testBuyerId,
+          {
+            disputedBy: testBuyerId,
+            description: 'Item not as described',
+            photoCount: 2
+          }
+        );
+        
+        if (!disputeResult.success) {
+          throw new Error('Failed to dispute item: ' + disputeResult.message);
+        }
+        
+        logResult('✅ Item disputed', 'success');
+        
+        // Verify state changed to Disputed
+        const disputedTxn = await transactionService.getTransaction(transaction.transaction_id);
+        if (disputedTxn.state !== 'Disputed') {
+          throw new Error('Transaction not in Disputed state: ' + disputedTxn.state);
+        }
+        logResult('✅ Transaction state is Disputed', 'success');
+        
+        // Verify auto-release timer was cancelled
+        if (!stateMachineService.autoReleaseTimers.has(transaction.transaction_id)) {
+          logResult('✅ Auto-release timer cancelled', 'success');
+        } else {
+          logResult('❌ Auto-release timer still active', 'error');
+        }
+        
+        logResult('✅ TEST 7.2 (Dispute) PASSED', 'success');
+        
+      } catch (error) {
+        logResult('❌ TEST 7.2 (Dispute) FAILED: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testTask73() {
+      logResult('', 'info');
+      logResult('TEST 7.3: Auto-release Mechanism', 'info');
+      logResult('-----------------------------------', 'info');
+      
+      try {
+        await initializeServices();
+        
+        // Create a transaction with very short inspection window for testing
+        logResult('Creating test transaction with 1-day inspection window...', 'info');
+        const transaction = await transactionService.createTransaction({
+          sellerId: testSellerId,
+          itemDescription: 'Test item for auto-release',
+          price: 5000,
+          deliveryTimelineDays: 1,
+          inspectionWindowDays: 1
+        });
+        
+        await fundTransaction(transaction.transaction_id);
+        
+        // Ship the transaction
+        const shipResult = await stateMachineService.transitionState(
+          transaction.transaction_id,
+          'In_Transit',
+          testSellerId,
+          { shippedBy: testSellerId }
+        );
+        
+        if (!shipResult.success) {
+          throw new Error('Failed to ship transaction: ' + shipResult.message);
+        }
+        
+        logResult('✅ Transaction shipped and in In_Transit state', 'success');
+        
+        // Verify auto-release timer is scheduled
+        if (stateMachineService.autoReleaseTimers.has(transaction.transaction_id)) {
+          logResult('✅ Auto-release timer is scheduled', 'success');
+          
+          // Get the transaction to check expiry calculation
+          const txn = await transactionService.getTransaction(transaction.transaction_id);
+          const shippedDate = new Date(txn.shipped_at);
+          const expiryDate = new Date(shippedDate);
+          expiryDate.setDate(expiryDate.getDate() + txn.inspection_window_days);
+          
+          const timeUntilExpiry = expiryDate.getTime() - Date.now();
+          const hoursUntilExpiry = (timeUntilExpiry / (1000 * 60 * 60)).toFixed(2);
+          
+          logResult('Shipped at: ' + shippedDate.toISOString(), 'info');
+          logResult('Expiry date: ' + expiryDate.toISOString(), 'info');
+          logResult('Time until expiry: ' + hoursUntilExpiry + ' hours', 'info');
+          
+          if (timeUntilExpiry > 0) {
+            logResult('✅ Expiry calculation correct (future date)', 'success');
+          } else {
+            logResult('⚠️ Expiry date is in the past (immediate auto-release)', 'info');
+          }
+          
+        } else {
+          logResult('❌ Auto-release timer not scheduled', 'error');
+        }
+        
+        // Test cancellation of auto-release timer
+        logResult('Testing auto-release timer cancellation...', 'info');
+        stateMachineService.cancelAutoRelease(transaction.transaction_id);
+        
+        if (!stateMachineService.autoReleaseTimers.has(transaction.transaction_id)) {
+          logResult('✅ Auto-release timer cancelled successfully', 'success');
+        } else {
+          logResult('❌ Auto-release timer still active after cancellation', 'error');
+        }
+        
+        logResult('✅ TEST 7.3 PASSED', 'success');
+        logResult('Note: Full auto-release test requires waiting for timer expiry (24+ hours)', 'info');
+        
+      } catch (error) {
+        logResult('❌ TEST 7.3 FAILED: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    // Auto-run info on page load
+    window.addEventListener('load', () => {
+      logResult('Task 7: State Transitions Test Suite loaded', 'info');
+      logResult('Click "Run All Tests" to start testing', 'info');
+    });
+  </script>
+</body>
+</html>

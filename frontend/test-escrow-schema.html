@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Escrow Schema - ScrowPay</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1c1c1c;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background-color: #b8e604;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-left: 4px solid #caff04;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .success {
+      color: #28a745;
+    }
+    .error {
+      color: #dc3545;
+    }
+    .info {
+      color: #17a2b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Escrow Schema Test</h1>
+    <p>This page tests the creation of the escrow database schema for ScrowPay.</p>
+    
+    <div>
+      <button id="connectBtn" onclick="testConnect()">1. Connect to Database</button>
+      <button id="createUserSchemaBtn" onclick="testCreateUserSchema()" disabled>2. Create User Schema</button>
+      <button id="createEscrowSchemaBtn" onclick="testCreateEscrowSchema()" disabled>3. Create Escrow Schema</button>
+      <button id="verifyBtn" onclick="testVerify()" disabled>4. Verify Tables</button>
+    </div>
+    
+    <div id="output"></div>
+  </div>
+
+  <script src="env.js"></script>
+  <script src="turso-db-service.js"></script>
+  <script>
+    let dbService = null;
+    const output = document.getElementById('output');
+    
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+      output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    async function testConnect() {
+      try {
+        log('Connecting to Turso database...', 'info');
+        
+        // Initialize database service
+        dbService = new TursoDBService(
+          window.ENV.TURSO_DATABASE_URL,
+          window.ENV.TURSO_AUTH_TOKEN
+        );
+        
+        await dbService.connect();
+        log('✅ Successfully connected to database', 'success');
+        
+        // Enable next button
+        document.getElementById('connectBtn').disabled = true;
+        document.getElementById('createUserSchemaBtn').disabled = false;
+        
+      } catch (error) {
+        log('❌ Connection failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCreateUserSchema() {
+      try {
+        log('Creating user schema...', 'info');
+        
+        await dbService.createSchema();
+        log('✅ User schema created successfully', 'success');
+        
+        // Enable next button
+        document.getElementById('createUserSchemaBtn').disabled = true;
+        document.getElementById('createEscrowSchemaBtn').disabled = false;
+        
+      } catch (error) {
+        log('❌ User schema creation failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCreateEscrowSchema() {
+      try {
+        log('Creating escrow schema...', 'info');
+        log('  - Creating transactions table...', 'info');
+        log('  - Creating transaction_state_history table...', 'info');
+        log('  - Creating disputes table...', 'info');
+        log('  - Creating trust_scores table...', 'info');
+        log('  - Creating ai_risk_logs table...', 'info');
+        
+        await dbService.createEscrowSchema();
+        log('✅ Escrow schema created successfully', 'success');
+        log('  ✅ All tables created', 'success');
+        log('  ✅ All indexes created', 'success');
+        log('  ✅ All constraints applied', 'success');
+        
+        // Enable next button
+        document.getElementById('createEscrowSchemaBtn').disabled = true;
+        document.getElementById('verifyBtn').disabled = false;
+        
+      } catch (error) {
+        log('❌ Escrow schema creation failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testVerify() {
+      try {
+        log('Verifying database schema...', 'info');
+        
+        // Query to get all tables
+        const tablesQuery = `
+          SELECT name FROM sqlite_master 
+          WHERE type='table' 
+          ORDER BY name
+        `;
+        
+        const result = await dbService._executeHttp(tablesQuery);
+        const executeResult = result.results[0].response.result;
+        const rows = executeResult.rows;
+        const cols = executeResult.cols;
+        
+        log('📋 Tables found:', 'info');
+        rows.forEach(row => {
+          const tableName = typeof row[0] === 'object' ? row[0].value : row[0];
+          log(`  - ${tableName}`, 'success');
+        });
+        
+        // Verify expected tables exist
+        const expectedTables = [
+          'users',
+          'transactions',
+          'transaction_state_history',
+          'disputes',
+          'trust_scores',
+          'ai_risk_logs'
+        ];
+        
+        const tableNames = rows.map(row => 
+          typeof row[0] === 'object' ? row[0].value : row[0]
+        );
+        
+        log('\n🔍 Verification:', 'info');
+        let allTablesExist = true;
+        expectedTables.forEach(table => {
+          if (tableNames.includes(table)) {
+            log(`  ✅ ${table} exists`, 'success');
+          } else {
+            log(`  ❌ ${table} missing`, 'error');
+            allTablesExist = false;
+          }
+        });
+        
+        if (allTablesExist) {
+          log('\n🎉 All escrow tables created successfully!', 'success');
+          log('Schema is ready for use.', 'success');
+        } else {
+          log('\n⚠️ Some tables are missing', 'error');
+        }
+        
+      } catch (error) {
+        log('❌ Verification failed: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>

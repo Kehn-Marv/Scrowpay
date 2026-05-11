@@ -6,6 +6,9 @@
 # Environment configuration (contains secrets)
 frontend/env.js
 
+# Test files with hardcoded credentials
+frontend/test-schema.js
+
 # Node modules
 node_modules/
 npm-debug.log*

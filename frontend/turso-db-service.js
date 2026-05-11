@@ -86,6 +86,11 @@ class TursoDBService {
         if (args.length > 0) {
           // Turso requires typed parameters: { type: 'text', value: '...' }
           stmt.args = args.map(arg => {
+            // Check for null first (typeof null === 'object' in JavaScript!)
+            if (arg === null || arg === undefined) {
+              return { type: 'null' };
+            }
+            // Check if already typed
             if (typeof arg === 'object' && arg.type && arg.value !== undefined) {
               // Already typed
               return arg;
@@ -95,8 +100,6 @@ class TursoDBService {
               return { type: Number.isInteger(arg) ? 'integer' : 'float', value: arg };
             } else if (typeof arg === 'boolean') {
               return { type: 'integer', value: arg ? 1 : 0 };
-            } else if (arg === null) {
-              return { type: 'null' };
             } else {
               // Default to text for strings and everything else
               return { type: 'text', value: String(arg) };
@@ -158,6 +161,19 @@ class TursoDBService {
           }
           
           throw new Error('Invalid response from database');
+        }
+        
+        // Check if the first result has an error
+        if (result.results[0] && result.results[0].type === 'error') {
+          const errorMsg = result.results[0].error?.message || 'Unknown database error';
+          console.error('[TursoDBService] Database error:', errorMsg);
+          throw new Error(errorMsg);
+        }
+        
+        // Validate nested response structure
+        if (!result.results[0] || !result.results[0].response) {
+          console.error('[TursoDBService] Missing response in result:', result.results[0]);
+          throw new Error('Invalid response structure: missing response object');
         }
         
         // Success - return the first result (the execute result, not the close result)
@@ -259,9 +275,91 @@ class TursoDBService {
       
       console.log('[TursoDBService] ✅ Database schema setup complete');
       
+      // Run migrations to add missing columns to existing tables
+      await this.runMigrations();
+      
     } catch (error) {
       console.error('[TursoDBService] Schema creation failed:', error);
       throw new Error('Failed to create database schema: ' + error.message);
+    }
+  }
+  
+  /**
+   * Runs database migrations to add missing columns to existing tables
+   * @returns {Promise<void>}
+   */
+  async runMigrations() {
+    try {
+      console.log('[TursoDBService] Running database migrations...');
+      
+      // Check if users table exists
+      try {
+        const tableCheckResult = await this._executeHttp(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        );
+        
+        if (!tableCheckResult.results[0] || !tableCheckResult.results[0].response || !tableCheckResult.results[0].response.result) {
+          console.log('[TursoDBService] Could not check table existence, skipping migrations');
+          return;
+        }
+        
+        const tableExists = tableCheckResult.results[0].response.result.rows.length > 0;
+        
+        if (!tableExists) {
+          console.log('[TursoDBService] Users table does not exist yet, skipping migrations');
+          return;
+        }
+      } catch (error) {
+        console.error('[TursoDBService] Error checking table existence:', error);
+        return;
+      }
+      
+      // Get current table schema
+      const schemaResult = await this._executeHttp('PRAGMA table_info(users)');
+      
+      if (!schemaResult.results[0] || !schemaResult.results[0].response || !schemaResult.results[0].response.result) {
+        console.log('[TursoDBService] Could not get table schema, skipping migrations');
+        return;
+      }
+      
+      const columns = schemaResult.results[0].response.result.rows;
+      const columnNames = columns.map(col => {
+        // Each column is an array: [cid, name, type, notnull, dflt_value, pk]
+        // We need the name which is at index 1
+        const nameCell = col[1];
+        return typeof nameCell === 'object' && nameCell.value !== undefined ? nameCell.value : nameCell;
+      });
+      
+      console.log('[TursoDBService] Existing columns:', columnNames);
+      
+      // List of columns that should exist with their definitions
+      const requiredColumns = [
+        { name: 'dob', definition: 'TEXT DEFAULT NULL' },
+        { name: 'gender', definition: "TEXT DEFAULT NULL" },
+        { name: 'virtual_account_number', definition: 'TEXT DEFAULT NULL' },
+        { name: 'bank_code', definition: 'TEXT DEFAULT NULL' }
+      ];
+      
+      // Add missing columns
+      for (const column of requiredColumns) {
+        if (!columnNames.includes(column.name)) {
+          console.log(`[TursoDBService] Adding missing column: ${column.name}`);
+          try {
+            await this._executeHttp(`ALTER TABLE users ADD COLUMN ${column.name} ${column.definition}`);
+            console.log(`[TursoDBService] ✅ Added column: ${column.name}`);
+          } catch (error) {
+            console.error(`[TursoDBService] Failed to add column ${column.name}:`, error);
+            // Continue with other columns even if one fails
+          }
+        }
+      }
+      
+      console.log('[TursoDBService] ✅ Migrations complete');
+      
+    } catch (error) {
+      console.error('[TursoDBService] Migration failed:', error);
+      // Don't throw - migrations are best-effort
+      console.log('[TursoDBService] Continuing despite migration errors');
     }
   }
   
@@ -408,6 +506,22 @@ class TursoDBService {
       
       const result = await this._executeHttp(sql, args);
       
+      // Validate response structure
+      if (!result || !result.results || !result.results[0]) {
+        console.error('[TursoDBService] Invalid result structure:', result);
+        throw new Error('Invalid response from database: missing results array');
+      }
+      
+      if (!result.results[0].response) {
+        console.error('[TursoDBService] Invalid result structure - no response:', result.results[0]);
+        throw new Error('Invalid response from database: missing response object');
+      }
+      
+      if (!result.results[0].response.result) {
+        console.error('[TursoDBService] Invalid result structure - no result:', result.results[0].response);
+        throw new Error('Invalid response from database: missing result object');
+      }
+      
       const executeResult = result.results[0].response.result;
       const lastInsertRowid = executeResult.last_insert_rowid;
       console.log('[TursoDBService] ✅ User saved successfully. ID:', lastInsertRowid);
@@ -511,6 +625,207 @@ class TursoDBService {
       }
       
       throw new Error('Database query failed: ' + error.message);
+    }
+  }
+  
+  /**
+   * Creates the escrow database schema (transactions, disputes, trust_scores, etc.)
+   * @returns {Promise<void>}
+   */
+  async createEscrowSchema() {
+    try {
+      if (!this.connected) {
+        throw new Error('Database not connected. Call connect() first.');
+      }
+      
+      console.log('[TursoDBService] Creating escrow database schema...');
+      
+      // Create transactions table
+      const createTransactionsTableSql = `
+        CREATE TABLE IF NOT EXISTS transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transaction_id TEXT UNIQUE NOT NULL,
+          seller_id INTEGER NOT NULL,
+          buyer_id INTEGER,
+          item_description TEXT NOT NULL,
+          price REAL NOT NULL CHECK(price >= 100 AND price <= 10000000),
+          delivery_timeline_days INTEGER NOT NULL CHECK(delivery_timeline_days BETWEEN 1 AND 90),
+          inspection_window_days INTEGER NOT NULL CHECK(inspection_window_days BETWEEN 1 AND 14),
+          state TEXT NOT NULL CHECK(state IN ('Created', 'Funded_Locked', 'In_Transit', 'Disputed', 'Completed')),
+          risk_score REAL,
+          ai_verdict TEXT CHECK(ai_verdict IN ('pass', 'fail')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          funded_at DATETIME,
+          shipped_at DATETIME,
+          completed_at DATETIME,
+          
+          FOREIGN KEY (seller_id) REFERENCES users(id),
+          FOREIGN KEY (buyer_id) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createTransactionsTableSql);
+      console.log('[TursoDBService] ✅ Transactions table created');
+      
+      // Create indexes for transactions table
+      const transactionIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_transaction_id ON transactions(transaction_id)',
+        'CREATE INDEX IF NOT EXISTS idx_seller_id ON transactions(seller_id)',
+        'CREATE INDEX IF NOT EXISTS idx_buyer_id ON transactions(buyer_id)',
+        'CREATE INDEX IF NOT EXISTS idx_state ON transactions(state)',
+        'CREATE INDEX IF NOT EXISTS idx_created_at ON transactions(created_at)'
+      ];
+      
+      for (const indexSql of transactionIndexes) {
+        try {
+          await this._executeHttp(indexSql);
+        } catch (e) {
+          console.log('[TursoDBService] Index already exists:', e.message);
+        }
+      }
+      console.log('[TursoDBService] ✅ Transaction indexes created');
+      
+      // Create transaction_state_history table
+      const createStateHistoryTableSql = `
+        CREATE TABLE IF NOT EXISTS transaction_state_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transaction_id TEXT NOT NULL,
+          from_state TEXT,
+          to_state TEXT NOT NULL,
+          changed_by INTEGER NOT NULL,
+          changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          notes TEXT,
+          
+          FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+          FOREIGN KEY (changed_by) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createStateHistoryTableSql);
+      console.log('[TursoDBService] ✅ Transaction state history table created');
+      
+      // Create indexes for state history table
+      const stateHistoryIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_history_transaction_id ON transaction_state_history(transaction_id)',
+        'CREATE INDEX IF NOT EXISTS idx_history_changed_at ON transaction_state_history(changed_at)'
+      ];
+      
+      for (const indexSql of stateHistoryIndexes) {
+        try {
+          await this._executeHttp(indexSql);
+        } catch (e) {
+          console.log('[TursoDBService] Index already exists:', e.message);
+        }
+      }
+      console.log('[TursoDBService] ✅ State history indexes created');
+      
+      // Create disputes table
+      const createDisputesTableSql = `
+        CREATE TABLE IF NOT EXISTS disputes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transaction_id TEXT NOT NULL UNIQUE,
+          raised_by INTEGER NOT NULL,
+          description TEXT NOT NULL,
+          photo_urls TEXT,
+          ai_resolution TEXT,
+          ai_confidence REAL,
+          manual_resolution TEXT,
+          resolved_at DATETIME,
+          resolution_type TEXT CHECK(resolution_type IN ('automated', 'ai_assisted', 'manual')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          
+          FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+          FOREIGN KEY (raised_by) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createDisputesTableSql);
+      console.log('[TursoDBService] ✅ Disputes table created');
+      
+      // Create indexes for disputes table
+      const disputeIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_dispute_transaction_id ON disputes(transaction_id)',
+        'CREATE INDEX IF NOT EXISTS idx_dispute_created_at ON disputes(created_at)'
+      ];
+      
+      for (const indexSql of disputeIndexes) {
+        try {
+          await this._executeHttp(indexSql);
+        } catch (e) {
+          console.log('[TursoDBService] Index already exists:', e.message);
+        }
+      }
+      console.log('[TursoDBService] ✅ Dispute indexes created');
+      
+      // Create trust_scores table
+      const createTrustScoresTableSql = `
+        CREATE TABLE IF NOT EXISTS trust_scores (
+          user_id INTEGER PRIMARY KEY,
+          score REAL NOT NULL CHECK(score BETWEEN 1 AND 100),
+          total_transactions INTEGER DEFAULT 0,
+          successful_transactions INTEGER DEFAULT 0,
+          disputed_transactions INTEGER DEFAULT 0,
+          last_calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createTrustScoresTableSql);
+      console.log('[TursoDBService] ✅ Trust scores table created');
+      
+      // Create index for trust_scores table
+      try {
+        await this._executeHttp('CREATE INDEX IF NOT EXISTS idx_trust_score ON trust_scores(score)');
+      } catch (e) {
+        console.log('[TursoDBService] Trust score index already exists');
+      }
+      console.log('[TursoDBService] ✅ Trust score index created');
+      
+      // Create ai_risk_logs table
+      const createAIRiskLogsTableSql = `
+        CREATE TABLE IF NOT EXISTS ai_risk_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transaction_id TEXT NOT NULL,
+          user_id INTEGER NOT NULL,
+          risk_score REAL NOT NULL,
+          verdict TEXT NOT NULL,
+          anomaly_indicators TEXT,
+          features TEXT NOT NULL,
+          model_version TEXT,
+          response_time_ms INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          
+          FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createAIRiskLogsTableSql);
+      console.log('[TursoDBService] ✅ AI risk logs table created');
+      
+      // Create indexes for ai_risk_logs table
+      const aiRiskLogIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_risk_log_transaction_id ON ai_risk_logs(transaction_id)',
+        'CREATE INDEX IF NOT EXISTS idx_risk_log_user_id ON ai_risk_logs(user_id)',
+        'CREATE INDEX IF NOT EXISTS idx_risk_log_created_at ON ai_risk_logs(created_at)'
+      ];
+      
+      for (const indexSql of aiRiskLogIndexes) {
+        try {
+          await this._executeHttp(indexSql);
+        } catch (e) {
+          console.log('[TursoDBService] Index already exists:', e.message);
+        }
+      }
+      console.log('[TursoDBService] ✅ AI risk log indexes created');
+      
+      console.log('[TursoDBService] ✅ Escrow database schema setup complete');
+      
+    } catch (error) {
+      console.error('[TursoDBService] Escrow schema creation failed:', error);
+      throw new Error('Failed to create escrow database schema: ' + error.message);
     }
   }
   

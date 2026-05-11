@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BalanceService Test - ScrowPay</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    h1 {
+      color: #1c1c1c;
+      border-bottom: 3px solid #caff04;
+      padding-bottom: 10px;
+    }
+    
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-section h2 {
+      color: #1c1c1c;
+      margin-top: 0;
+    }
+    
+    button {
+      background: #caff04;
+      color: #1c1c1c;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      margin: 5px;
+    }
+    
+    button:hover {
+      background: #b8e600;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .result {
+      background: #f9f9f9;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border-left: 4px solid #caff04;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .error {
+      border-left-color: #ff6b6b;
+      background: #fff5f5;
+    }
+    
+    .success {
+      border-left-color: #51cf66;
+      background: #f0fff4;
+    }
+    
+    .warning {
+      border-left-color: #ffd93d;
+      background: #fffbf0;
+    }
+    
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 300px;
+      margin: 5px;
+    }
+    
+    label {
+      display: inline-block;
+      width: 200px;
+      font-weight: bold;
+    }
+    
+    .input-group {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>BalanceService Test Suite</h1>
+  
+  <div class="test-section">
+    <h2>Configuration</h2>
+    <div class="input-group">
+      <label>User ID:</label>
+      <input type="number" id="userId" value="1" />
+    </div>
+    <div class="input-group">
+      <label>Virtual Account Number:</label>
+      <input type="text" id="virtualAccountNumber" value="1234567890" />
+    </div>
+    <button onclick="initializeService()">Initialize Service</button>
+    <div id="initResult"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 1: Get Available Balance</h2>
+    <p>Tests fetching available balance from Squad API with caching</p>
+    <button onclick="testGetAvailableBalance()">Run Test</button>
+    <div id="test1Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 2: Get Locked Balance</h2>
+    <p>Tests calculating locked balance from Turso DB</p>
+    <button onclick="testGetLockedBalance()">Run Test</button>
+    <div id="test2Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 3: Get Both Balances (Parallel)</h2>
+    <p>Tests fetching both balances in parallel and validating invariant</p>
+    <button onclick="testGetBalances()">Run Test</button>
+    <div id="test3Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 4: Cache Validation</h2>
+    <p>Tests 30-second cache TTL for Squad API responses</p>
+    <button onclick="testCacheValidation()">Run Test</button>
+    <div id="test4Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 5: Balance Invariant Validation</h2>
+    <p>Tests that available + locked = total</p>
+    <button onclick="testBalanceInvariant()">Run Test</button>
+    <div id="test5Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 6: Currency Formatting</h2>
+    <p>Tests Nigerian Naira formatting with 2 decimal places</p>
+    <button onclick="testCurrencyFormatting()">Run Test</button>
+    <div id="test6Result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test 7: Cache Clear</h2>
+    <p>Tests clearing the balance cache</p>
+    <button onclick="testCacheClear()">Run Test</button>
+    <div id="test7Result"></div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="turso-db-service.js"></script>
+  <script src="squad-api-service.js"></script>
+  <script src="BalanceService.js"></script>
+  
+  <script>
+    let balanceService = null;
+    
+    function displayResult(elementId, message, type = 'result') {
+      const element = document.getElementById(elementId);
+      element.className = `result ${type}`;
+      element.textContent = message;
+    }
+    
+    function initializeService() {
+      try {
+        displayResult('initResult', 'Initializing BalanceService...', 'result');
+        
+        // Validate configuration
+        if (!CONFIG.validate()) {
+          displayResult('initResult', 'Configuration validation failed. Check console for details.', 'error');
+          return;
+        }
+        
+        // Create BalanceService instance
+        balanceService = new BalanceService(CONFIG);
+        
+        displayResult('initResult', 'BalanceService initialized successfully!\n\nConfiguration:\n' + JSON.stringify({
+          turso: { databaseUrl: CONFIG.turso.databaseUrl },
+          squad: { environment: CONFIG.squad.environment }
+        }, null, 2), 'success');
+        
+      } catch (error) {
+        displayResult('initResult', 'Initialization failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testGetAvailableBalance() {
+      if (!balanceService) {
+        displayResult('test1Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test1Result', 'Fetching available balance...', 'result');
+        
+        const virtualAccountNumber = document.getElementById('virtualAccountNumber').value;
+        const result = await balanceService.getAvailableBalance(virtualAccountNumber);
+        
+        const resultType = result.success ? 'success' : 'error';
+        displayResult('test1Result', 'Available Balance Result:\n' + JSON.stringify(result, null, 2), resultType);
+        
+      } catch (error) {
+        displayResult('test1Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testGetLockedBalance() {
+      if (!balanceService) {
+        displayResult('test2Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test2Result', 'Calculating locked balance...', 'result');
+        
+        const userId = parseInt(document.getElementById('userId').value);
+        const result = await balanceService.getLockedBalance(userId);
+        
+        const resultType = result.success ? 'success' : 'error';
+        displayResult('test2Result', 'Locked Balance Result:\n' + JSON.stringify(result, null, 2), resultType);
+        
+      } catch (error) {
+        displayResult('test2Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testGetBalances() {
+      if (!balanceService) {
+        displayResult('test3Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test3Result', 'Fetching both balances in parallel...', 'result');
+        
+        const userId = parseInt(document.getElementById('userId').value);
+        const virtualAccountNumber = document.getElementById('virtualAccountNumber').value;
+        
+        const result = await balanceService.getBalances(userId, virtualAccountNumber);
+        
+        let resultType = 'success';
+        if (!result.success) {
+          resultType = 'error';
+        } else if (!result.invariantValid) {
+          resultType = 'warning';
+        }
+        
+        displayResult('test3Result', 'Balances Result:\n' + JSON.stringify(result, null, 2), resultType);
+        
+      } catch (error) {
+        displayResult('test3Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCacheValidation() {
+      if (!balanceService) {
+        displayResult('test4Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test4Result', 'Testing cache validation...', 'result');
+        
+        const virtualAccountNumber = document.getElementById('virtualAccountNumber').value;
+        
+        // First call - should fetch from API
+        displayResult('test4Result', 'Call 1: Fetching from API...', 'result');
+        const result1 = await balanceService.getAvailableBalance(virtualAccountNumber);
+        
+        // Second call - should use cache
+        displayResult('test4Result', 'Call 1 complete. Call 2: Should use cache...', 'result');
+        const result2 = await balanceService.getAvailableBalance(virtualAccountNumber);
+        
+        const cacheWorking = result1.cached === false && result2.cached === true;
+        
+        const message = `Cache Test Results:
+        
+Call 1 (Fresh):
+${JSON.stringify(result1, null, 2)}
+
+Call 2 (Cached):
+${JSON.stringify(result2, null, 2)}
+
+Cache Working: ${cacheWorking ? 'YES ✓' : 'NO ✗'}`;
+        
+        displayResult('test4Result', message, cacheWorking ? 'success' : 'warning');
+        
+      } catch (error) {
+        displayResult('test4Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testBalanceInvariant() {
+      if (!balanceService) {
+        displayResult('test5Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test5Result', 'Testing balance invariant...', 'result');
+        
+        // Test with various balance combinations
+        const testCases = [
+          { available: 1000, locked: 500, total: 1500 },
+          { available: 0, locked: 0, total: 0 },
+          { available: 1234.56, locked: 789.44, total: 2024.00 },
+          { available: 1000, locked: 500, total: 1600 }, // Invalid
+        ];
+        
+        const results = testCases.map(tc => {
+          const valid = balanceService.validateBalanceInvariant(tc.available, tc.locked, tc.total);
+          return {
+            ...tc,
+            valid,
+            expected: tc.available + tc.locked === tc.total
+          };
+        });
+        
+        const allCorrect = results.every(r => r.valid === r.expected);
+        
+        const message = `Balance Invariant Test Results:
+
+${results.map((r, i) => `Test Case ${i + 1}:
+  Available: ₦${r.available}
+  Locked: ₦${r.locked}
+  Total: ₦${r.total}
+  Valid: ${r.valid}
+  Expected: ${r.expected}
+  ${r.valid === r.expected ? '✓ PASS' : '✗ FAIL'}`).join('\n\n')}
+
+Overall: ${allCorrect ? 'ALL TESTS PASSED ✓' : 'SOME TESTS FAILED ✗'}`;
+        
+        displayResult('test5Result', message, allCorrect ? 'success' : 'error');
+        
+      } catch (error) {
+        displayResult('test5Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCurrencyFormatting() {
+      if (!balanceService) {
+        displayResult('test6Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test6Result', 'Testing currency formatting...', 'result');
+        
+        const testCases = [
+          0,
+          0.1,
+          1,
+          100,
+          1234.56,
+          1000000,
+          1000000.999,
+          9999999.99
+        ];
+        
+        const results = testCases.map(amount => ({
+          input: amount,
+          output: balanceService.formatBalance(amount),
+          hasNairaSymbol: balanceService.formatBalance(amount).startsWith('₦'),
+          hasTwoDecimals: /\.\d{2}$/.test(balanceService.formatBalance(amount))
+        }));
+        
+        const allValid = results.every(r => r.hasNairaSymbol && r.hasTwoDecimals);
+        
+        const message = `Currency Formatting Test Results:
+
+${results.map(r => `Input: ${r.input}
+Output: ${r.output}
+Has ₦ symbol: ${r.hasNairaSymbol ? '✓' : '✗'}
+Has 2 decimals: ${r.hasTwoDecimals ? '✓' : '✗'}`).join('\n\n')}
+
+Overall: ${allValid ? 'ALL TESTS PASSED ✓' : 'SOME TESTS FAILED ✗'}`;
+        
+        displayResult('test6Result', message, allValid ? 'success' : 'error');
+        
+      } catch (error) {
+        displayResult('test6Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    async function testCacheClear() {
+      if (!balanceService) {
+        displayResult('test7Result', 'Please initialize the service first', 'error');
+        return;
+      }
+      
+      try {
+        displayResult('test7Result', 'Testing cache clear...', 'result');
+        
+        const virtualAccountNumber = document.getElementById('virtualAccountNumber').value;
+        
+        // Fetch to populate cache
+        await balanceService.getAvailableBalance(virtualAccountNumber);
+        
+        const cacheBeforeClear = {
+          availableBalance: balanceService.cache.availableBalance,
+          timestamp: balanceService.cache.timestamp,
+          virtualAccountNumber: balanceService.cache.virtualAccountNumber
+        };
+        
+        // Clear cache
+        balanceService.clearCache();
+        
+        const cacheAfterClear = {
+          availableBalance: balanceService.cache.availableBalance,
+          timestamp: balanceService.cache.timestamp,
+          virtualAccountNumber: balanceService.cache.virtualAccountNumber
+        };
+        
+        const clearWorked = cacheAfterClear.availableBalance === null && 
+                           cacheAfterClear.timestamp === null &&
+                           cacheAfterClear.virtualAccountNumber === null;
+        
+        const message = `Cache Clear Test Results:
+
+Before Clear:
+${JSON.stringify(cacheBeforeClear, null, 2)}
+
+After Clear:
+${JSON.stringify(cacheAfterClear, null, 2)}
+
+Cache Cleared: ${clearWorked ? 'YES ✓' : 'NO ✗'}`;
+        
+        displayResult('test7Result', message, clearWorked ? 'success' : 'error');
+        
+      } catch (error) {
+        displayResult('test7Result', 'Test failed:\n' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    // Auto-initialize on page load
+    window.addEventListener('load', () => {
+      console.log('Page loaded, ready for testing');
+    });
+  </script>
+</body>
+</html>

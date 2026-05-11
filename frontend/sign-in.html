@@ -191,6 +191,7 @@
   <!-- Services -->
   <script src="turso-db-service.js"></script>
   <script src="pin-service.js?v=2"></script>
+  <script src="SessionService.js"></script>
   
   <!-- JavaScript -->
   <script>
@@ -363,6 +364,14 @@
       window.CONFIG.turso.authToken
     );
     
+    // Initialize Session Service
+    const sessionService = new SessionService({
+      turso: {
+        databaseUrl: window.CONFIG.turso.databaseUrl,
+        authToken: window.CONFIG.turso.authToken
+      }
+    });
+    
     let dbConnected = false;
     
     // Connect to database
@@ -374,6 +383,34 @@
       .catch(error => {
         console.error('[Sign In] Database connection failed:', error);
       });
+    
+    // Check for redirect reason and display message
+    const redirectReason = sessionStorage.getItem('redirect_reason');
+    if (redirectReason) {
+      sessionStorage.removeItem('redirect_reason');
+      
+      let message = '';
+      switch (redirectReason) {
+        case 'session_expired':
+          message = 'Your session has expired. Please sign in again.';
+          break;
+        case 'inactivity_timeout':
+          message = 'You were signed out due to inactivity. Please sign in again.';
+          break;
+        case 'logout':
+          message = 'You have been signed out successfully.';
+          break;
+        case 'no_session':
+          message = 'Please sign in to access the dashboard.';
+          break;
+        default:
+          message = 'Please sign in to continue.';
+      }
+      
+      showModal('Session Expired', message, [
+        { text: 'OK', primary: true, onClick: () => {} }
+      ]);
+    }
     
     // Initialize UI
     const phoneInput = document.getElementById('phone-input');
@@ -478,9 +515,17 @@
           return;
         }
         
-        // Success! Store user session and redirect to dashboard
-        sessionStorage.setItem('user', JSON.stringify(user));
-        sessionStorage.setItem('isLoggedIn', 'true');
+        // Success! Create session and redirect to dashboard
+        const sessionResult = sessionService.createSession(user);
+        
+        if (!sessionResult.success) {
+          showModal('Error', 'Failed to create session. Please try again.', [
+            { text: 'OK', primary: true, onClick: () => {} }
+          ]);
+          signinBtn.disabled = false;
+          signinBtn.textContent = 'Sign In';
+          return;
+        }
         
         showModal('Welcome Back!', `Welcome back, ${user.first_name}! Redirecting to your dashboard...`, [
           { text: 'Continue', primary: true, onClick: () => {
