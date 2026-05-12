@@ -830,6 +830,77 @@ class TursoDBService {
   }
   
   /**
+   * Automatically initializes all database schemas (users + escrow)
+   * Detects missing tables and creates them automatically
+   * Safe to call multiple times - idempotent operation
+   * @returns {Promise<void>}
+   */
+  async initializeAllSchemas() {
+    try {
+      if (!this.connected) {
+        throw new Error('Database not connected. Call connect() first.');
+      }
+      
+      console.log('[TursoDBService] 🔍 Checking database schemas...');
+      
+      // Get list of existing tables
+      const result = await this._executeHttp(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' 
+        ORDER BY name
+      `);
+      
+      const existingTables = [];
+      if (result.results[0] && result.results[0].response && result.results[0].response.result) {
+        const rows = result.results[0].response.result.rows;
+        rows.forEach(row => {
+          const tableName = row[0];
+          const name = typeof tableName === 'object' && tableName.value !== undefined ? tableName.value : tableName;
+          existingTables.push(name);
+        });
+      }
+      
+      console.log('[TursoDBService] Existing tables:', existingTables);
+      
+      // Check if user schema exists
+      const hasUserSchema = existingTables.includes('users');
+      
+      // Check if escrow schema exists (check for key tables)
+      const hasEscrowSchema = existingTables.includes('transactions') && 
+                              existingTables.includes('transaction_state_history') &&
+                              existingTables.includes('disputes') &&
+                              existingTables.includes('trust_scores') &&
+                              existingTables.includes('ai_risk_logs');
+      
+      // Create user schema if missing
+      if (!hasUserSchema) {
+        console.log('[TursoDBService] 📦 User schema not found - creating...');
+        await this.createSchema();
+        console.log('[TursoDBService] ✅ User schema created');
+      } else {
+        console.log('[TursoDBService] ✅ User schema exists');
+        // Run migrations to ensure all columns exist
+        await this.runMigrations();
+      }
+      
+      // Create escrow schema if missing
+      if (!hasEscrowSchema) {
+        console.log('[TursoDBService] 📦 Escrow schema not found - creating...');
+        await this.createEscrowSchema();
+        console.log('[TursoDBService] ✅ Escrow schema created');
+      } else {
+        console.log('[TursoDBService] ✅ Escrow schema exists');
+      }
+      
+      console.log('[TursoDBService] 🎉 All database schemas ready!');
+      
+    } catch (error) {
+      console.error('[TursoDBService] ❌ Schema initialization failed:', error);
+      throw new Error('Failed to initialize database schemas: ' + error.message);
+    }
+  }
+  
+  /**
    * Disconnects from the database (cleanup)
    * @returns {Promise<void>}
    */

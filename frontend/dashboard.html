@@ -76,6 +76,19 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap');
     
+    :root {
+      --green: #caff04;
+      --dark: #111111;
+      --card-bg: #ffffff;
+      --page-bg: #f2f2f0;
+      --text: #111111;
+      --muted: #888888;
+      --border: rgba(0,0,0,0.08);
+      --radius: 20px;
+      --radius-sm: 12px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+    }
+    
     body {
       font-family: 'DM Sans', sans-serif;
       background-color: #f2f2f0;
@@ -229,77 +242,153 @@
         padding-top: 20px;
         border-top: 1px solid rgba(255,255,255,0.1);
       }
+      
+      /* Quick Actions Mobile */
+      .actions-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      .action-btn { padding: 16px 6px; gap: 7px; }
+      .action-icon { width: 36px; height: 36px; border-radius: 10px; }
+      .action-icon svg { width: 18px; height: 18px; }
+      .action-label { font-size: 11px; }
+      
+      /* Pipeline Mobile */
+      .pipeline-steps { gap: 0; }
+      .pipeline-step:not(:last-child)::after { width: 85%; }
     }
 
     @media (max-width: 420px) {
       .balance-amount { font-size: 30px; }
+      .actions-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
-    /* Toast Notifications */
-    .toast {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      min-width: 300px;
-      max-width: 500px;
-      padding: 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
-      animation: slideIn 0.3s ease-out;
+    /* ========== QUICK ACTIONS ========== */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      animation: slideUp 0.5s 0.1s ease both;
+    }
+
+    .action-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'DM Sans', sans-serif;
+      position: relative;
+    }
+
+    .action-btn:hover {
+      background: var(--green);
+      border: 2px solid #111111;
+      transform: translateY(-2px);
     }
     
-    .toast-error {
-      background: #ff6b6b;
-      color: white;
+    .action-btn:active {
+      transform: translateY(0) scale(0.98);
     }
-    
-    .toast-success {
-      background: #caff04;
-      color: #1c1c1c;
-    }
-    
-    .toast-warning {
-      background: #ffd93d;
-      color: #1c1c1c;
-    }
-    
-    .toast-content {
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      background: #f5f5f3;
+      border-radius: 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
+      transition: background 0.2s;
+      pointer-events: none;
     }
-    
-    .toast-icon {
-      font-size: 24px;
+    .action-icon svg { width: 22px; height: 22px; stroke: #111; fill: none; pointer-events: none; }
+
+    .action-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      text-align: center;
+      pointer-events: none;
     }
-    
-    .toast-message {
+
+    /* ========== ESCROW PIPELINE ========== */
+    .pipeline-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 28px;
+      animation: slideUp 0.5s 0.15s ease both;
+      margin-bottom: 0;
+    }
+
+    .pipeline-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 20px;
+    }
+
+    .pipeline-step {
       flex: 1;
-      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .pipeline-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 22px;
+      left: 60%;
+      width: 80%;
+      height: 2px;
+      background: #ebebeb;
+      z-index: 0;
+    }
+
+    .step-dot {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #f0f0ee;
+      border: 2px dashed #d0d0cc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+    .step-dot svg { width: 18px; height: 18px; stroke: #aaa; fill: none; }
+
+    .step-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #aaa;
+      text-align: center;
+      line-height: 1.3;
     }
     
-    .toast-close {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      padding: 0;
-      color: inherit;
+    /* ========== ACTIVE TRANSACTIONS ========== */
+    .transactions-section {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 28px;
+      animation: slideUp 0.5s 0.2s ease both;
     }
     
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    /* Modal Styles */
+    /* ========== MODAL STYLES ========== */
     .modal {
       display: none;
       position: fixed;
@@ -307,10 +396,12 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 1000;
       align-items: center;
       justify-content: center;
+      animation: fadeIn 0.2s ease;
     }
     
     .modal.active {
@@ -319,23 +410,150 @@
     
     .modal-content {
       background: white;
-      border-radius: 16px;
+      border-radius: 20px;
       max-width: 600px;
       width: 90%;
       max-height: 90vh;
       overflow-y: auto;
-      animation: modalSlideIn 0.3s ease-out;
+      animation: slideUp 0.3s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
     
-    @keyframes modalSlideIn {
-      from {
-        transform: translateY(-50px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    
+    .modal-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+    
+    .modal-close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f5f5f3;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .modal-close-btn:hover {
+      background: #e5e5e3;
+      transform: rotate(90deg);
+    }
+    .modal-close-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: #666;
+    }
+    
+    .modal-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      background: #fafafa;
+    }
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--green);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(202,255,4,0.1);
+    }
+    .modal-input::placeholder {
+      color: #aaa;
+    }
+    
+    .modal-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .modal-btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--dark);
+      color: var(--green);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-btn-primary:hover {
+      background: #222;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .modal-btn-primary:active {
+      transform: translateY(0);
+    }
+    .modal-btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .modal-btn-secondary {
+      width: 100%;
+      padding: 16px;
+      background: #f5f5f3;
+      color: var(--dark);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-btn-secondary:hover {
+      background: #e5e5e3;
+    }
+    
+    .modal-form-group {
+      margin-bottom: 20px;
+    }
+    
+    .modal-success-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .modal-success-icon svg {
+      width: 40px;
+      height: 40px;
+      stroke: var(--dark);
+      stroke-width: 3;
     }
     
     .error-text {
@@ -477,13 +695,6 @@
           <span class="font-medium text-white">Join Transaction</span>
         </button>
         
-        <button id="btn-view-history-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <span class="font-medium text-white">Transaction History</span>
-        </button>
-        
         <button id="btn-logout-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-red-900 bg-opacity-20 hover:bg-red-900 hover:bg-opacity-30 rounded-lg transition-colors text-left">
           <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -495,7 +706,7 @@
   </header>
   
   <!-- Main Content -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style="display: flex; flex-direction: column; gap: 20px;">
     
     <!-- Balance Display Section with Integrated Trust Score - Beautiful Design -->
     <div class="balance-card">
@@ -508,7 +719,7 @@
       <!-- Trust Score Section (Below Verified Badge, Top Right) -->
       <div style="position: absolute; top: 70px; right: 28px; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 12px;">
         <!-- Score Circle -->
-        <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #ffd93d;">
+        <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #caff04;">
           <div class="text-center">
             <div id="trust-score-value" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #111111; line-height: 1;">50</div>
             <div style="font-size: 9px; font-weight: 500; color: #111111; margin-top: 2px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">Trust</div>
@@ -518,7 +729,7 @@
         <!-- Trust Label -->
         <div style="text-align: center;">
           <div class="flex items-center justify-center gap-1">
-            <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #ffd93d;"></div>
+            <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #caff04;"></div>
             <span id="trust-score-label" style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);">Medium</span>
           </div>
         </div>
@@ -606,56 +817,81 @@
       </div>
     </div>
     
-    <!-- Quick Actions - Responsive & Touch-Friendly -->
-    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
-      <h2 class="text-xl sm:text-2xl font-bold text-brand-dark mb-4 sm:mb-6">Quick Actions</h2>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        
-        <!-- Touch-friendly buttons with min-height of 44px (Apple HIG) -->
-        <button id="btn-create-escrow" class="flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md min-h-[44px] active:scale-95">
-          <svg class="w-8 h-8 sm:w-12 sm:h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          <span class="font-semibold text-brand-dark text-sm sm:text-base text-center">Create Escrow</span>
+    <!-- Quick Actions - Sleek Design -->
+    <div>
+      <p class="section-title">Quick Actions</p>
+      <div class="actions-grid">
+
+        <button id="btn-create-escrow" class="action-btn">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </div>
+          <span class="action-label">Create Escrow</span>
         </button>
-        
-        <button id="btn-join-transaction" class="flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md min-h-[44px] active:scale-95">
-          <svg class="w-8 h-8 sm:w-12 sm:h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-          </svg>
-          <span class="font-semibold text-brand-dark text-sm sm:text-base text-center">Join Transaction</span>
+
+        <button id="btn-join-transaction" class="action-btn">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <span class="action-label">Join Transaction</span>
         </button>
-        
-        <button id="btn-add-funds" class="flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md min-h-[44px] active:scale-95">
-          <svg class="w-8 h-8 sm:w-12 sm:h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
-          </svg>
-          <span class="font-semibold text-brand-dark text-sm sm:text-base text-center">Add Funds</span>
+
+        <button id="btn-add-funds" class="action-btn">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <span class="action-label">Add Funds</span>
         </button>
-        
-        <button id="btn-withdraw-funds" class="flex flex-col items-center gap-2 sm:gap-3 p-4 sm:p-6 bg-brand-gray hover:bg-brand-green rounded-xl transition-all hover:shadow-md min-h-[44px] active:scale-95">
-          <svg class="w-8 h-8 sm:w-12 sm:h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-          </svg>
-          <span class="font-semibold text-brand-dark text-sm sm:text-base text-center">Withdraw Funds</span>
+
+        <button id="btn-withdraw-funds" class="action-btn">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          </div>
+          <span class="action-label">Withdraw Funds</span>
         </button>
-        
+
       </div>
-      
-      <!-- View Transaction History Button -->
-      <div class="mt-4">
-        <button id="btn-view-history" class="w-full flex items-center justify-center gap-3 p-3 sm:p-4 bg-brand-dark text-white hover:bg-opacity-90 rounded-xl transition-all hover:shadow-md min-h-[44px] active:scale-[0.98]">
-          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <span class="font-semibold text-sm sm:text-base">View Transaction History</span>
-        </button>
+    </div>
+
+    <!-- How Escrow Works -->
+    <div class="pipeline-card">
+      <p class="section-title">How Escrow Works</p>
+      <div class="pipeline-steps">
+
+        <div class="pipeline-step">
+          <div class="step-dot">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </div>
+          <span class="step-label">Create<br>Deal</span>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-dot">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <span class="step-label">Fund<br>Escrow</span>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-dot">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <span class="step-label">Confirm<br>Delivery</span>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-dot">
+            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <span class="step-label">Funds<br>Released</span>
+        </div>
+
       </div>
     </div>
     
     <!-- Active Transactions - Responsive Design -->
-    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8">
-      <h2 class="text-xl sm:text-2xl font-bold text-brand-dark mb-4 sm:mb-6">Active Transactions</h2>
+    <div class="transactions-section">
+      <h2 class="section-title">Active Transactions</h2>
       <div id="active-transactions-container">
         <!-- Loading skeleton for better perceived performance -->
         <div id="transactions-loading" class="space-y-4">
@@ -695,10 +931,10 @@
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Create Escrow Transaction</h2>
-          <button id="btn-close-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="modal-header">
+          <h2 class="modal-title">Create Escrow</h2>
+          <button id="btn-close-modal" class="modal-close-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -707,25 +943,26 @@
         <!-- Form -->
         <form id="create-escrow-form">
           <!-- Item Description -->
-          <div class="mb-6">
-            <label for="item-description" class="block text-sm font-medium text-brand-dark mb-2">
-              Item Description <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="item-description" class="modal-label">
+              Item Description <span style="color: #ff6b6b;">*</span>
             </label>
             <textarea
               id="item-description"
               name="itemDescription"
               rows="3"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Describe the goods or services (minimum 10 characters)"
               required
+              style="resize: vertical; min-height: 80px;"
             ></textarea>
             <p id="error-item-description" class="error-text hidden"></p>
           </div>
           
           <!-- Price -->
-          <div class="mb-6">
-            <label for="price" class="block text-sm font-medium text-brand-dark mb-2">
-              Price (₦) <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="price" class="modal-label">
+              Price (₦) <span style="color: #ff6b6b;">*</span>
             </label>
             <input
               type="number"
@@ -734,7 +971,7 @@
               min="100"
               max="10000000"
               step="0.01"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Enter amount (₦100 - ₦10,000,000)"
               required
             />
@@ -742,9 +979,9 @@
           </div>
           
           <!-- Delivery Timeline -->
-          <div class="mb-6">
-            <label for="delivery-timeline" class="block text-sm font-medium text-brand-dark mb-2">
-              Delivery Timeline (days) <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="delivery-timeline" class="modal-label">
+              Delivery Timeline (days) <span style="color: #ff6b6b;">*</span>
             </label>
             <input
               type="number"
@@ -752,7 +989,7 @@
               name="deliveryTimelineDays"
               min="1"
               max="90"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Enter delivery time (1-90 days)"
               required
             />
@@ -760,9 +997,9 @@
           </div>
           
           <!-- Inspection Window -->
-          <div class="mb-6">
-            <label for="inspection-window" class="block text-sm font-medium text-brand-dark mb-2">
-              Inspection Window (days) <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="inspection-window" class="modal-label">
+              Inspection Window (days) <span style="color: #ff6b6b;">*</span>
             </label>
             <input
               type="number"
@@ -770,7 +1007,7 @@
               name="inspectionWindowDays"
               min="1"
               max="14"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Enter inspection period (1-14 days)"
               required
             />
@@ -778,18 +1015,18 @@
           </div>
           
           <!-- Form Actions -->
-          <div class="flex gap-4">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px;">
             <button
               type="button"
               id="btn-cancel"
-              class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
+              class="modal-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               id="btn-submit"
-              class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+              class="modal-btn-primary"
             >
               Create Transaction
             </button>
@@ -804,32 +1041,36 @@
     <div class="modal-content">
       <div class="p-8 text-center">
         <!-- Success Icon -->
-        <div class="w-20 h-20 bg-brand-green rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        <div class="modal-success-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
         
-        <h2 class="text-2xl font-bold text-brand-dark mb-4">Transaction Created!</h2>
-        <p class="text-brand-subtext mb-6">Your escrow transaction has been created successfully.</p>
+        <h2 class="modal-title" style="margin-bottom: 12px;">Transaction Created!</h2>
+        <p style="color: #888; font-size: 15px; margin-bottom: 28px;">Your escrow transaction has been created successfully.</p>
         
         <!-- Transaction ID Display -->
-        <div class="bg-brand-gray rounded-lg p-6 mb-6">
-          <p class="text-sm text-brand-subtext mb-2">Transaction ID</p>
-          <p id="transaction-id-display" class="text-xl font-mono font-bold text-brand-dark mb-4">TXN-XXXXXXXX</p>
+        <div style="background: #f5f5f3; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+          <p style="font-size: 12px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Transaction ID</p>
+          <p id="transaction-id-display" style="font-family: 'Syne', monospace; font-size: 20px; font-weight: 700; color: var(--dark); margin-bottom: 16px; word-break: break-all;">TXN-XXXXXXXX</p>
           <button
             id="btn-copy-transaction-id"
-            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            class="modal-btn-secondary"
+            style="width: auto; padding: 12px 24px; display: inline-flex; align-items: center; gap: 8px;"
           >
-            Copy Transaction ID
+            <svg style="width: 16px; height: 16px; stroke: var(--dark);" fill="none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            Copy ID
           </button>
         </div>
         
-        <p class="text-sm text-brand-subtext mb-6">Share this Transaction ID with the buyer to complete the escrow.</p>
+        <p style="font-size: 13px; color: #888; margin-bottom: 24px;">Share this Transaction ID with the buyer to complete the escrow.</p>
         
         <button
           id="btn-close-success-modal"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+          class="modal-btn-primary"
         >
           Done
         </button>
@@ -842,32 +1083,34 @@
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Join Transaction</h2>
-          <button id="btn-close-join-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="modal-header">
+          <h2 class="modal-title">Join Transaction</h2>
+          <button id="btn-close-join-modal" class="modal-close-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
         
         <!-- Transaction ID Input -->
-        <div class="mb-6">
-          <label for="transaction-id-input" class="block text-sm font-medium text-brand-dark mb-2">
-            Transaction ID <span class="text-red-500">*</span>
+        <div class="modal-form-group">
+          <label for="transaction-id-input" class="modal-label">
+            Transaction ID <span style="color: #ff6b6b;">*</span>
           </label>
           <input
             type="text"
             id="transaction-id-input"
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+            class="modal-input"
             placeholder="Enter Transaction ID (e.g., TXN-xxxxx)"
+            style="font-family: 'Syne', monospace;"
           />
           <p id="error-transaction-id-input" class="error-text hidden"></p>
+          <p style="font-size: 12px; color: #888; margin-top: 6px;">Ask the seller for their Transaction ID to join this escrow.</p>
         </div>
         
         <button
           id="btn-lookup-transaction"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+          class="modal-btn-primary"
         >
           Lookup Transaction
         </button>
@@ -1000,18 +1243,18 @@
     <div class="modal-content">
       <div class="p-8 text-center">
         <!-- Success Icon -->
-        <div class="w-20 h-20 bg-brand-green rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        <div class="modal-success-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
         
-        <h2 class="text-2xl font-bold text-brand-dark mb-4">Transaction Funded!</h2>
-        <p class="text-brand-subtext mb-6">Your escrow transaction has been funded successfully. Funds are now locked and secure.</p>
+        <h2 class="modal-title" style="margin-bottom: 12px;">Transaction Funded!</h2>
+        <p style="color: #888; font-size: 15px; margin-bottom: 28px;">Your escrow transaction has been funded successfully. Funds are now locked and secure.</p>
         
         <button
           id="btn-close-funding-success-modal"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+          class="modal-btn-primary"
         >
           Done
         </button>
@@ -1177,18 +1420,18 @@
   <div id="action-success-modal" class="modal">
     <div class="modal-content">
       <div class="p-8 text-center">
-        <div class="w-20 h-20 bg-brand-green rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg class="w-12 h-12 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        <div class="modal-success-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
         
-        <h2 id="action-success-title" class="text-2xl font-bold text-brand-dark mb-4">Success!</h2>
-        <p id="action-success-message" class="text-brand-subtext mb-6">Action completed successfully.</p>
+        <h2 id="action-success-title" class="modal-title" style="margin-bottom: 12px;">Success!</h2>
+        <p id="action-success-message" style="color: #888; font-size: 15px; margin-bottom: 28px;">Action completed successfully.</p>
         
         <button
           id="btn-close-action-success-modal"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+          class="modal-btn-primary"
         >
           Done
         </button>
@@ -1295,74 +1538,62 @@
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Add Funds to Your Account</h2>
-          <button id="btn-close-add-funds-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="modal-header">
+          <h2 class="modal-title">Add Funds</h2>
+          <button id="btn-close-add-funds-modal" class="modal-close-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
         
         <!-- Instructions -->
-        <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-          <div class="flex items-start gap-3">
-            <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div class="flex-1">
-              <h3 class="font-semibold text-blue-900 mb-2">How to Add Funds</h3>
-              <p class="text-sm text-blue-800 mb-3">Transfer money to your ScrowPay virtual account using any Nigerian bank or mobile app.</p>
+        <p style="color: #888; font-size: 14px; margin-bottom: 24px; line-height: 1.5;">Transfer money to your virtual account using any Nigerian bank or mobile app.</p>
+        
+        <!-- Virtual Account Details - Compact -->
+        <div style="background: #f5f5f3; border-radius: 16px; padding: 24px; margin-bottom: 20px;">
+          <!-- Account Number -->
+          <div style="margin-bottom: 20px;">
+            <p class="modal-label" style="margin-bottom: 8px;">Account Number</p>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <p id="add-funds-account-number" style="font-family: 'Syne', monospace; font-size: 22px; font-weight: 700; color: var(--dark); flex: 1;">Loading...</p>
+              <button
+                id="btn-copy-account-number"
+                style="width: 40px; height: 40px; background: white; border: 1.5px solid #e0e0e0; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;"
+                title="Copy account number"
+                onmouseover="this.style.background='#f5f5f3'"
+                onmouseout="this.style.background='white'"
+              >
+                <svg style="width: 18px; height: 18px; stroke: #666;" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+              </button>
             </div>
           </div>
-        </div>
-        
-        <!-- Virtual Account Details -->
-        <div class="bg-brand-gray rounded-xl p-6 mb-6">
-          <h3 class="text-lg font-semibold text-brand-dark mb-4">Your Virtual Account Details</h3>
           
-          <div class="space-y-4">
+          <!-- Bank & Account Name - Side by Side -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div>
-              <p class="text-sm text-brand-subtext mb-1">Account Number</p>
-              <div class="flex items-center gap-3">
-                <p id="add-funds-account-number" class="text-2xl font-mono font-bold text-brand-dark">Loading...</p>
-                <button
-                  id="btn-copy-account-number"
-                  class="px-3 py-1 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                  title="Copy account number"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                  </svg>
-                </button>
-              </div>
+              <p class="modal-label" style="margin-bottom: 6px;">Bank</p>
+              <p style="font-size: 14px; font-weight: 600; color: var(--dark);">GTBank</p>
             </div>
-            
             <div>
-              <p class="text-sm text-brand-subtext mb-1">Bank Name</p>
-              <p class="text-lg font-semibold text-brand-dark">GTBank (Guaranty Trust Bank)</p>
-            </div>
-            
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Account Name</p>
-              <p id="add-funds-account-name" class="text-lg font-semibold text-brand-dark">Loading...</p>
+              <p class="modal-label" style="margin-bottom: 6px;">Account Name</p>
+              <p id="add-funds-account-name" style="font-size: 14px; font-weight: 600; color: var(--dark);">Loading...</p>
             </div>
           </div>
         </div>
         
-        <!-- Important Notes -->
-        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-          <h4 class="font-semibold text-yellow-900 mb-2">Important Notes:</h4>
-          <ul class="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-            <li>Funds typically reflect within 5-10 minutes</li>
-            <li>This account is unique to you and can receive payments from any Nigerian bank</li>
-            <li>Keep your account number safe and don't share it publicly</li>
-          </ul>
+        <!-- Compact Note -->
+        <div style="background: rgba(202,255,4,0.08); border: 1.5px solid rgba(202,255,4,0.2); border-radius: 12px; padding: 14px; margin-bottom: 24px;">
+          <p style="font-size: 12px; color: #666; line-height: 1.5;">
+            <strong style="color: var(--dark);">💡 Quick Tip:</strong> Funds reflect within 5-10 minutes. This account is unique to you.
+          </p>
         </div>
         
         <button
           id="btn-close-add-funds"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+          class="modal-btn-primary"
         >
           Done
         </button>
@@ -1375,35 +1606,37 @@
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Withdraw Funds</h2>
-          <button id="btn-close-withdraw-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="modal-header">
+          <h2 class="modal-title">Withdraw Funds</h2>
+          <button id="btn-close-withdraw-modal" class="modal-close-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
         
         <!-- Available Balance Display -->
-        <div class="bg-brand-gray rounded-xl p-6 mb-6">
-          <div class="flex items-center justify-between">
+        <div style="background: #f5f5f3; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
-              <p class="text-sm text-brand-subtext mb-1">Available Balance</p>
-              <p id="withdraw-available-balance" class="text-3xl font-bold text-brand-dark">₦0.00</p>
+              <p class="modal-label" style="margin-bottom: 8px;">Available Balance</p>
+              <p id="withdraw-available-balance" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: var(--dark);">₦0.00</p>
             </div>
-            <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
+            <div style="width: 56px; height: 56px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg style="width: 28px; height: 28px; stroke: var(--dark); stroke-width: 2;" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
           </div>
-          <p class="text-xs text-brand-subtext mt-2">Only available balance can be withdrawn. Locked funds in active transactions cannot be withdrawn.</p>
+          <p style="font-size: 12px; color: #888; margin-top: 12px; line-height: 1.5;">Only available balance can be withdrawn. Locked funds in active transactions cannot be withdrawn.</p>
         </div>
         
         <!-- Withdrawal Form -->
         <form id="withdraw-form">
           <!-- Bank Account Number -->
-          <div class="mb-6">
-            <label for="withdraw-account-number" class="block text-sm font-medium text-brand-dark mb-2">
-              Bank Account Number <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="withdraw-account-number" class="modal-label">
+              Bank Account Number <span style="color: #ff6b6b;">*</span>
             </label>
             <input
               type="text"
@@ -1411,7 +1644,7 @@
               name="accountNumber"
               maxlength="10"
               pattern="[0-9]{10}"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Enter 10-digit account number"
               required
             />
@@ -1419,14 +1652,14 @@
           </div>
           
           <!-- Bank Name -->
-          <div class="mb-6">
-            <label for="withdraw-bank-name" class="block text-sm font-medium text-brand-dark mb-2">
-              Bank Name <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="withdraw-bank-name" class="modal-label">
+              Bank Name <span style="color: #ff6b6b;">*</span>
             </label>
             <select
               id="withdraw-bank-name"
               name="bankName"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               required
             >
               <option value="">Select your bank</option>
@@ -1453,9 +1686,9 @@
           </div>
           
           <!-- Amount -->
-          <div class="mb-6">
-            <label for="withdraw-amount" class="block text-sm font-medium text-brand-dark mb-2">
-              Amount (₦) <span class="text-red-500">*</span>
+          <div class="modal-form-group">
+            <label for="withdraw-amount" class="modal-label">
+              Amount (₦) <span style="color: #ff6b6b;">*</span>
             </label>
             <input
               type="number"
@@ -1463,27 +1696,27 @@
               name="amount"
               min="100"
               step="0.01"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+              class="modal-input"
               placeholder="Enter amount to withdraw"
               required
             />
             <p id="error-withdraw-amount" class="error-text hidden"></p>
-            <p class="text-xs text-brand-subtext mt-1">Minimum withdrawal: ₦100</p>
+            <p style="font-size: 12px; color: #888; margin-top: 6px;">Minimum withdrawal: ₦100</p>
           </div>
           
           <!-- Form Actions -->
-          <div class="flex gap-4">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px;">
             <button
               type="button"
               id="btn-cancel-withdraw"
-              class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
+              class="modal-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               id="btn-submit-withdraw"
-              class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
+              class="modal-btn-primary"
             >
               Withdraw Funds
             </button>
@@ -2375,14 +2608,15 @@
         document.getElementById('trust-score-value').textContent = Math.round(score);
         
         // Update visual indicator (Requirement 2.6)
+        // Using brand green (#caff04) for consistent branding
         const circle = document.getElementById('trust-score-circle');
         const dot = document.getElementById('trust-score-indicator-dot');
         const label = document.getElementById('trust-score-label');
         
-        circle.style.backgroundColor = indicator.color;
-        dot.style.backgroundColor = indicator.color;
-        label.textContent = `${indicator.label} Trust`;
-        label.style.color = indicator.textColor;
+        circle.style.backgroundColor = '#caff04';
+        dot.style.backgroundColor = '#caff04';
+        label.textContent = indicator.label;
+        label.style.color = 'rgba(255,255,255,0.85)';
         
         // Update transaction counts
         document.getElementById('trust-score-total-txns').textContent = result.totalTransactions || 0;
@@ -2569,11 +2803,6 @@
         document.getElementById('btn-join-transaction').click();
       });
       
-      document.getElementById('btn-view-history-mobile').addEventListener('click', () => {
-        mobileMenu.classList.add('hidden');
-        document.getElementById('btn-view-history').click();
-      });
-      
       document.getElementById('btn-logout-mobile').addEventListener('click', () => {
         mobileMenu.classList.add('hidden');
         if (confirm('Are you sure you want to logout?')) {
@@ -2594,6 +2823,20 @@
           mobileMenu.classList.add('hidden');
         }
       });
+      
+      // ========================================
+      // INITIALIZE DATABASE SCHEMAS
+      // ========================================
+      console.log('[Dashboard] Initializing database schemas...');
+      try {
+        const tempDbService = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
+        await tempDbService.connect();
+        await tempDbService.initializeAllSchemas();
+        await tempDbService.disconnect();
+        console.log('[Dashboard] ✅ All database schemas ready');
+      } catch (schemaError) {
+        console.error('[Dashboard] ⚠️ Schema initialization warning:', schemaError);
+      }
       
       // ========================================
       // INITIALIZE SERVICES
@@ -2850,6 +3093,10 @@
       
       // ========================================
       // JOIN TRANSACTION & FUNDING FLOW
+      // ========================================
+      
+      // ========================================
+      // JOIN TRANSACTION FLOW
       // ========================================
       
       // Open Join Transaction Modal
