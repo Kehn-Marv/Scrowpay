@@ -1,0 +1,229 @@
+  <!-- Create Escrow Wizard Modal -->
+  <div id="create-escrow-modal" class="modal">
+    <div class="modal-content" style="max-width:640px">
+      <div class="p-6 sm:p-8">
+
+        <!-- Wizard Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-brand-subtext" id="wiz-step-label">Step 1 of 7</p>
+            <h2 class="text-xl font-bold text-brand-dark" id="wiz-step-title">Create Escrow</h2>
+          </div>
+          <button id="btn-close-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="w-full h-1.5 bg-gray-100 rounded-full mb-6">
+          <div id="wiz-progress" class="h-full bg-brand-green rounded-full transition-all duration-400" style="width:14%"></div>
+        </div>
+
+        <!-- AI Notice (contextual, shown only when needed) -->
+        <div id="wiz-ai-notice" class="hidden mb-4 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-xs text-amber-900 font-medium" id="wiz-ai-notice-text"></p>
+        </div>
+
+        <!-- STEP 1: Transaction Type -->
+        <div id="wiz-step-1" class="wiz-step">
+          <p class="text-sm text-brand-subtext mb-4">What are you creating escrow for?</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Physical Product">
+              <span class="text-2xl">📦</span>
+              <span class="text-sm font-semibold text-brand-dark">Physical Product</span>
+            </button>
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Freelance Service">
+              <span class="text-2xl">💼</span>
+              <span class="text-sm font-semibold text-brand-dark">Freelance Service</span>
+            </button>
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Digital Product">
+              <span class="text-2xl">💾</span>
+              <span class="text-sm font-semibold text-brand-dark">Digital Product</span>
+            </button>
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Crypto Trade">
+              <span class="text-2xl">₿</span>
+              <span class="text-sm font-semibold text-brand-dark">Crypto Trade</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Description -->
+        <div id="wiz-step-2" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-1">Describe the transaction</p>
+          <p class="text-xs text-gray-400 mb-3">Example: "Selling a used MacBook Pro 2023 for ₦850,000"</p>
+          <textarea id="wiz-description" rows="3"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand-green focus:outline-none resize-none text-sm"
+            placeholder="Describe the item or service and price..."></textarea>
+          <!-- AI extraction preview (shown after AI processes) -->
+          <div id="wiz-extraction-preview" class="hidden mt-3 p-3 bg-gray-50 rounded-lg grid grid-cols-2 gap-2 text-xs">
+            <div><span class="text-brand-subtext">Item:</span> <span class="font-semibold text-brand-dark" id="ext-item">—</span></div>
+            <div><span class="text-brand-subtext">Condition:</span> <span class="font-semibold text-brand-dark" id="ext-condition">—</span></div>
+            <div><span class="text-brand-subtext">Amount:</span> <span class="font-semibold text-brand-dark" id="ext-amount">—</span></div>
+            <div><span class="text-brand-subtext">Category:</span> <span class="font-semibold text-brand-dark" id="ext-category">—</span></div>
+          </div>
+          <div id="wiz-extracting" class="hidden mt-3 flex items-center gap-2 text-xs text-brand-subtext">
+            <svg class="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            AI is reading your description…
+          </div>
+        </div>
+
+        <!-- STEP 3: Price -->
+        <div id="wiz-step-3" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-3">What is the transaction amount?</p>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-brand-dark text-lg">₦</span>
+            <input type="number" id="wiz-price" min="100" max="10000000"
+              class="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-brand-green focus:outline-none text-2xl font-bold"
+              placeholder="0">
+          </div>
+          <p class="text-xs text-brand-subtext mt-2">Minimum ₦100 · Maximum ₦10,000,000</p>
+        </div>
+
+        <!-- STEP 4: Delivery -->
+        <div id="wiz-step-4" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-4">How will the buyer receive this?</p>
+          <div class="space-y-2 mb-4">
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Shipping">
+              <span class="text-xl flex-shrink-0">🚚</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Shipping</p><p class="text-xs text-brand-subtext">Physical delivery via courier</p></div>
+            </button>
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Pickup">
+              <span class="text-xl flex-shrink-0">🤝</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Pickup</p><p class="text-xs text-brand-subtext">Buyer collects in person</p></div>
+            </button>
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Digital Delivery">
+              <span class="text-xl flex-shrink-0">📲</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Digital Delivery</p><p class="text-xs text-brand-subtext">Files, links, or online service</p></div>
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-medium text-brand-dark mb-1 block">Delivery Timeline</label>
+              <div class="flex items-center gap-2">
+                <input type="number" id="wiz-timeline" min="1" max="90" value="7"
+                  class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-brand-green focus:outline-none text-sm font-semibold">
+                <span class="text-xs text-brand-subtext whitespace-nowrap">days</span>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-brand-dark mb-1 block">Inspection Window</label>
+              <div class="flex items-center gap-2">
+                <input type="number" id="wiz-inspection" min="1" max="14" value="3"
+                  class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-brand-green focus:outline-none text-sm font-semibold">
+                <span class="text-xs text-brand-subtext whitespace-nowrap">days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: Evidence Upload -->
+        <div id="wiz-step-5" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-4">Upload proof of ownership. AI will verify authenticity.</p>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="wiz-upload-card cursor-pointer" data-label="Front Image">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">📷</div>
+                <p class="text-xs font-medium text-brand-dark">Front Image</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Serial Number">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🔢</div>
+                <p class="text-xs font-medium text-brand-dark">Serial / Label</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Receipt">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🧾</div>
+                <p class="text-xs font-medium text-brand-dark">Receipt</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Video Proof">
+              <input type="file" accept="image/*,video/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🎥</div>
+                <p class="text-xs font-medium text-brand-dark">Video Proof</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+          </div>
+          <p class="text-xs text-center text-brand-subtext">At least 1 image recommended ·
+            <button id="btn-skip-upload" class="underline hover:text-brand-dark">Skip for now</button>
+          </p>
+        </div>
+
+        <!-- STEP 6: AI Analysis (auto-advances) -->
+        <div id="wiz-step-6" class="wiz-step hidden text-center py-8">
+          <svg class="animate-spin w-10 h-10 mx-auto mb-4 text-brand-green" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <p class="text-base font-semibold text-brand-dark mb-1">Analyzing Transaction</p>
+          <p class="text-sm text-brand-subtext" id="wiz-analysis-status">Verifying evidence…</p>
+        </div>
+
+        <!-- STEP 7: Summary & Confirm -->
+        <div id="wiz-step-7" class="wiz-step hidden">
+          <!-- Trust score card -->
+          <div id="wiz-trust-card" class="rounded-xl p-4 mb-4 border-2 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider opacity-60 mb-0.5">AI Trust Score</p>
+              <p class="text-4xl font-bold" id="wiz-trust-score">—</p>
+              <p class="text-xs font-semibold mt-1" id="wiz-risk-level">—</p>
+            </div>
+            <div id="wiz-trust-badge" class="text-5xl">—</div>
+          </div>
+
+          <!-- Transaction details -->
+          <div class="bg-gray-50 rounded-xl p-4 mb-4 space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-brand-subtext">Item</span><span class="font-semibold text-brand-dark" id="wiz-sum-item">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Amount</span><span class="font-semibold text-brand-dark" id="wiz-sum-amount">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Delivery</span><span class="font-semibold text-brand-dark" id="wiz-sum-delivery">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Inspection</span><span class="font-semibold text-brand-dark" id="wiz-sum-inspection">—</span></div>
+          </div>
+
+          <!-- Escrow terms -->
+          <div class="mb-4">
+            <p class="text-xs font-semibold text-brand-dark uppercase tracking-wider mb-2">Escrow Terms</p>
+            <div class="bg-white border border-gray-200 rounded-lg p-3 text-xs text-brand-subtext whitespace-pre-line leading-relaxed" id="wiz-sum-terms">—</div>
+          </div>
+
+          <!-- Risk flags -->
+          <div id="wiz-risk-flags" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-xs font-semibold text-red-900 mb-1">⚠ Risk Flags</p>
+            <ul id="wiz-risk-flags-list" class="text-xs text-red-800 space-y-0.5 list-disc list-inside"></ul>
+          </div>
+
+          <!-- AI summary sentence -->
+          <p class="text-xs text-brand-subtext italic mb-4" id="wiz-ai-summary"></p>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button id="btn-cancel-summary" class="flex-1 px-4 py-3 border border-gray-300 text-brand-dark rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">Cancel</button>
+            <button id="btn-confirm-create" class="flex-1 px-4 py-3 bg-brand-green text-brand-dark font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm">Create Escrow</button>
+          </div>
+        </div>
+
+        <!-- Wizard nav (Back / Continue) — hidden on step 1, 6, 7 -->
+        <div id="wiz-nav" class="flex gap-3 mt-5">
+          <button id="wiz-btn-back" class="hidden px-5 py-2.5 border border-gray-300 text-brand-dark rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">← Back</button>
+          <button id="wiz-btn-next" class="flex-1 px-5 py-2.5 bg-brand-dark text-brand-green font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm">Continue →</button>
+        </div>
+
+      </div>
+    </div>
+  </div>

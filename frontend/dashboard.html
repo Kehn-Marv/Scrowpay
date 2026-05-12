@@ -2,10 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="ScrowPay Dashboard - Secure escrow transactions with AI-powered fraud detection">
-  <meta name="theme-color" content="#1c1c1c">
+  <meta name="theme-color" content="#111111">
   <title>Dashboard - ScrowPay</title>
+  
+  <!-- Early Session Check - Runs before page renders -->
+  <script>
+    (function() {
+      // Check for session token in localStorage
+      const sessionData = localStorage.getItem('scrowpay_session');
+      
+      if (!sessionData) {
+        console.log('[Security] No session found, redirecting to sign-in...');
+        window.location.href = 'sign-in.html?reason=no_session';
+        return;
+      }
+      
+      try {
+        const session = JSON.parse(sessionData);
+        const now = Date.now();
+        
+        // Check if session is expired
+        if (session.expiresAt && session.expiresAt < now) {
+          console.log('[Security] Session expired, redirecting to sign-in...');
+          localStorage.removeItem('scrowpay_session');
+          localStorage.removeItem('scrowpay_last_activity');
+          window.location.href = 'sign-in.html?reason=session_expired';
+          return;
+        }
+        
+        console.log('[Security] ✅ Session check passed');
+      } catch (error) {
+        console.error('[Security] Invalid session data, redirecting to sign-in...');
+        localStorage.removeItem('scrowpay_session');
+        window.location.href = 'sign-in.html?reason=invalid_session';
+        return;
+      }
+    })();
+  </script>
   
   <!-- Preconnect to external resources for better performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,13 +72,167 @@
     }
   </script>
   
-  <!-- Google Fonts - Inter -->
+  <!-- Google Fonts - DM Sans & Syne -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap');
     
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f5f5f7;
+      font-family: 'DM Sans', sans-serif;
+      background-color: #f2f2f0;
+    }
+    
+    /* ========== BALANCE CARD STYLES ========== */
+    .balance-card {
+      background: #111111;
+      border-radius: 20px;
+      padding: 32px 28px;
+      position: relative;
+      overflow: hidden;
+      animation: slideUp 0.5s ease both;
+      margin-bottom: 24px;
+    }
+
+    .balance-card::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 200px;
+      height: 200px;
+      background: #caff04;
+      border-radius: 50%;
+      opacity: 0;
+      display: none;
+    }
+
+    .balance-card::after {
+      content: '';
+      position: absolute;
+      bottom: -80px;
+      left: 30%;
+      width: 160px;
+      height: 160px;
+      background: #caff04;
+      border-radius: 50%;
+      opacity: 0.05;
+    }
+
+    .balance-label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .balance-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .balance-amount {
+      font-family: 'Syne', sans-serif;
+      font-size: 44px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .balance-amount.hidden-balance {
+      letter-spacing: 4px;
+      font-size: 32px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .eye-btn {
+      background: rgba(255,255,255,0.08);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .eye-btn:hover { background: rgba(255,255,255,0.15); }
+    .eye-btn svg { width: 18px; height: 18px; stroke: rgba(255,255,255,0.6); fill: none; }
+
+    .balance-meta {
+      display: flex;
+      gap: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .balance-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .balance-meta-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .balance-meta-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .verified-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(202,255,4,0.12);
+      border: 1px solid rgba(202,255,4,0.25);
+      color: #caff04;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      position: absolute;
+      top: 28px;
+      right: 28px;
+      z-index: 1;
+    }
+    .verified-badge svg { width: 12px; height: 12px; stroke: #caff04; fill: none; flex-shrink: 0; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 700px) {
+      .balance-card { padding: 24px 20px; }
+      .balance-amount { font-size: 36px; }
+      .balance-meta { gap: 16px; flex-wrap: wrap; }
+      .verified-badge { font-size: 11px; padding: 3px 10px; top: 20px; right: 16px; }
+      
+      /* Mobile: Reposition trust score below balance content */
+      .balance-card > div:nth-child(2) {
+        position: static !important;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+    }
+
+    @media (max-width: 420px) {
+      .balance-amount { font-size: 30px; }
     }
     
     /* Toast Notifications */
@@ -232,7 +421,7 @@
 <body class="min-h-screen bg-brand-gray">
   
   <!-- Header -->
-  <header class="bg-white shadow-sm sticky top-0 z-50">
+  <header class="bg-black shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex items-center justify-between">
         <!-- Logo -->
@@ -244,19 +433,19 @@
               <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
             </svg>
           </div>
-          <span class="text-brand-dark text-xl font-semibold tracking-wider">ScrowPay</span>
+          <span class="text-white text-xl font-semibold tracking-wider">ScrowPay</span>
         </div>
         
         <!-- Desktop User Info (hidden on mobile) -->
         <div class="hidden md:flex items-center gap-4">
-          <span id="user-name" class="text-brand-dark font-medium">Welcome!</span>
-          <button id="btn-logout" class="px-4 py-2 text-brand-dark hover:bg-brand-gray rounded-lg transition-colors">
+          <span id="user-name" class="text-white font-medium">Welcome!</span>
+          <button id="btn-logout" class="px-4 py-2 text-white border border-white border-opacity-30 rounded-full transition-colors hover:bg-white hover:bg-opacity-10 hover:border-opacity-60">
             Logout
           </button>
         </div>
         
         <!-- Mobile Menu Button (visible on mobile only) - Requirement 18.4 -->
-        <button id="btn-mobile-menu" class="md:hidden p-2 text-brand-dark hover:bg-brand-gray rounded-lg transition-colors">
+        <button id="btn-mobile-menu" class="md:hidden p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
@@ -265,41 +454,41 @@
     </div>
     
     <!-- Mobile Navigation Menu (hidden by default) - Requirement 18.4 -->
-    <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-200">
+    <div id="mobile-menu" class="hidden md:hidden bg-black border-t border-gray-700">
       <div class="max-w-7xl mx-auto px-4 py-4 space-y-3">
         <!-- User Info -->
-        <div class="pb-3 border-b border-gray-200">
-          <p id="user-name-mobile" class="text-brand-dark font-medium mb-1">Welcome!</p>
-          <p id="user-phone-mobile" class="text-sm text-brand-subtext">+234XXXXXXXXXX</p>
+        <div class="pb-3 border-b border-gray-700">
+          <p id="user-name-mobile" class="text-white font-medium mb-1">Welcome!</p>
+          <p id="user-phone-mobile" class="text-sm text-gray-400">+234XXXXXXXXXX</p>
         </div>
         
         <!-- Quick Actions -->
-        <button id="btn-create-escrow-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-create-escrow-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Create Escrow</span>
+          <span class="font-medium text-white">Create Escrow</span>
         </button>
         
-        <button id="btn-join-transaction-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-join-transaction-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Join Transaction</span>
+          <span class="font-medium text-white">Join Transaction</span>
         </button>
         
-        <button id="btn-view-history-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-gray hover:bg-brand-green rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-view-history-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          <span class="font-medium text-brand-dark">Transaction History</span>
+          <span class="font-medium text-white">Transaction History</span>
         </button>
         
-        <button id="btn-logout-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-left">
-          <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btn-logout-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-red-900 bg-opacity-20 hover:bg-red-900 hover:bg-opacity-30 rounded-lg transition-colors text-left">
+          <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
           </svg>
-          <span class="font-medium text-red-600">Logout</span>
+          <span class="font-medium text-red-400">Logout</span>
         </button>
       </div>
     </div>
@@ -308,171 +497,111 @@
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     
-    <!-- Welcome Card - Responsive Design -->
-    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4 sm:mb-6">
-        <div class="w-12 h-12 sm:w-16 sm:h-16 bg-brand-green rounded-full flex items-center justify-center flex-shrink-0">
-          <svg class="w-8 h-8 sm:w-10 sm:h-10 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-brand-dark">Welcome to ScrowPay!</h1>
-          <p class="text-brand-subtext mt-1 text-sm sm:text-base">Your account has been successfully created and verified.</p>
-        </div>
+    <!-- Balance Display Section with Integrated Trust Score - Beautiful Design -->
+    <div class="balance-card">
+      <!-- Verified Badge (Top Right) -->
+      <div class="verified-badge">
+        <svg viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        Verified
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8">
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Account Status</div>
-          <div class="text-xl sm:text-2xl font-bold text-brand-dark">Verified ✓</div>
-        </div>
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Phone Number</div>
-          <div class="text-base sm:text-lg font-semibold text-brand-dark break-all" id="user-phone">+234XXXXXXXXXX</div>
-        </div>
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-brand-subtext text-xs sm:text-sm">Account Number</div>
-            <button id="btn-copy-account" class="text-brand-dark hover:text-brand-green transition-colors" title="Copy account number">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-              </svg>
-            </button>
+      <!-- Trust Score Section (Below Verified Badge, Top Right) -->
+      <div style="position: absolute; top: 70px; right: 28px; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+        <!-- Score Circle -->
+        <div id="trust-score-circle" class="relative rounded-full flex items-center justify-center flex-shrink-0" style="width: 90px; height: 90px; background-color: #ffd93d;">
+          <div class="text-center">
+            <div id="trust-score-value" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #111111; line-height: 1;">50</div>
+            <div style="font-size: 9px; font-weight: 500; color: #111111; margin-top: 2px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em;">Trust</div>
           </div>
-          <div class="text-base sm:text-lg font-semibold text-brand-dark break-all" id="user-account-number">Loading...</div>
-          <div class="text-xs text-brand-subtext mt-1">GTBank</div>
         </div>
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="text-brand-subtext text-xs sm:text-sm mb-2">Account Type</div>
-          <div class="text-base sm:text-lg font-semibold text-brand-dark">Personal</div>
+        
+        <!-- Trust Label -->
+        <div style="text-align: center;">
+          <div class="flex items-center justify-center gap-1">
+            <div id="trust-score-indicator-dot" class="rounded-full" style="width: 6px; height: 6px; background-color: #ffd93d;"></div>
+            <span id="trust-score-label" style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);">Medium</span>
+          </div>
         </div>
-      </div>
-    </div>
-    
-    <!-- Balance Display Section - Responsive Design -->
-    <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
-      <div class="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 class="text-xl sm:text-2xl font-bold text-brand-dark">Account Balance</h2>
-        <div id="balance-loading-indicator" class="hidden">
-          <svg class="animate-spin h-5 w-5 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        
+        <!-- Loading Indicator for Trust Score -->
+        <div id="trust-score-loading-indicator" class="hidden" style="position: absolute; top: 0; right: -30px;">
+          <svg class="animate-spin h-4 w-4" style="stroke: rgba(255,255,255,0.4);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <!-- Available Balance -->
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-brand-subtext text-xs sm:text-sm">Available Balance</div>
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      <!-- Main Content: Wallet Balance Section -->
+      <div style="position: relative; z-index: 1;">
+        <div class="balance-label">Wallet Balance</div>
+
+        <div class="balance-row">
+          <div class="balance-amount" id="balance-display">₦0.00</div>
+          <button class="eye-btn" id="eye-btn-toggle" onclick="toggleBalanceVisibility()" aria-label="Toggle balance visibility">
+            <svg id="eye-icon" viewBox="0 0 24 24" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="3" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div id="balance-loading-indicator" class="hidden" style="margin-left: auto;">
+            <svg class="animate-spin h-5 w-5" style="stroke: rgba(255,255,255,0.6);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </div>
-          <div id="available-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
-          <div id="available-balance-status" class="text-xs text-brand-subtext"></div>
         </div>
-        
-        <!-- Locked Balance -->
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-brand-subtext text-xs sm:text-sm">Locked Balance</div>
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-            </svg>
+
+        <div class="balance-meta">
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Phone</span>
+            <span class="balance-meta-value" id="user-phone-balance">+234XXXXXXXXXX</span>
           </div>
-          <div id="locked-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
-          <div class="text-xs text-brand-subtext">In active transactions</div>
-        </div>
-        
-        <!-- Total Balance -->
-        <div class="bg-brand-gray rounded-xl p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-brand-subtext text-xs sm:text-sm">Total Balance</div>
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-            </svg>
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Account Type</span>
+            <span class="balance-meta-value">Personal</span>
           </div>
-          <div id="total-balance" class="text-2xl sm:text-3xl font-bold text-brand-dark mb-1 break-all">₦0.00</div>
-          <div id="balance-invariant-status" class="text-xs text-green-600">✓ Balance verified</div>
-        </div>
-      </div>
-      
-      <!-- Staleness Indicator (Hidden by default) -->
-      <div id="staleness-indicator" class="hidden mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div class="flex items-start gap-2 sm:gap-3">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
-          <div class="flex-1">
-            <p class="text-xs sm:text-sm font-medium text-yellow-900">Using Cached Balance</p>
-            <p id="staleness-message" class="text-xs text-yellow-800 mt-1">Squad API is temporarily unreachable. Displaying last known balance.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Trust Score Display Section -->
-    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold text-brand-dark">Trust Score</h2>
-        <div id="trust-score-loading-indicator" class="hidden">
-          <svg class="animate-spin h-5 w-5 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-8">
-        <!-- Trust Score Display -->
-        <div class="flex-1">
-          <div class="flex items-center gap-6">
-            <!-- Score Circle -->
-            <div id="trust-score-circle" class="relative w-32 h-32 rounded-full flex items-center justify-center" style="background-color: #ffd93d;">
-              <div class="text-center">
-                <div id="trust-score-value" class="text-4xl font-bold text-brand-dark">50</div>
-                <div class="text-xs font-medium text-brand-dark mt-1">out of 100</div>
-              </div>
-            </div>
-            
-            <!-- Score Details -->
-            <div class="flex-1">
-              <div class="mb-4">
-                <div class="flex items-center gap-2 mb-2">
-                  <div id="trust-score-indicator-dot" class="w-3 h-3 rounded-full" style="background-color: #ffd93d;"></div>
-                  <span id="trust-score-label" class="text-lg font-semibold text-brand-dark">Medium Trust</span>
-                </div>
-                <p class="text-sm text-brand-subtext">Your reputation score based on transaction history</p>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-4">
-                <div class="bg-brand-gray rounded-lg p-3">
-                  <div class="text-xs text-brand-subtext mb-1">Total Transactions</div>
-                  <div id="trust-score-total-txns" class="text-lg font-bold text-brand-dark">0</div>
-                </div>
-                <div class="bg-brand-gray rounded-lg p-3">
-                  <div class="text-xs text-brand-subtext mb-1">Successful</div>
-                  <div id="trust-score-successful-txns" class="text-lg font-bold text-green-600">0</div>
-                </div>
-              </div>
-            </div>
+          <div class="balance-meta-item">
+            <span class="balance-meta-label">Member Since</span>
+            <span class="balance-meta-value" id="join-date-balance">—</span>
           </div>
         </div>
       </div>
       
       <!-- New User Notice (Hidden by default) -->
-      <div id="new-user-notice" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div id="new-user-notice" class="hidden" style="margin-top: 16px; padding: 10px 14px; background: rgba(202,255,4,0.08); border: 1px solid rgba(202,255,4,0.15); border-radius: 10px; position: relative; z-index: 1;">
+        <div class="flex items-start gap-2">
+          <svg style="width: 14px; height: 14px; stroke: #caff04; flex-shrink: 0; margin-top: 1px;" fill="none" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           <div class="flex-1">
-            <p class="text-sm font-medium text-blue-900">New User</p>
-            <p class="text-xs text-blue-800 mt-1">You have a default trust score of 50. Complete transactions successfully to improve your score.</p>
+            <p style="font-size: 11px; font-weight: 600; color: #caff04; margin-bottom: 2px;">New User</p>
+            <p style="font-size: 10px; color: rgba(202,255,4,0.6); line-height: 1.4;">Default trust score of 50. Complete transactions to improve.</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden elements for balance tracking (keep existing functionality) -->
+    <div style="display: none;">
+      <div id="available-balance">₦0.00</div>
+      <div id="locked-balance">₦0.00</div>
+      <div id="total-balance">₦0.00</div>
+      <div id="available-balance-status"></div>
+      <div id="balance-invariant-status">✓ Balance verified</div>
+      <div id="user-phone">+234XXXXXXXXXX</div>
+      <div id="user-account-number">Loading...</div>
+    </div>
+    
+    <!-- Staleness Indicator (Hidden by default) -->
+    <div id="staleness-indicator" class="hidden mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg" style="border-radius: 12px;">
+      <div class="flex items-start gap-2 sm:gap-3">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div class="flex-1">
+          <p class="text-xs sm:text-sm font-medium text-yellow-900">Using Cached Balance</p>
+          <p id="staleness-message" class="text-xs text-yellow-800 mt-1">Squad API is temporarily unreachable. Displaying last known balance.</p>
         </div>
       </div>
     </div>
@@ -561,115 +690,236 @@
     
   </main>
   
-  <!-- Create Escrow Modal -->
+  <!-- Create Escrow Wizard Modal -->
   <div id="create-escrow-modal" class="modal">
-    <div class="modal-content">
-      <div class="p-8">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Create Escrow Transaction</h2>
+    <div class="modal-content" style="max-width:640px">
+      <div class="p-6 sm:p-8">
+
+        <!-- Wizard Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-brand-subtext" id="wiz-step-label">Step 1 of 7</p>
+            <h2 class="text-xl font-bold text-brand-dark" id="wiz-step-title">Create Escrow</h2>
+          </div>
           <button id="btn-close-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
-        <!-- Form -->
-        <form id="create-escrow-form">
-          <!-- Item Description -->
-          <div class="mb-6">
-            <label for="item-description" class="block text-sm font-medium text-brand-dark mb-2">
-              Item Description <span class="text-red-500">*</span>
-            </label>
-            <textarea
-              id="item-description"
-              name="itemDescription"
-              rows="3"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-              placeholder="Describe the goods or services (minimum 10 characters)"
-              required
-            ></textarea>
-            <p id="error-item-description" class="error-text hidden"></p>
-          </div>
-          
-          <!-- Price -->
-          <div class="mb-6">
-            <label for="price" class="block text-sm font-medium text-brand-dark mb-2">
-              Price (₦) <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="price"
-              name="price"
-              min="100"
-              max="10000000"
-              step="0.01"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-              placeholder="Enter amount (₦100 - ₦10,000,000)"
-              required
-            />
-            <p id="error-price" class="error-text hidden"></p>
-          </div>
-          
-          <!-- Delivery Timeline -->
-          <div class="mb-6">
-            <label for="delivery-timeline" class="block text-sm font-medium text-brand-dark mb-2">
-              Delivery Timeline (days) <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="delivery-timeline"
-              name="deliveryTimelineDays"
-              min="1"
-              max="90"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-              placeholder="Enter delivery time (1-90 days)"
-              required
-            />
-            <p id="error-delivery-timeline" class="error-text hidden"></p>
-          </div>
-          
-          <!-- Inspection Window -->
-          <div class="mb-6">
-            <label for="inspection-window" class="block text-sm font-medium text-brand-dark mb-2">
-              Inspection Window (days) <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="inspection-window"
-              name="inspectionWindowDays"
-              min="1"
-              max="14"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-              placeholder="Enter inspection period (1-14 days)"
-              required
-            />
-            <p id="error-inspection-window" class="error-text hidden"></p>
-          </div>
-          
-          <!-- Form Actions -->
-          <div class="flex gap-4">
-            <button
-              type="button"
-              id="btn-cancel"
-              class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
+
+        <!-- Progress bar -->
+        <div class="w-full h-1.5 bg-gray-100 rounded-full mb-6">
+          <div id="wiz-progress" class="h-full bg-brand-green rounded-full transition-all duration-400" style="width:14%"></div>
+        </div>
+
+        <!-- AI Notice (contextual, shown only when needed) -->
+        <div id="wiz-ai-notice" class="hidden mb-4 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-xs text-amber-900 font-medium" id="wiz-ai-notice-text"></p>
+        </div>
+
+        <!-- STEP 1: Transaction Type -->
+        <div id="wiz-step-1" class="wiz-step">
+          <p class="text-sm text-brand-subtext mb-4">What are you creating escrow for?</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Physical Product">
+              <span class="text-2xl">📦</span>
+              <span class="text-sm font-semibold text-brand-dark">Physical Product</span>
             </button>
-            <button
-              type="submit"
-              id="btn-submit"
-              class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
-            >
-              Create Transaction
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Freelance Service">
+              <span class="text-2xl">💼</span>
+              <span class="text-sm font-semibold text-brand-dark">Freelance Service</span>
+            </button>
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Digital Product">
+              <span class="text-2xl">💾</span>
+              <span class="text-sm font-semibold text-brand-dark">Digital Product</span>
+            </button>
+            <button class="txn-type-btn flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all" data-type="Crypto Trade">
+              <span class="text-2xl">₿</span>
+              <span class="text-sm font-semibold text-brand-dark">Crypto Trade</span>
             </button>
           </div>
-        </form>
+        </div>
+
+        <!-- STEP 2: Description -->
+        <div id="wiz-step-2" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-1">Describe the transaction</p>
+          <p class="text-xs text-gray-400 mb-3">Example: "Selling a used MacBook Pro 2023 for ₦850,000"</p>
+          <textarea id="wiz-description" rows="3"
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand-green focus:outline-none resize-none text-sm"
+            placeholder="Describe the item or service and price..."></textarea>
+          <!-- AI extraction preview (shown after AI processes) -->
+          <div id="wiz-extraction-preview" class="hidden mt-3 p-3 bg-gray-50 rounded-lg grid grid-cols-2 gap-2 text-xs">
+            <div><span class="text-brand-subtext">Item:</span> <span class="font-semibold text-brand-dark" id="ext-item">—</span></div>
+            <div><span class="text-brand-subtext">Condition:</span> <span class="font-semibold text-brand-dark" id="ext-condition">—</span></div>
+            <div><span class="text-brand-subtext">Amount:</span> <span class="font-semibold text-brand-dark" id="ext-amount">—</span></div>
+            <div><span class="text-brand-subtext">Category:</span> <span class="font-semibold text-brand-dark" id="ext-category">—</span></div>
+          </div>
+          <div id="wiz-extracting" class="hidden mt-3 flex items-center gap-2 text-xs text-brand-subtext">
+            <svg class="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            AI is reading your description…
+          </div>
+        </div>
+
+        <!-- STEP 3: Price -->
+        <div id="wiz-step-3" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-3">What is the transaction amount?</p>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-brand-dark text-lg">₦</span>
+            <input type="number" id="wiz-price" min="100" max="10000000"
+              class="w-full pl-10 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-brand-green focus:outline-none text-2xl font-bold"
+              placeholder="0">
+          </div>
+          <p class="text-xs text-brand-subtext mt-2">Minimum ₦100 · Maximum ₦10,000,000</p>
+        </div>
+
+        <!-- STEP 4: Delivery -->
+        <div id="wiz-step-4" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-4">How will the buyer receive this?</p>
+          <div class="space-y-2 mb-4">
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Shipping">
+              <span class="text-xl flex-shrink-0">🚚</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Shipping</p><p class="text-xs text-brand-subtext">Physical delivery via courier</p></div>
+            </button>
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Pickup">
+              <span class="text-xl flex-shrink-0">🤝</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Pickup</p><p class="text-xs text-brand-subtext">Buyer collects in person</p></div>
+            </button>
+            <button class="delivery-btn w-full flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-brand-green transition-all text-left" data-method="Digital Delivery">
+              <span class="text-xl flex-shrink-0">📲</span>
+              <div><p class="font-semibold text-sm text-brand-dark">Digital Delivery</p><p class="text-xs text-brand-subtext">Files, links, or online service</p></div>
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-medium text-brand-dark mb-1 block">Delivery Timeline</label>
+              <div class="flex items-center gap-2">
+                <input type="number" id="wiz-timeline" min="1" max="90" value="7"
+                  class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-brand-green focus:outline-none text-sm font-semibold">
+                <span class="text-xs text-brand-subtext whitespace-nowrap">days</span>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-brand-dark mb-1 block">Inspection Window</label>
+              <div class="flex items-center gap-2">
+                <input type="number" id="wiz-inspection" min="1" max="14" value="3"
+                  class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-brand-green focus:outline-none text-sm font-semibold">
+                <span class="text-xs text-brand-subtext whitespace-nowrap">days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: Evidence Upload -->
+        <div id="wiz-step-5" class="wiz-step hidden">
+          <p class="text-sm text-brand-subtext mb-4">Upload proof of ownership. AI will verify authenticity.</p>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="wiz-upload-card cursor-pointer" data-label="Front Image">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">📷</div>
+                <p class="text-xs font-medium text-brand-dark">Front Image</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Serial Number">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🔢</div>
+                <p class="text-xs font-medium text-brand-dark">Serial / Label</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Receipt">
+              <input type="file" accept="image/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🧾</div>
+                <p class="text-xs font-medium text-brand-dark">Receipt</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+            <label class="wiz-upload-card cursor-pointer" data-label="Video Proof">
+              <input type="file" accept="image/*,video/*" class="hidden wiz-file-input">
+              <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brand-green transition-colors">
+                <div class="text-2xl mb-1">🎥</div>
+                <p class="text-xs font-medium text-brand-dark">Video Proof</p>
+                <p class="text-xs text-brand-subtext wiz-upload-status mt-0.5">Tap to upload</p>
+              </div>
+            </label>
+          </div>
+          <p class="text-xs text-center text-brand-subtext">At least 1 image recommended ·
+            <button id="btn-skip-upload" class="underline hover:text-brand-dark">Skip for now</button>
+          </p>
+        </div>
+
+        <!-- STEP 6: AI Analysis (auto-advances) -->
+        <div id="wiz-step-6" class="wiz-step hidden text-center py-8">
+          <svg class="animate-spin w-10 h-10 mx-auto mb-4 text-brand-green" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <p class="text-base font-semibold text-brand-dark mb-1">Analyzing Transaction</p>
+          <p class="text-sm text-brand-subtext" id="wiz-analysis-status">Verifying evidence…</p>
+        </div>
+
+        <!-- STEP 7: Summary & Confirm -->
+        <div id="wiz-step-7" class="wiz-step hidden">
+          <!-- Trust score card -->
+          <div id="wiz-trust-card" class="rounded-xl p-4 mb-4 border-2 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider opacity-60 mb-0.5">AI Trust Score</p>
+              <p class="text-4xl font-bold" id="wiz-trust-score">—</p>
+              <p class="text-xs font-semibold mt-1" id="wiz-risk-level">—</p>
+            </div>
+            <div id="wiz-trust-badge" class="text-5xl">—</div>
+          </div>
+
+          <!-- Transaction details -->
+          <div class="bg-gray-50 rounded-xl p-4 mb-4 space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-brand-subtext">Item</span><span class="font-semibold text-brand-dark" id="wiz-sum-item">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Amount</span><span class="font-semibold text-brand-dark" id="wiz-sum-amount">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Delivery</span><span class="font-semibold text-brand-dark" id="wiz-sum-delivery">—</span></div>
+            <div class="flex justify-between"><span class="text-brand-subtext">Inspection</span><span class="font-semibold text-brand-dark" id="wiz-sum-inspection">—</span></div>
+          </div>
+
+          <!-- Escrow terms -->
+          <div class="mb-4">
+            <p class="text-xs font-semibold text-brand-dark uppercase tracking-wider mb-2">Escrow Terms</p>
+            <div class="bg-white border border-gray-200 rounded-lg p-3 text-xs text-brand-subtext whitespace-pre-line leading-relaxed" id="wiz-sum-terms">—</div>
+          </div>
+
+          <!-- Risk flags -->
+          <div id="wiz-risk-flags" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-xs font-semibold text-red-900 mb-1">⚠ Risk Flags</p>
+            <ul id="wiz-risk-flags-list" class="text-xs text-red-800 space-y-0.5 list-disc list-inside"></ul>
+          </div>
+
+          <!-- AI summary sentence -->
+          <p class="text-xs text-brand-subtext italic mb-4" id="wiz-ai-summary"></p>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button id="btn-cancel-summary" class="flex-1 px-4 py-3 border border-gray-300 text-brand-dark rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">Cancel</button>
+            <button id="btn-confirm-create" class="flex-1 px-4 py-3 bg-brand-green text-brand-dark font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm">Create Escrow</button>
+          </div>
+        </div>
+
+        <!-- Wizard nav (Back / Continue) — hidden on step 1, 6, 7 -->
+        <div id="wiz-nav" class="flex gap-3 mt-5">
+          <button id="wiz-btn-back" class="hidden px-5 py-2.5 border border-gray-300 text-brand-dark rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">← Back</button>
+          <button id="wiz-btn-next" class="flex-1 px-5 py-2.5 bg-brand-dark text-brand-green font-semibold rounded-xl hover:bg-opacity-90 transition-colors text-sm">Continue →</button>
+        </div>
+
       </div>
     </div>
   </div>
-  
+
   <!-- Transaction Created Success Modal -->
   <div id="transaction-success-modal" class="modal">
     <div class="modal-content">
@@ -795,70 +1045,122 @@
           </div>
         </div>
         
-        <!-- AI Risk Scoring Section (Hidden initially) -->
-        <div id="risk-scoring-section" class="hidden mb-6">
-          <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-            <div class="flex items-start gap-3">
-              <svg class="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
-              <div class="flex-1">
-                <h3 class="font-semibold text-yellow-900 mb-2">AI Risk Analysis</h3>
-                <div id="risk-scoring-loading" class="hidden">
-                  <p class="text-sm text-yellow-800">Analyzing transaction for anomalies...</p>
-                  <div class="mt-2 w-full h-2 bg-yellow-200 rounded-full overflow-hidden">
-                    <div class="h-full bg-yellow-600 animate-pulse" style="width: 100%"></div>
-                  </div>
-                </div>
-                <div id="risk-scoring-result" class="hidden">
-                  <div class="flex items-center gap-4 mb-2">
-                    <div>
-                      <p class="text-sm text-yellow-800">Risk Score</p>
-                      <p id="risk-score-value" class="text-2xl font-bold text-yellow-900">-</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-yellow-800">Verdict</p>
-                      <p id="risk-verdict-value" class="text-lg font-semibold text-yellow-900">-</p>
-                    </div>
-                  </div>
-                  <div id="anomaly-indicators-container" class="hidden">
-                    <p class="text-sm text-yellow-800 mb-2">Anomaly Indicators:</p>
-                    <ul id="anomaly-indicators-list" class="list-disc list-inside text-sm text-yellow-800 space-y-1">
-                    </ul>
-                  </div>
-                </div>
-              </div>
+        <!-- ── Gemini AI Analysis Section ── -->
+
+        <!-- Product Image Upload (optional) -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-brand-dark mb-2">
+            Product Image <span class="text-brand-subtext font-normal">(optional — improves AI accuracy)</span>
+          </label>
+          <label id="image-upload-label" class="flex items-center gap-3 cursor-pointer border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-brand-green transition-colors">
+            <svg class="w-6 h-6 text-brand-subtext flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span id="image-upload-text" class="text-sm text-brand-subtext">Click to upload product image</span>
+            <input type="file" id="product-image-input" accept="image/*" class="hidden">
+          </label>
+          <img id="image-preview" class="hidden mt-3 rounded-xl max-h-40 object-cover w-full" alt="Product preview">
+        </div>
+
+        <!-- Run AI Analysis Button -->
+        <button id="btn-run-ai-analysis" class="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-brand-dark text-brand-green font-semibold rounded-xl hover:bg-opacity-90 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347a3.5 3.5 0 01-4.95 0l-.347-.347z"></path>
+          </svg>
+          <span id="ai-btn-text">Run AI Analysis</span>
+        </button>
+
+        <!-- AI Loading State -->
+        <div id="ai-loading" class="hidden mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+          <div class="flex items-center gap-3">
+            <svg class="animate-spin w-5 h-5 text-brand-dark flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-brand-dark" id="ai-loading-text">Gemini AI is analyzing this transaction…</p>
+              <p class="text-xs text-brand-subtext mt-0.5">Checking for fraud signals, image authenticity, and scam patterns</p>
             </div>
           </div>
         </div>
-        
-        <!-- Risk Blocked Message (Hidden initially) -->
-        <div id="risk-blocked-message" class="hidden mb-6">
-          <div class="bg-red-50 border border-red-200 rounded-xl p-6">
-            <div class="flex items-start gap-3">
-              <svg class="w-6 h-6 text-red-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
+
+        <!-- AI Result Card -->
+        <div id="ai-result-card" class="hidden mb-4 rounded-xl overflow-hidden border">
+
+          <!-- Result Header (colour changes by verdict) -->
+          <div id="ai-result-header" class="p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div id="ai-verdict-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                <!-- icon injected by JS -->
+              </div>
               <div>
-                <h3 class="font-semibold text-red-900 mb-2">Transaction Blocked</h3>
-                <p id="risk-blocked-text" class="text-sm text-red-800">This transaction has been blocked due to high risk indicators.</p>
+                <p class="text-xs font-medium uppercase tracking-wider opacity-70" id="ai-verdict-label">AI Verdict</p>
+                <p class="text-xl font-bold" id="ai-verdict-text">—</p>
               </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs opacity-70">Trust Score</p>
+              <p class="text-3xl font-bold" id="ai-trust-score">—</p>
+            </div>
+          </div>
+
+          <!-- Result Body -->
+          <div class="p-4 bg-white space-y-4">
+
+            <!-- Score breakdown row -->
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-brand-subtext mb-1">Authenticity</p>
+                <p class="text-lg font-bold text-brand-dark" id="ai-authenticity-score">—</p>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-brand-subtext mb-1">Scam Risk</p>
+                <p class="text-lg font-bold text-brand-dark" id="ai-scam-prob">—</p>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-xs text-brand-subtext mb-1">Confidence</p>
+                <p class="text-lg font-bold text-brand-dark" id="ai-confidence">—</p>
+              </div>
+            </div>
+
+            <!-- AI Summary -->
+            <div>
+              <p class="text-sm font-medium text-brand-dark mb-1">AI Analysis</p>
+              <p class="text-sm text-brand-subtext leading-relaxed" id="ai-summary">—</p>
+            </div>
+
+            <!-- Flags -->
+            <div id="ai-flags-section" class="hidden">
+              <p class="text-sm font-medium text-brand-dark mb-2">Detected Signals</p>
+              <ul id="ai-flags-list" class="space-y-1"></ul>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="rounded-lg p-3" id="ai-recommendation-box">
+              <p class="text-sm font-semibold" id="ai-action-text">—</p>
             </div>
           </div>
         </div>
-        
+
+        <!-- Risk Blocked Message -->
+        <div id="risk-blocked-message" class="hidden mb-4">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+            </svg>
+            <div>
+              <p class="font-semibold text-red-900">Transaction Blocked by AI</p>
+              <p id="risk-blocked-text" class="text-sm text-red-800 mt-1">High fraud probability detected. Funds cannot be released.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex gap-4">
-          <button
-            id="btn-cancel-fund"
-            class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button id="btn-cancel-fund" class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors">
             Cancel
           </button>
-          <button
-            id="btn-fund-escrow"
-            class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
-          >
+          <button id="btn-fund-escrow" class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
             Fund Escrow
           </button>
         </div>
@@ -1518,6 +1820,48 @@
   <!-- Scripts -->
   <script src="env.js"></script>
   <script src="config.js"></script>
+  
+  <!-- Diagnostic Script -->
+  <script>
+    console.log('[Diagnostic] env.js loaded:', typeof window.ENV !== 'undefined');
+    console.log('[Diagnostic] config.js loaded:', typeof window.CONFIG !== 'undefined');
+    if (window.CONFIG) {
+      console.log('[Diagnostic] CONFIG:', window.CONFIG);
+    }
+    
+    // Balance visibility toggle function - defined early for onclick handler
+    let balanceVisible = true;
+    function toggleBalanceVisibility() {
+      console.log('[Balance Toggle] Clicked! Current state:', balanceVisible);
+      balanceVisible = !balanceVisible;
+      const el = document.getElementById('balance-display');
+      const icon = document.getElementById('eye-icon');
+      
+      console.log('[Balance Toggle] Elements found:', { el: !!el, icon: !!icon });
+      
+      if (!el || !icon) {
+        console.error('[Balance Toggle] Elements not found!');
+        return;
+      }
+      
+      if (balanceVisible) {
+        // Show balance - get current total balance
+        const totalBalance = document.getElementById('total-balance').textContent;
+        console.log('[Balance Toggle] Showing balance:', totalBalance);
+        el.textContent = totalBalance;
+        el.className = 'balance-amount';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" stroke-linecap="round"/>';
+      } else {
+        // Hide balance
+        console.log('[Balance Toggle] Hiding balance');
+        el.textContent = '• • • • •';
+        el.className = 'balance-amount hidden-balance';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line stroke-linecap="round" x1="1" y1="1" x2="23" y2="23"/>';
+      }
+      console.log('[Balance Toggle] Toggle complete. New state:', balanceVisible);
+    }
+  </script>
+  
   <script src="turso-db-service.js"></script>
   <script src="SessionService.js"></script>
   <script src="error-handler-service.js"></script>
@@ -1526,6 +1870,9 @@
   <script src="transaction-service.js"></script>
   <script src="TrustScoreService.js"></script>
   <script src="AIRiskService.js"></script>
+  <script src="GeminiAIService.js"></script>
+  <script src="TrustScoreEngine.js"></script>
+  <script src="EscrowAIAssistant.js"></script>
   <script src="StateMachineService.js"></script>
   <script src="BalanceService.js"></script>
   <script src="DisputeService.js"></script>
@@ -1546,9 +1893,46 @@
         <div class="toast-content">
           <span class="toast-icon">⚠️</span>
           <span class="toast-message">${message}</span>
-          <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          <button class="toast-close">×</button>
         </div>
       `;
+      
+      // Add click handler to close button
+      const closeBtn = toast.querySelector('.toast-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => toast.remove());
+      }
+      
+      document.body.appendChild(toast);
+      
+      if (duration > 0) {
+        setTimeout(() => toast.remove(), duration);
+      }
+    }
+    
+    // Toast Notification Functions (Legacy - kept for backward compatibility)
+    // New code should use window.toastService instead
+    function showErrorNotification(message, duration = 0) {
+      if (window.toastService) {
+        return;
+      }
+      
+      // Fallback to inline implementation
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-error';
+      toast.innerHTML = `
+        <div class="toast-content">
+          <span class="toast-icon">⚠️</span>
+          <span class="toast-message">${message}</span>
+          <button class="toast-close">×</button>
+        </div>
+      `;
+      
+      // Add click handler to close button
+      const closeBtn = toast.querySelector('.toast-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => toast.remove());
+      }
       
       document.body.appendChild(toast);
       
@@ -1591,9 +1975,15 @@
         <div class="toast-content">
           <span class="toast-icon">⚠️</span>
           <span class="toast-message">${message}</span>
-          <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          <button class="toast-close">×</button>
         </div>
       `;
+      
+      // Add click handler to close button
+      const closeBtn = toast.querySelector('.toast-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => toast.remove());
+      }
       
       document.body.appendChild(toast);
       
@@ -1850,57 +2240,27 @@
     }
     
     function clearAllErrors() {
-      clearFieldError('item-description');
-      clearFieldError('price');
-      clearFieldError('delivery-timeline');
-      clearFieldError('inspection-window');
+      // Legacy function — old static form removed, kept for safety
+      ['item-description','price','delivery-timeline','inspection-window'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) clearFieldError(id);
+      });
     }
     
     function validateForm() {
-      clearAllErrors();
-      
-      let isValid = true;
-      
-      // Validate item description
-      const itemDescription = document.getElementById('item-description').value;
-      const itemError = validateItemDescription(itemDescription);
-      if (itemError) {
-        showFieldError('item-description', itemError);
-        isValid = false;
-      }
-      
-      // Validate price
-      const price = document.getElementById('price').value;
-      const priceError = validatePrice(price);
-      if (priceError) {
-        showFieldError('price', priceError);
-        isValid = false;
-      }
-      
-      // Validate delivery timeline
-      const deliveryTimeline = document.getElementById('delivery-timeline').value;
-      const deliveryError = validateDeliveryTimeline(deliveryTimeline);
-      if (deliveryError) {
-        showFieldError('delivery-timeline', deliveryError);
-        isValid = false;
-      }
-      
-      // Validate inspection window
-      const inspectionWindow = document.getElementById('inspection-window').value;
-      const inspectionError = validateInspectionWindow(inspectionWindow);
-      if (inspectionError) {
-        showFieldError('inspection-window', inspectionError);
-        isValid = false;
-      }
-      
-      return isValid;
+      // Legacy function — validation now handled by AI assistant
+      return true;
     }
     
     // Modal Functions
     function openModal(modalId) {
+      console.log('Opening modal:', modalId);
       const modal = document.getElementById(modalId);
       if (modal) {
+        console.log('Modal found, adding active class');
         modal.classList.add('active');
+      } else {
+        console.error('Modal not found:', modalId);
       }
     }
     
@@ -1961,7 +2321,13 @@
         const lockedBalanceFormatted = balanceService.formatBalance(result.locked);
         const totalBalanceFormatted = balanceService.formatBalance(result.total);
         
-        // Update balance displays
+        // Update main balance display (new design)
+        const balanceDisplayEl = document.getElementById('balance-display');
+        if (balanceDisplayEl && !balanceDisplayEl.classList.contains('hidden-balance')) {
+          balanceDisplayEl.textContent = totalBalanceFormatted;
+        }
+        
+        // Update hidden balance tracking elements
         document.getElementById('available-balance').textContent = availableBalanceFormatted;
         document.getElementById('locked-balance').textContent = lockedBalanceFormatted;
         document.getElementById('total-balance').textContent = totalBalanceFormatted;
@@ -2268,6 +2634,18 @@
       document.getElementById('user-phone').textContent = phoneNumber;
       document.getElementById('user-account-number').textContent = virtualAccountNumber;
       
+      // Update new balance card design
+      const userPhoneBalance = document.getElementById('user-phone-balance');
+      if (userPhoneBalance) {
+        userPhoneBalance.textContent = phoneNumber;
+      }
+      
+      const joinDateBalance = document.getElementById('join-date-balance');
+      if (joinDateBalance) {
+        const now = new Date();
+        joinDateBalance.textContent = now.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' });
+      }
+      
       console.log('[Dashboard] User data loaded:', {
         userId: currentUserId,
         firstName: firstName,
@@ -2276,30 +2654,24 @@
       });
       
       // ========================================
-      // COPY ACCOUNT NUMBER FUNCTIONALITY
+      // COPY ACCOUNT NUMBER FUNCTIONALITY (Moved to Settings)
       // ========================================
-      document.getElementById('btn-copy-account').addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(virtualAccountNumber);
-          showSuccessNotification('Account number copied to clipboard!');
-        } catch (error) {
-          console.error('Failed to copy account number:', error);
-          // Fallback for older browsers
-          const textArea = document.createElement('textarea');
-          textArea.value = virtualAccountNumber;
-          textArea.style.position = 'fixed';
-          textArea.style.left = '-999999px';
-          document.body.appendChild(textArea);
-          textArea.select();
+      // Note: Account number copy functionality is now in Settings modal
+      // Keeping this commented for reference
+      /*
+      const btnCopyAccount = document.getElementById('btn-copy-account');
+      if (btnCopyAccount) {
+        btnCopyAccount.addEventListener('click', async () => {
           try {
-            document.execCommand('copy');
+            await navigator.clipboard.writeText(virtualAccountNumber);
             showSuccessNotification('Account number copied to clipboard!');
-          } catch (err) {
+          } catch (error) {
+            console.error('Failed to copy account number:', error);
             showErrorNotification('Failed to copy account number');
           }
-          document.body.removeChild(textArea);
-        }
-      });
+        });
+      }
+      */
       
       // ========================================
       // LOGOUT BUTTON HANDLER (Requirement 13.5)
@@ -2380,6 +2752,12 @@
         aiRiskService = new AIRiskService(CONFIG);
         await aiRiskService.connect();
         console.log('AI risk service initialized');
+
+        // ── Gemini AI Services ──────────────────────────────────────────
+        window.geminiService = new GeminiAIService(CONFIG.gemini.apiKey);
+        window.trustScoreEngine = new TrustScoreEngine(window.geminiService);
+        console.log('Gemini AI service initialized');
+        // ───────────────────────────────────────────────────────────────
         
         stateMachineService = new StateMachineService(CONFIG);
         await stateMachineService.connect();
@@ -2468,153 +2846,300 @@
       
       // Event Listeners
       
-      // Open Create Escrow Modal
-      document.getElementById('btn-create-escrow').addEventListener('click', () => {
+      // ══════════════════════════════════════════════════════════════════
+      // AI-POWERED CREATE ESCROW FLOW
+      // ══════════════════════════════════════════════════════════════════
+
+      let escrowAssistant = null;
+
+      // ── Helpers ──────────────────────────────────────────────────────────
+
+      function showEscrowPhase(phase) {
+        ['ai-conversation-phase','ai-evidence-phase','ai-analyzing-phase','ai-summary-phase']
+          .forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById(`ai-${phase}-phase`).classList.remove('hidden');
+      }
+
+      function appendChatMessage(role, text) {
+        const container = document.getElementById('ai-chat-messages');
+        const isAI = role === 'ai';
+        const div = document.createElement('div');
+        div.className = `flex ${isAI ? 'justify-start' : 'justify-end'}`;
+        div.innerHTML = `
+          <div class="max-w-xs sm:max-w-sm px-4 py-3 rounded-2xl text-sm leading-relaxed
+            ${isAI
+              ? 'bg-white border border-gray-200 text-brand-dark rounded-tl-none'
+              : 'bg-brand-green text-brand-dark rounded-tr-none'}">
+            ${text.replace(/\n/g, '<br>').replace(/```json[\s\S]*?```/g, '')}
+          </div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function setAITyping(show) {
+        const existing = document.getElementById('ai-typing-indicator');
+        if (show && !existing) {
+          const div = document.createElement('div');
+          div.id = 'ai-typing-indicator';
+          div.className = 'flex justify-start';
+          div.innerHTML = `<div class="px-4 py-3 bg-white border border-gray-200 rounded-2xl rounded-tl-none">
+            <span class="flex gap-1">
+              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+              <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
+            </span>
+          </div>`;
+          document.getElementById('ai-chat-messages').appendChild(div);
+          document.getElementById('ai-chat-messages').scrollTop = 9999;
+        } else if (!show && existing) {
+          existing.remove();
+        }
+      }
+
+      // ── Open modal ───────────────────────────────────────────────────────
+      document.getElementById('btn-create-escrow').addEventListener('click', async () => {
+        // Reset
+        document.getElementById('ai-chat-messages').innerHTML = '';
+        showEscrowPhase('conversation');
         openModal('create-escrow-modal');
-        // Reset form
-        document.getElementById('create-escrow-form').reset();
-        clearAllErrors();
+
+        // Init assistant
+        escrowAssistant = new EscrowAIAssistant(
+          CONFIG.gemini.apiKey,
+          { cloudName: CONFIG.cloudinary.cloudName, uploadPreset: CONFIG.cloudinary.uploadPreset }
+        );
+
+        // Start conversation
+        setAITyping(true);
+        try {
+          const greeting = await escrowAssistant.start();
+          setAITyping(false);
+          appendChatMessage('ai', greeting);
+        } catch (err) {
+          setAITyping(false);
+          appendChatMessage('ai', 'Welcome to Secure Escrow. What is being exchanged in this transaction?');
+        }
+
+        document.getElementById('ai-user-input').focus();
       });
-      
-      // Close Modal Buttons
+
+      // ── Send message ─────────────────────────────────────────────────────
+      async function handleSendMessage() {
+        const input = document.getElementById('ai-user-input');
+        const text  = input.value.trim();
+        if (!text || !escrowAssistant) return;
+
+        input.value = '';
+        appendChatMessage('user', text);
+        document.getElementById('btn-send-message').disabled = true;
+        setAITyping(true);
+
+        try {
+          const result = await escrowAssistant.sendMessage(text);
+          setAITyping(false);
+          appendChatMessage('ai', result.message);
+
+          if (result.readyForEvidence) {
+            // Transition to evidence phase after short delay
+            setTimeout(() => showEscrowPhase('evidence'), 1200);
+          }
+        } catch (err) {
+          setAITyping(false);
+          appendChatMessage('ai', 'Sorry, I had trouble processing that. Please try again.');
+        } finally {
+          document.getElementById('btn-send-message').disabled = false;
+          document.getElementById('ai-user-input').focus();
+        }
+      }
+
+      document.getElementById('btn-send-message').addEventListener('click', handleSendMessage);
+      document.getElementById('ai-user-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSendMessage();
+      });
+
+      // ── Evidence upload preview ──────────────────────────────────────────
+      document.querySelectorAll('.evidence-file-input').forEach((input) => {
+        input.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const card  = e.target.closest('.upload-card');
+          const label = card.querySelector('.upload-label');
+          const inner = card.querySelector('div');
+          label.textContent = file.name.length > 18 ? file.name.slice(0, 15) + '…' : file.name;
+          inner.classList.remove('border-gray-300');
+          inner.classList.add('border-brand-green', 'bg-green-50');
+
+          // Show AI guidance
+          const guidance = document.getElementById('ai-upload-guidance');
+          document.getElementById('ai-upload-guidance-text').textContent =
+            `✅ "${file.name}" selected. Upload more evidence or click Analyze.`;
+          guidance.classList.remove('hidden');
+        });
+      });
+
+      // ── Analyze evidence ─────────────────────────────────────────────────
+      async function runEvidenceAnalysis() {
+        const files = Array.from(document.querySelectorAll('.evidence-file-input'))
+          .map(i => i.files[0])
+          .filter(Boolean);
+
+        showEscrowPhase('analyzing');
+
+        try {
+          const session = JSON.parse(localStorage.getItem('scrowpay_session') || '{}');
+          const analysisResult = await escrowAssistant.processEvidence(files, {
+            faceVerified: session.faceVerified ?? true,
+            idVerified:   session.idVerified   ?? true
+          });
+
+          // Render summary
+          renderEscrowSummary(analysisResult);
+          showEscrowPhase('summary');
+        } catch (err) {
+          console.error('[CreateEscrow] Evidence analysis failed:', err);
+          showErrorNotification('AI analysis failed. Proceeding with basic escrow.');
+          // Still show summary with defaults
+          renderEscrowSummary({
+            trustScore: 50, riskLevel: 'Medium', riskFlags: [],
+            escrowTerms: escrowAssistant._generateDefaultTerms(),
+            aiGuidance: '⚠️ AI analysis unavailable. Proceeding with standard escrow terms.'
+          });
+          showEscrowPhase('summary');
+        }
+      }
+
+      document.getElementById('btn-analyze-evidence').addEventListener('click', runEvidenceAnalysis);
+      document.getElementById('btn-skip-evidence').addEventListener('click', () => {
+        runEvidenceAnalysis(); // runs with no files
+      });
+
+      // ── Render summary ───────────────────────────────────────────────────
+      function renderEscrowSummary(result) {
+        const score = result.trustScore;
+        const level = result.riskLevel;
+
+        const scheme = score >= 75
+          ? { bg: '#f0fdf4', border: '#86efac', text: '#166534', iconBg: '#22c55e' }
+          : score >= 45
+          ? { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', iconBg: '#f59e0b' }
+          : { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', iconBg: '#ef4444' };
+
+        const card = document.getElementById('summary-trust-card');
+        card.style.background   = scheme.bg;
+        card.style.borderColor  = scheme.border;
+        card.style.color        = scheme.text;
+
+        document.getElementById('summary-trust-score').textContent = `${score}/100`;
+        document.getElementById('summary-trust-icon').style.background = scheme.iconBg;
+        document.getElementById('summary-trust-icon').innerHTML =
+          score >= 75
+            ? `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`
+            : score >= 45
+            ? `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>`
+            : `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+
+        document.getElementById('summary-ai-guidance').textContent = result.aiGuidance || '';
+
+        const ex = escrowAssistant.extracted;
+        document.getElementById('summary-item').textContent =
+          ex.item ? `${ex.item} (${ex.condition || 'N/A'})` : 'Not specified';
+        document.getElementById('summary-amount').textContent =
+          ex.amount ? `₦${Number(ex.amount).toLocaleString()}` : 'Not specified';
+        document.getElementById('summary-delivery').textContent =
+          `${ex.delivery_method || 'N/A'} — ${ex.timeline_days || '?'} day(s)`;
+        document.getElementById('summary-inspection').textContent =
+          `${ex.inspection_days || '?'} day(s)`;
+        document.getElementById('summary-escrow-terms').textContent = result.escrowTerms || '—';
+
+        // Risk flags
+        const flagsSection = document.getElementById('summary-risk-flags-section');
+        const flagsList    = document.getElementById('summary-risk-flags-list');
+        if (result.riskFlags && result.riskFlags.length > 0) {
+          flagsList.innerHTML = result.riskFlags.map(f =>
+            `<li class="flex items-start gap-1"><span>•</span><span>${f}</span></li>`
+          ).join('');
+          flagsSection.classList.remove('hidden');
+        } else {
+          flagsSection.classList.add('hidden');
+        }
+      }
+
+      // ── Confirm create ───────────────────────────────────────────────────
+      document.getElementById('btn-confirm-create').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-confirm-create');
+        btn.disabled = true;
+        btn.textContent = 'Creating…';
+
+        try {
+          const txData = escrowAssistant.getFinalTransactionData();
+
+          // Validate minimum required fields
+          if (!txData.price || txData.price < 100) {
+            showErrorNotification('Transaction amount must be at least ₦100');
+            btn.disabled = false;
+            btn.textContent = 'Create Escrow';
+            return;
+          }
+
+          const formData = {
+            sellerId:            currentUserId,
+            itemDescription:     txData.itemDescription || 'Escrow Transaction',
+            price:               txData.price,
+            deliveryTimelineDays: txData.deliveryTimelineDays,
+            inspectionWindowDays: txData.inspectionWindowDays
+          };
+
+          const transaction = await transactionService.createTransaction(formData);
+
+          closeModal('create-escrow-modal');
+
+          document.getElementById('transaction-id-display').textContent = transaction.transaction_id;
+          openModal('transaction-success-modal');
+
+          showSuccessNotification('Escrow created successfully!');
+          escrowAssistant = null;
+
+        } catch (err) {
+          console.error('[CreateEscrow] Creation failed:', err);
+          showErrorNotification(err.message || 'Failed to create transaction. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Create Escrow';
+        }
+      });
+
+      document.getElementById('btn-cancel-summary').addEventListener('click', () => {
+        closeModal('create-escrow-modal');
+      });
+
+      // ── Close / cancel ───────────────────────────────────────────────────
       document.getElementById('btn-close-modal').addEventListener('click', () => {
         closeModal('create-escrow-modal');
+        escrowAssistant = null;
       });
-      
-      document.getElementById('btn-cancel').addEventListener('click', () => {
-        closeModal('create-escrow-modal');
-      });
-      
-      document.getElementById('btn-close-success-modal').addEventListener('click', () => {
-        closeModal('transaction-success-modal');
-      });
-      
-      // Close modal when clicking outside
+
       document.getElementById('create-escrow-modal').addEventListener('click', (e) => {
         if (e.target.id === 'create-escrow-modal') {
           closeModal('create-escrow-modal');
+          escrowAssistant = null;
         }
       });
-      
+
+      document.getElementById('btn-close-success-modal').addEventListener('click', () => {
+        closeModal('transaction-success-modal');
+      });
+
       document.getElementById('transaction-success-modal').addEventListener('click', (e) => {
         if (e.target.id === 'transaction-success-modal') {
           closeModal('transaction-success-modal');
         }
       });
-      
-      // Real-time validation
-      document.getElementById('item-description').addEventListener('blur', (e) => {
-        const error = validateItemDescription(e.target.value);
-        if (error) {
-          showFieldError('item-description', error);
-        } else {
-          clearFieldError('item-description');
-        }
-      });
-      
-      document.getElementById('price').addEventListener('blur', (e) => {
-        const error = validatePrice(e.target.value);
-        if (error) {
-          showFieldError('price', error);
-        } else {
-          clearFieldError('price');
-        }
-      });
-      
-      document.getElementById('delivery-timeline').addEventListener('blur', (e) => {
-        const error = validateDeliveryTimeline(e.target.value);
-        if (error) {
-          showFieldError('delivery-timeline', error);
-        } else {
-          clearFieldError('delivery-timeline');
-        }
-      });
-      
-      document.getElementById('inspection-window').addEventListener('blur', (e) => {
-        const error = validateInspectionWindow(e.target.value);
-        if (error) {
-          showFieldError('inspection-window', error);
-        } else {
-          clearFieldError('inspection-window');
-        }
-      });
-      
-      // Form Submission
-      document.getElementById('create-escrow-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // Validate form
-        if (!validateForm()) {
-          showErrorNotification('Please fix the errors in the form');
-          return;
-        }
-        
-        // Get and sanitize form data (Requirement 19.3, 19.4)
-        const rawFormData = {
-          sellerId: currentUserId,
-          itemDescription: document.getElementById('item-description').value,
-          price: document.getElementById('price').value,
-          deliveryTimelineDays: document.getElementById('delivery-timeline').value,
-          inspectionWindowDays: document.getElementById('inspection-window').value
-        };
-        
-        // Validate and sanitize using InputValidationService
-        const validationResult = window.inputValidationService.validateTransactionForm(rawFormData);
-        
-        if (!validationResult.valid) {
-          console.error('Form validation failed:', validationResult.errors);
-          showErrorNotification('Please fix the errors in the form');
-          return;
-        }
-        
-        // Use sanitized data for transaction creation
-        const formData = validationResult.sanitized;
-        
-        // Disable submit button
-        const submitButton = document.getElementById('btn-submit');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Creating...';
-        
-        try {
-          // Create transaction with sanitized data
-          const transaction = await transactionService.createTransaction(formData);
-          
-          console.log('Transaction created:', transaction);
-          
-          // Close create modal
-          closeModal('create-escrow-modal');
-          
-          // Show success modal with transaction ID (sanitized for display)
-          const sanitizedTxnId = window.inputValidationService.escapeHtml(transaction.transaction_id);
-          document.getElementById('transaction-id-display').textContent = sanitizedTxnId;
-          openModal('transaction-success-modal');
-          
-          // Show success notification
-          showSuccessNotification('Transaction created successfully!');
-          
-        } catch (error) {
-          console.error('Transaction creation failed:', error);
-          // Sanitize error message before displaying
-          const sanitizedError = window.inputValidationService.escapeHtml(error.message || 'Failed to create transaction. Please try again.');
-          showErrorNotification(sanitizedError);
-        } finally {
-          // Re-enable submit button
-          submitButton.disabled = false;
-          submitButton.textContent = 'Create Transaction';
-        }
-      });
-      
+
       // Copy Transaction ID
       document.getElementById('btn-copy-transaction-id').addEventListener('click', () => {
-        const transactionId = document.getElementById('transaction-id-display').textContent;
-        
-        // Copy to clipboard
-        navigator.clipboard.writeText(transactionId).then(() => {
-          showSuccessNotification('Transaction ID copied to clipboard!');
-        }).catch((error) => {
-          console.error('Failed to copy:', error);
-          showErrorNotification('Failed to copy Transaction ID');
-        });
+        const id = document.getElementById('transaction-id-display').textContent;
+        navigator.clipboard.writeText(id).then(() => {
+          showSuccessNotification('Transaction ID copied!');
+        }).catch(() => showErrorNotification('Failed to copy'));
       });
       
       // ========================================
@@ -2916,10 +3441,19 @@
             trustScoreFill.className = 'h-full bg-green-500 transition-all';
           }
           
-          // Reset risk scoring section
-          document.getElementById('risk-scoring-section').classList.add('hidden');
+          // Reset AI analysis section
+          document.getElementById('ai-result-card').classList.add('hidden');
+          document.getElementById('ai-loading').classList.add('hidden');
           document.getElementById('risk-blocked-message').classList.add('hidden');
           document.getElementById('btn-fund-escrow').disabled = false;
+          document.getElementById('ai-btn-text').textContent = 'Run AI Analysis';
+          document.getElementById('btn-run-ai-analysis').disabled = false;
+
+          // Reset image upload
+          document.getElementById('product-image-input').value = '';
+          document.getElementById('image-preview').classList.add('hidden');
+          document.getElementById('image-upload-text').textContent = 'Click to upload product image';
+          window._aiAnalysisResult = null;
           
           // Open fund modal
           openModal('fund-escrow-modal');
@@ -2952,161 +3486,222 @@
         }
       });
       
+      // ── Image upload preview ────────────────────────────────────────────
+      document.getElementById('product-image-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('image-upload-text').textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const preview = document.getElementById('image-preview');
+          preview.src = ev.target.result;
+          preview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // ── Run AI Analysis Button ───────────────────────────────────────────
+      document.getElementById('btn-run-ai-analysis').addEventListener('click', async () => {
+        if (!currentTransaction) return;
+
+        const btn = document.getElementById('btn-run-ai-analysis');
+        const btnText = document.getElementById('ai-btn-text');
+        btn.disabled = true;
+        btnText.textContent = 'Analyzing…';
+
+        document.getElementById('ai-loading').classList.remove('hidden');
+        document.getElementById('ai-result-card').classList.add('hidden');
+        document.getElementById('risk-blocked-message').classList.add('hidden');
+
+        try {
+          // Get user verification status from session/localStorage
+          const session = JSON.parse(localStorage.getItem('scrowpay_session') || '{}');
+          const faceVerified = session.faceVerified ?? true;
+          const idVerified   = session.idVerified   ?? true;
+
+          // Read image if uploaded
+          let imageBase64 = null;
+          let imageMimeType = 'image/jpeg';
+          const imageFile = document.getElementById('product-image-input').files[0];
+          if (imageFile) {
+            imageMimeType = imageFile.type || 'image/jpeg';
+            imageBase64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                // Strip data-URI prefix — Gemini wants raw base64
+                resolve(e.target.result.split(',')[1]);
+              };
+              reader.readAsDataURL(imageFile);
+            });
+          }
+
+          // Run full Gemini analysis
+          const result = await window.trustScoreEngine.runFullAnalysis({
+            description:   currentTransaction.item_description,
+            amount:        currentTransaction.price,
+            faceVerified,
+            idVerified,
+            isNewSeller:   false,
+            imageBase64,
+            imageMimeType
+          });
+
+          window._aiAnalysisResult = result;
+
+          // ── Render result card ──────────────────────────────────────────
+          const verdict = result.decision.verdict; // RELEASE | REVIEW | HOLD
+          const card    = document.getElementById('ai-result-card');
+          const header  = document.getElementById('ai-result-header');
+
+          // Colour scheme per verdict
+          const scheme = {
+            RELEASE: { bg: '#f0fdf4', border: '#86efac', text: '#166534', iconBg: '#22c55e', iconColor: '#fff' },
+            REVIEW:  { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', iconBg: '#f59e0b', iconColor: '#fff' },
+            HOLD:    { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', iconBg: '#ef4444', iconColor: '#fff' }
+          }[verdict] || { bg: '#f9fafb', border: '#d1d5db', text: '#111', iconBg: '#6b7280', iconColor: '#fff' };
+
+          card.style.borderColor = scheme.border;
+          header.style.background = scheme.bg;
+          header.style.color = scheme.text;
+
+          const iconSVGs = {
+            RELEASE: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>',
+            REVIEW:  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>',
+            HOLD:    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>'
+          };
+
+          document.getElementById('ai-verdict-icon').style.background = scheme.iconBg;
+          document.getElementById('ai-verdict-icon').innerHTML = `<svg class="w-5 h-5" fill="none" stroke="${scheme.iconColor}" viewBox="0 0 24 24">${iconSVGs[verdict] || ''}</svg>`;
+          document.getElementById('ai-verdict-label').textContent = 'AI Verdict';
+          document.getElementById('ai-verdict-text').textContent = verdict;
+          document.getElementById('ai-trust-score').textContent = result.trustScore;
+
+          document.getElementById('ai-authenticity-score').textContent =
+            result.imageAnalysis ? `${result.imageAnalysis.authenticity_score}%` : 'N/A';
+          document.getElementById('ai-scam-prob').textContent =
+            result.textAnalysis ? `${result.textAnalysis.scam_probability}%` : 'N/A';
+          document.getElementById('ai-confidence').textContent = `${result.decision.confidence}%`;
+
+          document.getElementById('ai-summary').textContent = result.decision.summary;
+
+          // Flags
+          const flagsSection = document.getElementById('ai-flags-section');
+          const flagsList    = document.getElementById('ai-flags-list');
+          if (result.allFlags.length > 0) {
+            flagsList.innerHTML = result.allFlags.map(f =>
+              `<li class="flex items-start gap-2 text-sm text-brand-subtext">
+                <span class="mt-0.5 flex-shrink-0">•</span><span>${f}</span>
+              </li>`
+            ).join('');
+            flagsSection.classList.remove('hidden');
+          } else {
+            flagsSection.classList.add('hidden');
+          }
+
+          // Recommendation box
+          const recBox = document.getElementById('ai-recommendation-box');
+          recBox.style.background = scheme.bg;
+          recBox.style.borderLeft = `4px solid ${scheme.border}`;
+          document.getElementById('ai-action-text').style.color = scheme.text;
+          document.getElementById('ai-action-text').textContent = result.decision.action;
+
+          card.classList.remove('hidden');
+
+          // Gate Fund button on verdict
+          const fundBtn = document.getElementById('btn-fund-escrow');
+          if (verdict === 'HOLD') {
+            document.getElementById('risk-blocked-message').classList.remove('hidden');
+            document.getElementById('risk-blocked-text').textContent =
+              result.decision.action || 'High fraud probability detected. Funds cannot be released.';
+            fundBtn.disabled = true;
+            fundBtn.textContent = 'Blocked by AI';
+            fundBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          } else if (verdict === 'REVIEW') {
+            fundBtn.disabled = false;
+            fundBtn.textContent = 'Fund Anyway (Review Flagged)';
+            fundBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          } else {
+            fundBtn.disabled = false;
+            fundBtn.textContent = 'Fund Escrow ✓';
+            fundBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+
+          btnText.textContent = 'Re-run Analysis';
+
+        } catch (err) {
+          console.error('[AI Analysis] Failed:', err);
+          showErrorNotification('AI analysis failed: ' + err.message);
+          btnText.textContent = 'Run AI Analysis';
+        } finally {
+          btn.disabled = false;
+          document.getElementById('ai-loading').classList.add('hidden');
+        }
+      });
+
       // Fund Escrow Button
       document.getElementById('btn-fund-escrow').addEventListener('click', async () => {
         if (!currentTransaction) {
           showErrorNotification('No transaction selected');
           return;
         }
-        
-        // Disable button
+
         const fundButton = document.getElementById('btn-fund-escrow');
         fundButton.disabled = true;
         fundButton.textContent = 'Processing...';
-        
+
         try {
-          // Show risk scoring section
-          document.getElementById('risk-scoring-section').classList.remove('hidden');
-          document.getElementById('risk-scoring-loading').classList.remove('hidden');
-          document.getElementById('risk-scoring-result').classList.add('hidden');
-          document.getElementById('risk-blocked-message').classList.add('hidden');
-          
-          // Calculate transaction velocity
-          const transactionVelocity = await aiRiskService.calculateTransactionVelocity(currentUserId);
-          
-          // Get user account created date (mock for now)
-          const accountCreatedAt = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);  // 30 days ago
-          
-          // Get seller trust score
-          let sellerTrustScore = 50;
-          try {
-            const trustScoreResult = await trustScoreService.getTrustScoreWithIndicator(currentTransaction.seller_id);
-            if (trustScoreResult.success) {
-              sellerTrustScore = trustScoreResult.score;
-            }
-          } catch (error) {
-            console.error('Failed to get seller trust score:', error);
-          }
-          
-          // Prepare user context for AI scoring
-          const userContext = {
-            userId: currentUserId,
-            transactionVelocity: transactionVelocity,
-            accountCreatedAt: accountCreatedAt.toISOString(),
-            counterpartyTrustScore: sellerTrustScore
-          };
-          
-          // Call AI Risk Service BEFORE Squad API (Requirement 4.6, 5.1)
-          console.log('Calling AI Risk Service...');
-          const riskResult = await aiRiskService.scoreTransaction(currentTransaction, userContext);
-          
-          // Hide loading, show result
-          document.getElementById('risk-scoring-loading').classList.add('hidden');
-          document.getElementById('risk-scoring-result').classList.remove('hidden');
-          
-          // Display risk results
-          document.getElementById('risk-score-value').textContent = riskResult.risk_score;
-          document.getElementById('risk-verdict-value').textContent = riskResult.verdict.toUpperCase();
-          
-          // Display anomaly indicators if any
-          if (riskResult.anomaly_indicators && riskResult.anomaly_indicators.length > 0) {
-            document.getElementById('anomaly-indicators-container').classList.remove('hidden');
-            const indicatorsList = document.getElementById('anomaly-indicators-list');
-            indicatorsList.innerHTML = '';
-            riskResult.anomaly_indicators.forEach(indicator => {
-              const li = document.createElement('li');
-              li.textContent = indicator;
-              indicatorsList.appendChild(li);
-            });
-          } else {
-            document.getElementById('anomaly-indicators-container').classList.add('hidden');
-          }
-          
-          // Check verdict (Requirement 5.4)
-          if (riskResult.verdict === 'fail') {
-            // Block transaction
-            console.log('Transaction blocked due to high risk');
-            
-            // Log blocked transaction to security logs (Requirement 19.7)
-            await logBlockedTransaction(
-              currentUserId,
-              currentTransaction.transaction_id,
-              'High risk score',
-              {
-                risk_score: riskResult.risk_score,
-                anomaly_indicators: riskResult.anomaly_indicators
-              }
-            );
-            
-            document.getElementById('risk-blocked-message').classList.remove('hidden');
-            document.getElementById('risk-blocked-text').textContent = 
-              riskResult.message || 'This transaction has been blocked due to high risk indicators.';
-            
-            fundButton.textContent = 'Transaction Blocked';
-            
-            showErrorNotification('Transaction blocked due to high risk');
-            return;
-          }
-          
-          // Verdict is "pass" - proceed to funding
-          console.log('AI risk check passed, proceeding to funding...');
-          
-          fundButton.textContent = 'Funding...';
-          
+          // Get AI result if available
+          const aiResult = window._aiAnalysisResult;
+          const riskScore = aiResult ? (100 - aiResult.trustScore) : 50;
+          const aiVerdict = aiResult ? aiResult.decision.verdict.toLowerCase() : 'pass';
+
           // Update transaction risk score in database
           await transactionService.updateRiskScore(
             currentTransaction.transaction_id,
-            riskResult.risk_score,
-            riskResult.verdict
+            riskScore,
+            aiVerdict
           );
-          
+
           // Update buyer ID
           await transactionService.updateBuyer(currentTransaction.transaction_id, currentUserId);
-          
+
           // Transition state to Funded_Locked via StateMachineService
-          // This will handle Squad API transfer internally
           const transitionResult = await stateMachineService.transitionState(
             currentTransaction.transaction_id,
             'Funded_Locked',
             currentUserId,
             {
-              buyerAccount: 'BUYER_VIRTUAL_ACCOUNT',  // In production, get from user data
-              riskScore: riskResult.risk_score,
-              aiVerdict: riskResult.verdict
+              buyerAccount: 'BUYER_VIRTUAL_ACCOUNT',
+              riskScore,
+              aiVerdict
             }
           );
-          
+
           if (!transitionResult.success) {
             throw new Error(transitionResult.message || 'Failed to fund transaction');
           }
-          
+
           console.log('Transaction funded successfully!');
-          
-          // Optimistic balance update (Requirement 11.5)
+
+          // Optimistic balance update
           await optimisticBalanceUpdate();
-          
+
           // Close fund modal
           closeModal('fund-escrow-modal');
-          
+
           // Show success modal
           openModal('funding-success-modal');
-          
-          // Show success notification
+
           showSuccessNotification('Transaction funded successfully!');
-          
-          // Reset current transaction
+
           currentTransaction = null;
-          
+          window._aiAnalysisResult = null;
+
         } catch (error) {
           console.error('Transaction funding failed:', error);
           showErrorNotification(error.message || 'Failed to fund transaction. Please try again.');
-          
-          // Hide risk scoring section on error
-          document.getElementById('risk-scoring-section').classList.add('hidden');
-          
         } finally {
-          // Re-enable button if not blocked
-          if (fundButton.textContent !== 'Transaction Blocked') {
+          if (fundButton.textContent === 'Processing...') {
             fundButton.disabled = false;
             fundButton.textContent = 'Fund Escrow';
           }
@@ -3340,16 +3935,6 @@
             e.stopPropagation();
             openDisputeModal(txn.transaction_id);
           };
-          actionsContainer.appendChild(disputeButton);
-        }
-        
-        return card;
-      }
-          
-          const disputeButton = document.createElement('button');
-          disputeButton.className = 'flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
-          disputeButton.textContent = 'Dispute Item';
-          disputeButton.onclick = () => openDisputeModal(txn.transaction_id);
           actionsContainer.appendChild(disputeButton);
         }
         

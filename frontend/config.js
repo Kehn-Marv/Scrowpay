@@ -26,9 +26,20 @@ const CONFIG = {
     environment: window.ENV?.SQUAD_ENVIRONMENT || 'sandbox'
   },
   
-  // AI Risk Engine Configuration
+  // AI Risk Engine Configuration (legacy local engine)
   aiEngine: {
     url: window.ENV?.AI_ENGINE_URL || 'http://localhost:5000'
+  },
+
+  // Gemini AI Configuration
+  gemini: {
+    apiKey: window.ENV?.GEMINI_API_KEY || ''
+  },
+
+  // Cloudinary Configuration
+  cloudinary: {
+    cloudName:    window.ENV?.CLOUDINARY_CLOUD_NAME    || 'dokt9v2il',
+    uploadPreset: window.ENV?.CLOUDINARY_UPLOAD_PRESET || 'ml_default'
   },
   
   // Holding Account Configuration
