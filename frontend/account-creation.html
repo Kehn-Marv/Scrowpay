@@ -1642,7 +1642,7 @@
           currentAreaDropdown.disabled = true;
           
           if (state) {
-            const lgas = addressDataService.getLGAs(state);
+            const lgas = addressDataService.getLGAsForState(state);
             lgas.forEach(lga => {
               const option = document.createElement('option');
               option.value = lga;
@@ -1660,7 +1660,7 @@
           currentAreaDropdown.disabled = true;
           
           if (state && lga) {
-            const areas = addressDataService.getAreas(state, lga);
+            const areas = addressDataService.getWardsForLGA(state, lga);
             areas.forEach(area => {
               const option = document.createElement('option');
               option.value = area;
@@ -1680,7 +1680,7 @@
           permanentAreaDropdown.disabled = true;
           
           if (state) {
-            const lgas = addressDataService.getLGAs(state);
+            const lgas = addressDataService.getLGAsForState(state);
             lgas.forEach(lga => {
               const option = document.createElement('option');
               option.value = lga;
@@ -1698,7 +1698,7 @@
           permanentAreaDropdown.disabled = true;
           
           if (state && lga) {
-            const areas = addressDataService.getAreas(state, lga);
+            const areas = addressDataService.getWardsForLGA(state, lga);
             areas.forEach(area => {
               const option = document.createElement('option');
               option.value = area;

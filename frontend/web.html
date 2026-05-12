@@ -1,1287 +1,951 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ScrowPay – Secure Escrow Payments</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --green: #caff04;
-      --dark: #111111;
-      --page: #ffffff;
-      --muted: #666666;
-      --gray-bg: #f5f5f3;
-      --border: rgba(0,0,0,0.08);
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>ScrowPay - Secure Escrow Payments with AI Protection</title>
+<style>
+  /* Critical CSS to prevent FOUC */
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  body {
+    background: #ffffff;
+    color: #111111;
+  }
+  /* Hide content until Tailwind loads */
+  body > * {
+    visibility: hidden;
+  }
+  body.loaded > * {
+    visibility: visible;
+  }
+</style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#1c1c1c',
+              green: '#caff04',
+              gray: '#f5f5f7',
+              text: '#111111',
+              subtext: '#666666'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
     }
-
-    html { scroll-behavior: smooth; }
-
+    
+    // Show content after Tailwind loads
+    window.addEventListener('DOMContentLoaded', function() {
+      document.body.classList.add('loaded');
+    });
+  </script>
+<style data-purpose="custom-fonts">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Prevent FOUC (Flash of Unstyled Content) */
+    html {
+      visibility: visible;
+      opacity: 1;
+    }
+    
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--page);
-      color: var(--dark);
-      overflow-x: hidden;
+      font-family: 'Inter', sans-serif;
+      scroll-behavior: smooth;
+      visibility: visible;
+      opacity: 1;
     }
-
-    /* ══════════════════════════════
-       NAV
-    ══════════════════════════════ */
-    .nav-wrap {
-      position: fixed;
-      top: 20px; left: 0; right: 0;
-      z-index: 200;
-      padding: 0 24px;
-      transition: top 0.3s ease, padding 0.3s ease;
+    
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e7eb 50%, transparent);
+      margin: 4rem 0;
     }
-    .nav-wrap.scrolled {
-      top: 0;
-      padding: 0;
-    }
-
-    nav {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #111111;
-      border-radius: 50px;
-      padding: 10px 18px 10px 18px;
-      display: flex; align-items: center; justify-content: space-between;
-      transition: border-radius 0.35s ease, backdrop-filter 0.35s ease, background 0.35s ease, padding 0.3s ease, box-shadow 0.3s ease;
-    }
-    .nav-wrap.scrolled nav {
-      border-radius: 0;
-      background: rgba(17,17,17,0.88);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      padding: 10px 28px;
-      box-shadow: 0 2px 24px rgba(0,0,0,0.18);
-    }
-
-    .nav-logo {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none;
-    }
-    .nav-logo-mark {
-      width: 36px; height: 36px;
-      background: var(--green);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .nav-logo-mark svg { width: 18px; height: 18px; }
-    .nav-logo-text {
-      font-family: 'Syne', sans-serif;
-      font-size: 17px; font-weight: 700;
-      color: #fff; letter-spacing: 0.02em;
-    }
-
-    .nav-links {
-      display: flex; gap: 28px;
-      list-style: none;
-    }
-    .nav-links a {
-      color: rgba(255,255,255,0.65);
-      text-decoration: none;
-      font-size: 14px; font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: #fff; }
-
-    .nav-cta {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .btn-nav-ghost {
-      background: transparent;
-      border: 1.5px solid var(--green);
-      color: #fff;
-      padding: 8px 18px;
-      border-radius: 50px;
-      font-size: 13px; font-weight: 500;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn-nav-ghost:hover { background: rgba(202,255,4,0.1); }
-    .btn-nav-solid {
-      background: var(--green);
-      border: none;
-      color: var(--dark);
-      padding: 9px 20px;
-      border-radius: 50px;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn-nav-solid:hover { background: #bef000; transform: translateY(-1px); }
-
-    .nav-burger {
-      display: none;
-      background: transparent;
-      border: 1.5px solid rgba(255,255,255,0.25);
-      border-radius: 10px;
-      width: 38px; height: 38px;
-      cursor: pointer;
-      align-items: center; justify-content: center;
-      flex-direction: column; gap: 5px;
-    }
-    .nav-burger span {
-      display: block;
-      width: 18px; height: 2px;
-      background: #fff;
-      border-radius: 2px;
-      transition: all 0.3s;
-    }
-
-    /* mobile menu */
+    
+    /* Mobile Menu Styles */
     .mobile-menu {
       display: none;
       position: fixed;
-      inset: 0;
-      background: #111;
-      z-index: 190;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1c1c1c;
+      z-index: 100;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 32px;
     }
-    .mobile-menu.open { display: flex; }
+    .mobile-menu.open {
+      display: flex;
+    }
     .mobile-menu a {
+      font-size: 24px;
       color: #fff;
       text-decoration: none;
-      font-family: 'Syne', sans-serif;
-      font-size: 28px; font-weight: 700;
+      font-weight: 500;
       transition: color 0.2s;
     }
-    .mobile-menu a:hover { color: var(--green); }
+    .mobile-menu a:hover {
+      color: #caff04;
+    }
     .mobile-menu-close {
       position: absolute;
-      top: 24px; right: 24px;
-      background: rgba(255,255,255,0.08);
+      top: 24px;
+      right: 24px;
+      background: transparent;
       border: none;
       color: #fff;
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      font-size: 22px;
+      font-size: 32px;
       cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    /* ══════════════════════════════
-       HERO
-    ══════════════════════════════ */
-    .hero {
-      padding: 160px 24px 60px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* faint grid lines */
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.025) 0, rgba(0,0,0,0.025) 1px, transparent 1px, transparent calc(100% / 7));
-      pointer-events: none;
-    }
-
-    .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--gray-bg);
-      border: 1px solid var(--border);
-      padding: 6px 16px;
-      border-radius: 50px;
-      font-size: 13px; font-weight: 500;
-      color: var(--muted);
-      margin-bottom: 28px;
-    }
-    .hero-eyebrow-dot {
-      width: 7px; height: 7px;
-      background: var(--green);
-      border-radius: 50%;
-      animation: pulse-dot 2s ease infinite;
-    }
-    @keyframes pulse-dot {
-      0%,100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: 0.6; transform: scale(1.4); }
-    }
-
-    .hero h1 {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(36px, 7vw, 72px);
-      font-weight: 800;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      color: var(--dark);
-      max-width: 880px;
-      margin: 0 auto 24px;
-    }
-    .hero h1 em {
-      font-style: normal;
-      background: var(--green);
-      padding: 0 12px 4px;
-      border-radius: 8px;
-      display: inline-block;
-    }
-
-    .hero-sub {
-      font-size: 18px; color: var(--muted);
-      max-width: 560px;
-      margin: 0 auto 36px;
-      line-height: 1.6;
-    }
-
-    .hero-btns {
-      display: flex; gap: 14px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .btn-hero-dark {
-      background: var(--dark); color: #fff;
-      border: none;
-      padding: 16px 32px;
-      border-radius: 50px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px; font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
-      display: inline-flex; align-items: center; gap: 8px;
-    }
-    .btn-hero-dark:hover { background: #222; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
-    .btn-hero-ghost {
-      background: transparent; color: var(--dark);
-      border: 1.5px solid #111;
-      padding: 16px 32px;
-      border-radius: 50px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px; font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn-hero-ghost:hover { border-color: #555; transform: translateY(-2px); }
-
-    /* ── Desktop dashboard mockup ── */
-    .hero-mockup-wrap {
-      margin-top: 60px;
-      display: flex; justify-content: center;
-      position: relative;
-    }
-    .desktop-frame {
-      width: min(1000px, 95vw);
-      background: #fff;
-      border-radius: 28px 28px 0 0;
-      border: 14px solid #1c1c1c;
-      border-bottom: 0;
-      box-shadow: 0 -20px 60px -10px rgba(0,0,0,0.12);
-      overflow: hidden;
+      width: 40px;
+      height: 40px;
       display: flex;
-    }
-
-    /* ── Mobile phone mockup (hidden on desktop) ── */
-    .mobile-phone-wrap {
-      display: none;
+      align-items: center;
       justify-content: center;
-      margin-top: 48px;
     }
-    .mobile-phone {
-      width: 260px;
-      background: #111;
-      border-radius: 40px;
-      padding: 14px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+    .nav-burger {
+      display: none;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      flex-direction: column;
+      gap: 5px;
     }
-    .mobile-phone-inner {
-      background: #1a1a1a;
-      border-radius: 28px;
-      overflow: hidden;
-      padding: 28px 20px 24px;
-    }
-    .mobile-balance-label {
-      font-size: 11px; color: rgba(255,255,255,0.45);
-      text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 6px;
-    }
-    .mobile-balance-amount {
-      font-family: 'Syne', sans-serif;
-      font-size: 30px; font-weight: 700;
-      color: #fff; margin-bottom: 20px;
-    }
-    .mobile-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(202,255,4,0.12);
-      border: 1px solid rgba(202,255,4,0.25);
-      color: var(--green);
-      font-size: 11px; font-weight: 500;
-      padding: 4px 10px; border-radius: 20px;
-      margin-bottom: 24px;
-    }
-    .mobile-actions-row {
-      display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
-      margin-bottom: 24px;
-    }
-    .mobile-action-btn {
-      background: rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 10px 4px;
-      display: flex; flex-direction: column;
-      align-items: center; gap: 5px;
-    }
-    .mobile-action-icon {
-      width: 32px; height: 32px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .mobile-action-icon svg { width: 16px; height: 16px; stroke: rgba(255,255,255,0.7); fill: none; }
-    .mobile-action-label { font-size: 9px; color: rgba(255,255,255,0.5); text-align: center; }
-    .mobile-escrow-card {
-      background: var(--green);
-      border-radius: 16px;
-      padding: 16px;
-    }
-    .mobile-escrow-title { font-size: 11px; font-weight: 600; color: #333; margin-bottom: 4px; }
-    .mobile-escrow-sub { font-size: 10px; color: #555; }
-    .mobile-escrow-steps {
-      display: flex; align-items: center; gap: 4px;
-      margin-top: 12px;
-    }
-    .m-step {
-      flex: 1; height: 4px;
-      background: rgba(0,0,0,0.15);
+    .nav-burger span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: #fff;
       border-radius: 2px;
     }
-    .m-step.done { background: #111; }
-
-    /* dashboard frame innards */
-    .frame-sidebar {
-      width: 200px; flex-shrink: 0;
-      background: #fff;
-      border-right: 1px solid #f0f0f0;
-      padding: 24px 16px;
+    
+    /* Sticky Navigation */
+    #main-nav {
+      transition: none;
     }
-    .frame-sidebar-logo {
-      display: flex; align-items: center; gap: 7px;
-      margin-bottom: 28px;
+    
+    #main-nav.sticky {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      margin: 0;
+      border-radius: 0;
+      padding: 16px 32px;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      background: #1c1c1c;
     }
-    .frame-sidebar-logo-mark {
-      width: 22px; height: 22px;
-      background: var(--green);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
+    
+    body.nav-sticky {
+      padding-top: 80px;
     }
-    .frame-sidebar-logo-mark svg { width: 12px; height: 12px; }
-    .frame-sidebar-logo-text {
-      font-family: 'Syne', sans-serif;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: 0.05em;
+    
+    @media (max-width: 768px) {
+      .nav-burger {
+        display: flex;
+      }
+      #main-nav.sticky {
+        padding: 12px 24px;
+      }
+      body.nav-sticky {
+        padding-top: 70px;
+      }
     }
-    .frame-nav-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 10px; border-radius: 10px;
-      font-size: 12px; font-weight: 500;
-      color: #aaa; margin-bottom: 4px;
-      cursor: default;
-    }
-    .frame-nav-item.active {
-      background: var(--green);
-      color: var(--dark);
-    }
-    .frame-nav-item .material-symbols-outlined { font-size: 15px; }
-
-    .frame-main {
-      flex: 1; background: #fafafa;
-      padding: 24px;
-      overflow: hidden;
-    }
-    .frame-header {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 20px;
-    }
-    .frame-greeting { font-size: 15px; font-weight: 600; color: #111; }
-    .frame-user-pill {
-      display: flex; align-items: center; gap: 8px;
-      background: #fff;
-      border: 1px solid #f0f0f0;
-      border-radius: 50px;
-      padding: 5px 12px 5px 5px;
-    }
-    .frame-avatar {
-      width: 26px; height: 26px;
-      background: var(--green);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 700;
-    }
-    .frame-user-name { font-size: 11px; font-weight: 600; }
-
-    .frame-cards {
-      display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
-      margin-bottom: 16px;
-    }
-    .frame-card {
-      background: #fff;
-      border-radius: 16px;
-      border: 1px solid #f0f0f0;
-      padding: 14px;
-      position: relative; overflow: hidden;
-    }
-    .frame-card-label { font-size: 10px; color: #aaa; font-weight: 500; margin-bottom: 6px; }
-    .frame-card-val { font-size: 16px; font-weight: 700; color: #111; }
-    .frame-card-badge {
-      display: inline-block;
-      font-size: 9px; font-weight: 600;
-      padding: 2px 6px; border-radius: 4px;
-      margin-left: 6px;
-    }
-    .frame-card-badge.up { background: #f0fdf4; color: #15803d; }
-    .frame-card-badge.dn { background: #fdf2f8; color: #be185d; }
-    .frame-sparkline {
-      position: absolute;
-      bottom: 0; left: 0; right: 0; height: 36px;
-    }
-
-    .frame-chart-area {
-      background: #f0edff;
-      border-radius: 16px;
-      padding: 14px;
-      border: 1px solid #e8e4ff;
-    }
-    .frame-chart-title { font-size: 11px; font-weight: 600; color: #555; margin-bottom: 10px; }
-    .frame-chart-bars {
-      display: flex; align-items: flex-end;
-      gap: 6px; height: 60px;
-    }
-    .frame-bar-wrap {
-      flex: 1; height: 100%;
-      display: flex; flex-direction: column;
-      justify-content: flex-end; align-items: center;
-    }
-    .frame-bar {
-      width: 100%;
-      background: rgba(139,92,246,0.2);
-      border-radius: 4px 4px 0 0;
-    }
-    .frame-bar.active { background: #7c3aed; }
-
-    /* floating cards */
-    .float-card {
-      position: absolute;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
-      border: 1px solid rgba(0,0,0,0.06);
-      z-index: 10;
-      animation: floatBob 4s ease-in-out infinite;
-    }
-    @keyframes floatBob {
-      0%,100% { transform: translateY(0) rotate(var(--rot)); }
-      50%      { transform: translateY(-8px) rotate(var(--rot)); }
-    }
-
-    /* ══════════════════════════════
-       TRUST TICKER
-    ══════════════════════════════ */
-    .ticker-section {
-      background: var(--dark);
-      padding: 16px 0;
-      overflow: hidden;
-      position: relative;
-    }
-    .ticker-track {
+    
+    /* Webflow 3 Styles */
+    .feature-card {
+      background-color: #f8f9fb;
+      border-radius: 2rem;
+      padding: 3rem 2rem;
+      text-align: center;
       display: flex;
-      width: max-content;
-      animation: ticker 28s linear infinite;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
     }
-    .ticker-track:hover { animation-play-state: paused; }
-    @keyframes ticker {
-      from { transform: translateX(0); }
-      to   { transform: translateX(-50%); }
-    }
-    .ticker-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 0 32px;
-      white-space: nowrap;
-      font-size: 13px; font-weight: 500;
-      color: rgba(255,255,255,0.7);
-    }
-    .ticker-dot {
-      width: 6px; height: 6px;
-      background: var(--green);
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .ticker-item strong { color: #fff; }
-
-    /* ══════════════════════════════
-       FEATURES SECTION
-    ══════════════════════════════ */
-    .section {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 80px 24px;
-    }
-    .section-eyebrow {
-      font-size: 12px; font-weight: 600;
-      color: var(--muted);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-    .section-title {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(28px, 5vw, 52px);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-      color: var(--dark);
-      max-width: 680px;
-      margin-bottom: 18px;
-    }
-    .section-sub {
-      font-size: 17px; color: var(--muted);
-      max-width: 560px; line-height: 1.65;
-      margin-bottom: 56px;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-    }
-
-    .feat-card {
-      background: var(--gray-bg);
-      border-radius: 28px;
-      padding: 40px 36px;
-      display: flex; flex-direction: column;
-      align-items: flex-start;
+    .icon-container {
       position: relative;
-      overflow: hidden;
-      transition: transform 0.25s ease;
+      margin-bottom: 1.5rem;
     }
-    .feat-card:hover { transform: translateY(-4px); }
-
-    .feat-icon {
-      width: 56px; height: 56px;
-      background: var(--dark);
-      border-radius: 16px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 24px;
-    }
-    .feat-icon svg { width: 26px; height: 26px; stroke: var(--green); fill: none; }
-
-    .feat-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 22px; font-weight: 700;
-      color: var(--dark); margin-bottom: 10px;
-    }
-    .feat-desc {
-      font-size: 15px; color: var(--muted);
-      line-height: 1.65;
-    }
-
-    /* ══════════════════════════════
-       WHY TRUST US
-    ══════════════════════════════ */
-    .why-section {
-      background: var(--gray-bg);
-      padding: 80px 24px;
-    }
-    .why-inner {
-      max-width: 1100px; margin: 0 auto;
-    }
-    .why-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-top: 56px;
-    }
-    .why-card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 28px 24px;
-      display: flex; flex-direction: column;
-      align-items: center; text-align: center;
-      transition: transform 0.25s;
-    }
-    .why-card:hover { transform: translateY(-4px); }
-    .why-icon-wrap {
-      width: 64px; height: 64px;
+    .icon-base {
+      width: 80px;
+      height: 80px;
       background: radial-gradient(circle at 30% 30%, #d4fc33, #8cb500);
       border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 18px;
-      box-shadow: 0 8px 20px rgba(140,181,0,0.25);
-    }
-    .why-icon-wrap svg { width: 26px; height: 26px; stroke: #fff; fill: none; }
-    .why-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:var(--dark); margin-bottom:8px; }
-    .why-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
-
-    /* ══════════════════════════════
-       CTA SECTION
-    ══════════════════════════════ */
-    .cta-section {
-      padding: 60px 24px;
-      display: flex; justify-content: center;
-    }
-    .cta-box {
-      max-width: 1100px; width: 100%;
-      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.5) 0%, transparent 60%),
-                  radial-gradient(circle at 100% 0%, #e8ff80 0%, transparent 45%),
-                  radial-gradient(circle at 0% 100%, #b8e600 0%, transparent 40%),
-                  #d0ff00;
-      border-radius: 40px;
-      padding: 80px 40px;
-      text-align: center;
-      position: relative; overflow: hidden;
-    }
-    .cta-box::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='1000' height='400' viewBox='0 0 1000 400' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,100 C150,200 350,0 500,100 C650,200 850,0 1000,100' stroke='%23000' stroke-width='1.5' opacity='0.06'/%3E%3Cpath d='M0,160 C150,260 350,60 500,160 C650,260 850,60 1000,160' stroke='%23000' stroke-width='1.5' opacity='0.06'/%3E%3Cpath d='M0,220 C150,320 350,120 500,220 C650,320 850,120 1000,220' stroke='%23000' stroke-width='1.5' opacity='0.06'/%3E%3C/svg%3E") center/cover no-repeat;
-      pointer-events: none;
-    }
-    .cta-title {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(36px, 7vw, 72px);
-      font-weight: 800;
-      color: var(--dark);
-      line-height: 1.05;
-      letter-spacing: -0.03em;
-      margin-bottom: 20px;
-      position: relative; z-index: 1;
-    }
-    .cta-sub {
-      font-size: 17px; color: rgba(0,0,0,0.6);
-      margin-bottom: 36px;
-      position: relative; z-index: 1;
-    }
-    .cta-btns {
-      display: flex; gap: 14px;
-      justify-content: center; flex-wrap: wrap;
-      position: relative; z-index: 1;
-    }
-    .btn-cta-dark {
-      background: var(--dark); color: #fff;
-      border: none; padding: 16px 36px;
-      border-radius: 50px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px; font-weight: 600;
-      cursor: pointer; text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn-cta-dark:hover { background: #222; transform: translateY(-2px); }
-    .btn-cta-ghost {
-      background: #fff; color: var(--dark);
-      border: 1.5px solid var(--dark);
-      padding: 16px 36px; border-radius: 50px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px; font-weight: 600;
-      cursor: pointer; text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn-cta-ghost:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
-
-    /* CTA floating cards */
-    .cta-float {
-      position: absolute;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.7);
-      border-radius: 20px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
-      z-index: 2;
-    }
-
-    /* ══════════════════════════════
-       CONTACT
-    ══════════════════════════════ */
-    .contact-section {
-      max-width: 1100px; margin: 0 auto;
-      padding: 60px 24px;
-      display: flex; align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      gap: 24px; flex-wrap: wrap;
-    }
-    .contact-title {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(28px, 4vw, 44px);
-      font-weight: 700; color: var(--dark);
-    }
-    .contact-email {
-      font-family: 'DM Sans', sans-serif;
-      font-size: clamp(16px, 2.5vw, 28px);
-      font-weight: 500; color: var(--dark);
-      text-decoration: none; transition: color 0.2s;
-    }
-    .contact-email:hover { color: var(--muted); }
-
-    /* ══════════════════════════════
-       FOOTER
-    ══════════════════════════════ */
-    footer {
-      background: linear-gradient(180deg, #f9fafb 0%, #e2ffb3 100%);
-      padding: 64px 24px 40px;
-      position: relative; overflow: hidden;
-    }
-    .footer-inner {
-      max-width: 1100px; margin: 0 auto;
-    }
-    .footer-top {
       display: flex;
-      justify-content: space-between;
-      gap: 48px; flex-wrap: wrap;
-      margin-bottom: 64px;
-    }
-    .footer-brand {}
-    .footer-logo {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 16px;
-    }
-    .footer-logo-mark {
-      width: 40px; height: 40px;
-      background: var(--dark); border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .footer-logo-mark svg { width: 20px; height: 20px; }
-    .footer-logo-name {
-      font-family: 'Syne', sans-serif;
-      font-size: 20px; font-weight: 700;
-      color: var(--dark);
-    }
-    .footer-tagline { font-size: 13px; color: var(--muted); max-width: 220px; line-height: 1.55; }
-
-    .footer-links-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 40px;
-    }
-    .footer-col-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 15px; font-weight: 700;
-      color: var(--dark); margin-bottom: 20px;
-    }
-    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
-    .footer-col ul a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color 0.2s; }
-    .footer-col ul a:hover { color: var(--dark); }
-
-    .footer-bottom {
-      display: flex; align-items: flex-end;
-      justify-content: space-between;
-      border-top: 1px solid rgba(0,0,0,0.08);
-      padding-top: 32px;
-      flex-wrap: wrap; gap: 20px;
-    }
-    .footer-wordmark {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(44px, 9vw, 88px);
-      font-weight: 800;
-      color: var(--dark);
-      letter-spacing: -0.04em;
-      line-height: 1;
-      opacity: 0.85;
-    }
-    .footer-legal {
-      display: flex; gap: 20px; flex-wrap: wrap;
       align-items: center;
-      font-size: 12px; color: var(--muted);
+      justify-content: center;
+      box-shadow: 0 10px 20px rgba(140, 181, 0, 0.3);
     }
-    .footer-legal a { color: var(--muted); text-decoration: none; }
-    .footer-legal a:hover { color: var(--dark); }
-
-    /* background watermark */
-    .footer-watermark {
+    .icon-badge {
       position: absolute;
-      bottom: -40px; left: -30px;
-      width: 280px; height: 280px;
-      opacity: 0.06;
-      pointer-events: none;
+      top: -5px;
+      right: -5px;
+      width: 32px;
+      height: 32px;
+      background-color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
-    /* divider */
-    .section-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border) 50%, transparent);
-      max-width: 1100px; margin: 0 auto;
+    .center-showcase {
+      background: linear-gradient(180deg, #c4fc00 0%, #a6d600 100%);
+      border-radius: 3rem;
+      overflow: hidden;
+      position: relative;
+      height: 100%;
+      min-height: 600px;
     }
-
-    /* ══════════════════════════════
-       ANIMATIONS ON SCROLL
-    ══════════════════════════════ */
-    .reveal {
-      opacity: 0; transform: translateY(32px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
+    /* Webflow 4 Styles */
+    .bg-scrow-green {
+      background-color: #C0FF00;
     }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-    .reveal-delay-3 { transition-delay: 0.3s; }
-
-    /* ══════════════════════════════
-       RESPONSIVE
-    ══════════════════════════════ */
-    @media (max-width: 860px) {
-      .nav-links { display: none; }
-      .btn-nav-ghost { display: none; }
-      .nav-burger { display: flex; }
-
-      .desktop-frame { display: none; }
-      .mobile-phone-wrap { display: flex; }
-
-      .features-grid { grid-template-columns: 1fr; }
-      .why-grid { grid-template-columns: repeat(2,1fr); }
-
-      .footer-top { flex-direction: column; }
-      .footer-links-grid { grid-template-columns: repeat(2,1fr); gap: 28px; }
-
-      .cta-float { display: none !important; }
+    .text-scrow-green {
+      color: #C0FF00;
     }
-
-    @media (max-width: 540px) {
-      .hero { padding: 130px 20px 40px; }
-      .why-grid { grid-template-columns: 1fr; }
-      .footer-links-grid { grid-template-columns: 1fr; }
-      .contact-section { flex-direction: column; align-items: flex-start; }
-      .cta-box { padding: 56px 24px; }
+    .bg-scrow-dark {
+      background-color: #111111;
+    }
+    .text-scrow-dark {
+      color: #111111;
+    }
+    .bg-gradient-scrow {
+      background: 
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 100% 0%, #E5FF80 0%, transparent 40%),
+        radial-gradient(circle at 0% 100%, #B8E600 0%, transparent 40%),
+        #D0FF00;
+    }
+    .bg-gradient-footer {
+      background: linear-gradient(180deg, #F9FAFB 0%, #E2FFB3 100%);
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .floating-shadow {
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
   </style>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="min-h-screen bg-white">
+<!-- ========================================
+     WEBFLOW 1: HERO & DASHBOARD SECTION
+     ======================================== -->
+<main id="home" class="w-full relative flex flex-col min-h-screen overflow-hidden">
+<!-- Faint background grid/lines -->
+<div class="absolute inset-0 pointer-events-none z-0">
+<div class="h-full w-full flex justify-between px-20 opacity-[0.03]">
+<div class="w-px h-full bg-black"></div>
+<div class="w-px h-full bg-black"></div>
+<div class="w-px h-full bg-black"></div>
+<div class="w-px h-full bg-black"></div>
+<div class="w-px h-full bg-black"></div>
+<div class="w-px h-full bg-black"></div>
+</div>
+</div>
+<!-- BEGIN: Navigation -->
+<nav id="main-nav" class="absolute top-8 left-8 right-8 bg-brand-dark rounded-full px-8 py-4 flex items-center justify-between z-50 transition-all duration-300">
+<!-- Logo -->
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-brand-green rounded-full flex items-center justify-center">
+<!-- Abstract wave icon representation -->
+<svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+<path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+<path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="text-white text-xl font-semibold tracking-wider">ScrowPay</span>
+</div>
+<!-- Links -->
+<div class="hidden md:flex items-center gap-8 text-gray-300 text-sm font-medium">
+<a class="hover:text-white transition-colors" href="#features">Features</a>
+<a class="hover:text-white transition-colors" href="#why-us">Why Us</a>
+<a class="hover:text-white transition-colors" href="#get-started">Get Started</a>
+<a class="hover:text-white transition-colors" href="#contact">Contact</a>
+</div>
+<!-- Auth Buttons -->
+<div class="hidden md:flex items-center gap-4">
+<a class="text-white text-sm font-medium hover:text-brand-green transition-colors px-4 py-2 border rounded-full" href="sign-in.html" style="border-color: rgb(202, 255, 4);">Sign In</a>
+<a class="bg-brand-green text-brand-dark text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-opacity-90 transition-all" href="account-creation.html">Create Account</a>
+</div>
+<!-- Mobile Menu Button -->
+<button class="nav-burger" id="nav-burger" aria-label="Open menu">
+<span></span>
+<span></span>
+<span></span>
+</button>
+</nav>
+<!-- END: Navigation -->
 
-  <!-- Mobile Menu -->
-  <div class="mobile-menu" id="mobile-menu">
-    <button class="mobile-menu-close" id="mobile-menu-close">✕</button>
-    <a href="#features" onclick="closeMobileMenu()">Features</a>
-    <a href="#why-us" onclick="closeMobileMenu()">Why Us</a>
-    <a href="#get-started" onclick="closeMobileMenu()">Get Started</a>
-    <a href="#contact" onclick="closeMobileMenu()">Contact</a>
-    <a href="sign-in.html" style="color:var(--green)">Sign In →</a>
-  </div>
-
-  <!-- NAV -->
-  <div class="nav-wrap" id="nav-wrap">
-    <nav>
-      <a class="nav-logo" href="#">
-        <div class="nav-logo-mark">
-          <svg fill="none" viewBox="0 0 24 24">
-            <path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2.5"/>
-            <path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2.5"/>
-            <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2.5"/>
-          </svg>
-        </div>
-        <span class="nav-logo-text">ScrowPay</span>
-      </a>
-
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#why-us">Why Us</a></li>
-        <li><a href="#get-started">For Business</a></li>
-        <li><a href="#contact">Help Center</a></li>
-      </ul>
-
-      <div class="nav-cta">
-        <a class="btn-nav-ghost" href="sign-in.html">Sign In</a>
-        <a class="btn-nav-solid" href="account-creation.html">Create Account</a>
-        <button class="nav-burger" id="nav-burger" aria-label="Open menu">
-          <span></span><span></span><span></span>
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobile-menu">
+<button class="mobile-menu-close" id="mobile-menu-close">✕</button>
+<a href="#features" onclick="closeMobileMenu()">Features</a>
+<a href="#why-us" onclick="closeMobileMenu()">Why Us</a>
+<a href="#get-started" onclick="closeMobileMenu()">Get Started</a>
+<a href="#contact" onclick="closeMobileMenu()">Contact</a>
+<a href="sign-in.html">Sign In</a>
+<a href="account-creation.html" style="color: #caff04;">Create Account</a>
+</div>
+<!-- BEGIN: Hero Section -->
+<section class="pt-40 pb-10 px-8 text-center relative z-10 flex flex-col items-center">
+<h1 class="text-[72px] leading-[1.1] text-brand-text max-w-4xl tracking-tight mb-6 font-medium">Transact with strangers with<br>absolute trust. Today.</h1>
+<p class="text-brand-subtext text-lg max-w-2xl mb-10">ScrowPay uses AI anomaly detection to verify users and hold funds securely until both parties are fully satisfied.</p>
+<div class="flex items-center gap-4">
+<button class="bg-brand-dark text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-colors" onclick="window.location.href='account-creation.html'">
+          Get Started
         </button>
-      </div>
-    </nav>
-  </div>
-
-  <!-- HERO -->
-  <section class="hero" id="home">
-    <div class="hero-eyebrow">
-      <span class="hero-eyebrow-dot"></span>
-      Now live — Nigeria's trusted escrow platform
-    </div>
-
-    <h1>Transact with strangers with <em>absolute trust.</em></h1>
-    <p class="hero-sub">ScrowPay uses AI anomaly detection to verify users and hold funds securely until both parties are fully satisfied.</p>
-
-    <div class="hero-btns">
-      <a class="btn-hero-dark" href="account-creation.html">
-        Get Started Free
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-7-7l7 7-7 7"/></svg>
-      </a>
-      <a class="btn-hero-ghost" href="#features">Learn more</a>
-    </div>
-
-    <!-- Desktop frame -->
-    <div class="hero-mockup-wrap">
-      <div class="desktop-frame">
-        <!-- Sidebar -->
-        <div class="frame-sidebar">
-          <div class="frame-sidebar-logo">
-            <div class="frame-sidebar-logo-mark">
-              <svg fill="none" viewBox="0 0 24 24"><path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"/></svg>
+<button class="bg-white text-brand-dark px-8 py-4 rounded-full font-medium border hover:border-gray-400 transition-colors border-black" onclick="window.location.href='#features'">
+          Learn more
+        </button>
+</div>
+</section>
+<!-- END: Hero Section -->
+<!-- BEGIN: Dashboard Mockup Area -->
+<section class="relative w-full flex-grow flex justify-center items-end pb-0 z-20">
+<!-- Main Dashboard Frame -->
+<div class="relative w-[1000px] h-[450px] bg-white rounded-t-[32px] border-[16px] border-b-0 border-[#1c1c1c] shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.1)] flex overflow-hidden z-10">
+<!-- Sidebar -->
+<div class="w-64 bg-white border-r border-gray-100 p-6 flex flex-col pt-8">
+<div class="flex items-center gap-2 mb-10">
+<div class="w-6 h-6 bg-brand-green rounded-full flex items-center justify-center">
+<svg fill="none" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+<path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+<path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#1c1c1c" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="text-sm font-bold tracking-wider text-black">SCROWPAY</span>
+</div>
+<div class="space-y-2">
+<div class="bg-brand-green text-brand-dark px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+              Dashboard
             </div>
-            <span class="frame-sidebar-logo-text">SCROWPAY</span>
-          </div>
-          <div class="frame-nav-item active"><span class="material-symbols-outlined">grid_view</span> Dashboard</div>
-          <div class="frame-nav-item"><span class="material-symbols-outlined">list</span> Transactions</div>
-          <div class="frame-nav-item"><span class="material-symbols-outlined">group</span> Recipients</div>
-        </div>
-        <!-- Main -->
-        <div class="frame-main">
-          <div class="frame-header">
-            <span class="frame-greeting">Welcome back, William 👋</span>
-            <div class="frame-user-pill">
-              <div class="frame-avatar">WG</div>
-              <span class="frame-user-name">William Grace</span>
+<div class="text-gray-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">list</span>
+              Transactions
             </div>
-          </div>
-          <div class="frame-cards">
-            <div class="frame-card">
-              <div class="frame-card-label">Available balance</div>
-              <div class="frame-card-val">₦12,480.50 <span class="frame-card-badge up">+2.2%</span></div>
-              <svg class="frame-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none">
-                <path d="M0,20 Q20,25 40,15 T100,5" fill="none" stroke="#10b981" stroke-width="1.5"/>
-                <path d="M0,20 Q20,25 40,15 T100,5 L100,36 L0,36Z" fill="rgba(16,185,129,0.08)"/>
-              </svg>
+<div class="text-gray-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">group</span>
+              Recipients
             </div>
-            <div class="frame-card">
-              <div class="frame-card-label">This month volume</div>
-              <div class="frame-card-val">₦48,320 <span class="frame-card-badge dn">-0.2%</span></div>
-              <svg class="frame-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none">
-                <path d="M0,10 Q20,5 40,20 T100,15" fill="none" stroke="#ec4899" stroke-width="1.5"/>
-                <path d="M0,10 Q20,5 40,20 T100,15 L100,36 L0,36Z" fill="rgba(236,72,153,0.08)"/>
-              </svg>
-            </div>
-            <div class="frame-card">
-              <div class="frame-card-label">Fees paid</div>
-              <div class="frame-card-val">₦320.40 <span class="frame-card-badge up">+14.7%</span></div>
-              <svg class="frame-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none">
-                <path d="M0,25 Q20,20 40,25 T100,10" fill="none" stroke="#f97316" stroke-width="1.5"/>
-                <path d="M0,25 Q20,20 40,25 T100,10 L100,36 L0,36Z" fill="rgba(249,115,22,0.08)"/>
-              </svg>
-            </div>
+</div>
+</div>
+<!-- Main Content -->
+<div class="flex-1 bg-gray-50/50 p-8 overflow-hidden">
+<!-- Header -->
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-2xl font-semibold text-gray-900">Welcome back, William 👋</h2>
+<div class="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+<img alt="User avatar" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-m2CpeXWNM-yUksgclAZPYHRSopLH7CbUgZel21t-gwkAIZ6FD0I0l4sgDzMWj-jEPgCK22v-LLSzWD97rfETJfQQAaFtKa0AoA7-yQNk8eyFiONFidxcFFrh4bGwY6HF14pW_3AFh8Isixu1J8r3MNfinLJPw5fYobp6lZuQLG9W6c9bGgUTrmruVaGjd_BLzH-RebNsspogwxhBIHVtWcnAetrFFxOh_8P3qB2YdjJxFIbvrYErEBQlBwhg7iuX9NSy1qM77hip">
+<div class="flex flex-col">
+<span class="text-xs font-semibold text-gray-900">William Grace</span>
+<span class="text-[10px] text-gray-400 font-medium">ADMIN</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-gray-400 ml-2">expand_more</span>
+</div>
+</div>
+<!-- Metric Cards -->
+<div class="grid grid-cols-3 gap-4 mb-8">
+<!-- Card 1 -->
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden h-32">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2 text-gray-500 text-xs font-medium">
+<span class="material-symbols-outlined text-[14px]">grid_4x4</span>
+                    Available balance
+                  </div>
+<div class="flex gap-1 text-gray-400">
+<span class="material-symbols-outlined text-[14px] cursor-pointer">open_in_new</span>
+<span class="material-symbols-outlined text-[14px] cursor-pointer">more_vert</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 relative z-10">
+<span class="text-2xl font-bold text-gray-900">$12,480.50</span>
+<span class="text-[10px] font-semibold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center">+2.2% <span class="material-symbols-outlined text-[10px]">trending_up</span></span>
+</div>
+<!-- Minimal Sparkline -->
+<svg class="absolute bottom-0 left-0 w-full h-12" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,20 Q20,25 40,15 T100,5" fill="none" stroke="#10b981" stroke-width="2"></path>
+<path d="M0,20 Q20,25 40,15 T100,5 L100,30 L0,30 Z" fill="rgba(16, 185, 129, 0.1)"></path>
+</svg>
+</div>
+<!-- Card 2 -->
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden h-32">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2 text-gray-500 text-xs font-medium">
+<span class="material-symbols-outlined text-[14px]">grid_4x4</span>
+                    This month volume
+                  </div>
+<div class="flex gap-1 text-gray-400">
+<span class="material-symbols-outlined text-[14px] cursor-pointer">open_in_new</span>
+<span class="material-symbols-outlined text-[14px] cursor-pointer">more_vert</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 relative z-10">
+<span class="text-2xl font-bold text-gray-900">$48,320.00</span>
+<span class="text-[10px] font-semibold text-pink-500 bg-pink-50 px-1.5 py-0.5 rounded flex items-center">-0.2% <span class="material-symbols-outlined text-[10px]">trending_down</span></span>
+</div>
+<!-- Minimal Sparkline -->
+<svg class="absolute bottom-0 left-0 w-full h-12" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,10 Q20,5 40,20 T100,15" fill="none" stroke="#ec4899" stroke-width="2"></path>
+<path d="M0,10 Q20,5 40,20 T100,15 L100,30 L0,30 Z" fill="rgba(236, 72, 153, 0.1)"></path>
+</svg>
+</div>
+<!-- Card 3 -->
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden h-32">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2 text-gray-500 text-xs font-medium">
+<span class="material-symbols-outlined text-[14px]">grid_4x4</span>
+                    Fees paid
+                  </div>
+<div class="flex gap-1 text-gray-400">
+<span class="material-symbols-outlined text-[14px] cursor-pointer">open_in_new</span>
+<span class="material-symbols-outlined text-[14px] cursor-pointer">more_vert</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 relative z-10">
+<span class="text-2xl font-bold text-gray-900">$320.40</span>
+<span class="text-[10px] font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded flex items-center">+14.7% <span class="material-symbols-outlined text-[10px]">trending_up</span></span>
+</div>
+<!-- Minimal Sparkline -->
+<svg class="absolute bottom-0 left-0 w-full h-12" preserveAspectRatio="none" viewBox="0 0 100 30">
+<path d="M0,25 Q20,20 40,25 T100,10" fill="none" stroke="#f97316" stroke-width="2"></path>
+<path d="M0,25 Q20,20 40,25 T100,10 L100,30 L0,30 Z" fill="rgba(249, 115, 22, 0.1)"></path>
+</svg>
+</div>
+</div>
+<!-- Chart Placeholder Area -->
+<div class="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 h-40">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-sm font-semibold text-gray-600">Payment volume over time</h3>
+<div class="flex gap-2 text-xs font-medium text-gray-400">
+<span class="text-gray-900 font-semibold border-b-2 border-gray-900 pb-1">7D</span>
+<span class="">30D</span>
+</div>
+</div>
+<!-- Abstract Chart Representation -->
+<div class="relative h-20 w-full flex items-end justify-around px-10">
+<div class="absolute w-full border-t border-dashed border-purple-200 bottom-4"></div>
+<div class="flex flex-col items-center z-10">
+<div class="bg-white rounded shadow-sm text-[10px] px-2 py-1 mb-2 text-center">
+<div class="text-gray-400">Friday, Jun 12</div>
+<div class="font-bold text-gray-700">$2,340.00</div>
+</div>
+<div class="w-8 h-12 bg-purple-200 rounded-t-lg relative">
+<div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-400 rounded-full border-2 border-white"></div>
+</div>
+</div>
+<div class="flex flex-col items-center z-10">
+<div class="bg-white rounded shadow-sm text-[10px] px-2 py-1 mb-2 text-center">
+<div class="text-gray-400">Friday, Jun 19</div>
+<div class="font-bold text-gray-700">$816.49</div>
+</div>
+<div class="w-8 h-8 bg-purple-200 rounded-t-lg relative">
+<div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-400 rounded-full border-2 border-white"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Elements -->
+<!-- Floating: Transaction Alert -->
+<div class="absolute left-[8%] top-[10%] z-20 bg-white rounded-2xl p-3 shadow-xl border border-gray-100 flex items-center gap-3 transform -rotate-3 transition-transform hover:-rotate-1">
+<div class="w-8 h-8 bg-brand-green rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-brand-dark transform rotate-45">arrow_downward</span>
+</div>
+<span class="font-semibold text-gray-900">+$347.23</span>
+</div>
+<!-- Floating: PayPal Card -->
+<div class="absolute left-[4%] top-[30%] z-20 bg-white rounded-2xl p-4 pr-12 shadow-xl border border-gray-100 flex items-center gap-4 transform -rotate-6 transition-transform hover:-rotate-3">
+<div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden"><img alt="Squad API Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUbhKO7TT2mwibmSuq5gTp03bLEY-SlHL7OrJWNZ5kwAI3Jsn_hHqsUaszk4lQS-ELUllcKA5cSXzigMzQaoSV6EzCMLv9g79Mv9fNTWWC9yCcnxC2KoyoTS4UZdNfV0bEEx54abD247cVdFfU6_szjZYnSMX0O0d0rGgybjDRwNrQU2NgSyJAlrShI_rBlNHEFij5v4xMxJITf09MijAFAB77jWAhaOiVT_jvyWJ9Rrvhiw3aJ9l1MrhruuPFKFdquEH2dIAXY_OI"></div>
+<div class="flex flex-col"><span class="font-bold text-gray-900">Squad API</span><span class="text-sm text-gray-500">Payments Verified</span></div>
+</div>
+<!-- Floating: Jhon Barrel Visa -->
+<div class="absolute left-[10%] top-[45%] z-30 bg-white rounded-[24px] p-6 w-[280px] shadow-2xl border border-gray-100 transform -rotate-6 transition-transform hover:-rotate-3">
+<div class="flex items-center gap-4 mb-8">
+<img alt="User" class="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCg5lSdC7tg1mlR3WHZxh82vqvJaT_8euW10MRO_7MeGHjFLHGZsl6t0T6CQrqb_QTyP_9oxdE-YCkjpCL9Usu_RALJKf6BKgIhQ8ZmsKzzs5nFZ5kLnjOMpJy-qJKl_wOjBA2tewyxu3FQ28QZ32-mi2eSyr9kumHYB3BvvcPrM9b1vfrJ_-7nlcIGF4c4NKPU35RljTZ4blygSXSLOwfFGvRcTbZb0yobTCwwGH0IMi6iKh0pacyj893Zqu4qW11AcY3ZXODZH0Vi">
+<div class="flex flex-col">
+<span class="text-xl font-bold text-gray-900">Jhon Barrel</span>
+<span class="text-sm text-gray-500">Personal account</span>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2 text-gray-600 font-medium"><div class="w-6 h-6 bg-brand-green rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-[14px] text-brand-dark transform -rotate-45">arrow_forward</span></div> Funds in Escrow</div>
+<div class="text-xl font-bold italic text-[#1434CB] tracking-widest"><br></div>
+</div>
+</div>
+<!-- Floating: Amazon Icon -->
+<!-- Floating: Average Spend Chart -->
+<div class="absolute top-[15%] z-30 bg-white rounded-[24px] p-6 w-[260px] shadow-2xl border border-gray-100 transform rotate-3 transition-transform hover:rotate-1 right-4">
+<h3 class="text-sm font-semibold text-gray-600 mb-6">Average spend in half a year</h3>
+<div class="flex items-end justify-between h-24 mb-4 gap-1.5">
+<!-- Bar 1 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 40%"></div>
+</div>
+<!-- Bar 2 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 70%"></div>
+</div>
+<!-- Bar 3 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 85%"></div>
+</div>
+<!-- Bar 4 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 60%"></div>
+</div>
+<!-- Bar 5 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 90%"></div>
+</div>
+<!-- Bar 6 -->
+<div class="w-full flex flex-col justify-end items-center h-full relative">
+<div class="w-full bg-gray-100 rounded-full absolute top-0 bottom-0"></div>
+<div class="w-full bg-indigo-700 rounded-full z-10" style="height: 45%"></div>
+</div>
+</div>
+<div class="flex justify-between text-[10px] font-semibold text-gray-400 px-1">
+<span class="">Jul</span>
+<span class="">Aug</span>
+<span class="">Sep</span>
+<span class="">Oct</span>
+<span class="">Nov</span>
+<span class="">Dec</span>
+</div>
+</div>
+<!-- Floating: Spotify Icon -->
+<!-- Floating: Share Spendings -->
+<div class="absolute top-[55%] z-40 bg-white rounded-[20px] p-5 w-[220px] shadow-xl border border-gray-100 flex flex-col gap-4 right-12">
+<div class="flex -space-x-2">
+<img alt="User 1" class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7ROl4eGAoKU4983g1dD4Evjx0DbdI98-McYHkhzScTXjOGeauASFvTasyEqSLtgViT9lIKQPewalmc-Rq-o_a3Epz-qChSL8InvyxwfJ-FG0vaGjKj3OELtsb61Z8jlpwVlN1_FDJ6cTBCmd_XOo8wbT5SWGY5kPNKiujfJdBR39RtqnSFSxw8QO3AZXYLYIz7CoojPYIsgfHI6l3GU__BBonJYPhQFhWl-fDrwVM0MoVK59Oqe0mSdqA1oU2g55I_bksxXbvFAOi">
+<img alt="User 2" class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUhyL9FRnneRnRUTDaF1y-r88jWZAU3WCTgOIbBL1Mq_K9JyrAo0ycyArJfdkKyX1dIuzSofz7G5NfsUdv84k9Idapk3GkEnGUZrAPAnsNArk-a5X65l5OJXSbMXKgCxJpYd7CXgOM1IxfUza9BiDgQ4ADJu-ZXb7KSvx6OuIY3PbKK7fr12B8_evYoK0BUezK1Z5_ooADaaSvyL95LmPP4b3F4P2RtKk-SX6u3hkIxwwXmpW4Qsqg8TQ3WGhBAHcYverMI0IQuh7G">
+<img alt="User 3" class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAHQuouMvXG1UkoByoXkxsC4eKnfL1pTCls71AuWP4vzQT82Gv6hVw3cGSxVdzrH4rKFdQeCGndETKa3JDjLY9sJKizeiT-y1PhcI_ok_FBcO3D1FivCPR2NGJ1tWGH60o3bp_C2-TWXXrbcvX4f0KOky4q5f8z169muBBwxUVWjcMy5i4B6LFTXz-DBQtHC6N9_81CoH6t1vPgdWgwkVFckuCmdza-YJtxebERAdFr-9ZYVmV49BkRroTkxZQ3OTPU_wlCy4uJetT">
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold text-gray-700">Trust Score</span>
+<div class="w-6 h-6 bg-brand-green rounded-full flex items-center justify-center cursor-pointer">
+<span class="material-symbols-outlined text-[12px] text-brand-dark">share</span>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Dashboard Mockup Area -->
+</main>
+<!-- END: WEBFLOW 1 -->
+
+<!-- Section Divider -->
+<div class="section-divider"></div>
+
+<!-- ========================================
+     WEBFLOW 2: FEATURES SECTION
+     ======================================== -->
+<section id="features" class="w-full max-w-[1200px] mx-auto px-6 lg:px-8 pt-12 pb-12">
+<!-- Hero Section -->
+<div class="text-center max-w-3xl mx-auto mb-24">
+<h2 class="text-5xl md:text-6xl font-semibold tracking-tight text-brand-text leading-tight mb-6">Secure your payments with intelligent escrow</h2>
+<p class="text-lg text-brand-subtext leading-relaxed max-w-2xl mx-auto">Buy and sell securely without fear of being scammed. ScrowPay holds your funds safely and uses AI to block fraudulent actors in real-time.</p>
+</div>
+<!-- Feature Cards Grid -->
+<div class="grid md:grid-cols-2 gap-8">
+<!-- Card 1: Instant Transfers -->
+<div class="bg-payline-gray rounded-[40px] p-12 flex flex-col items-center text-center">
+<!-- Illustration -->
+<div class="relative w-full max-w-[320px] h-[340px] mb-12"><!-- Backing Card 1 (Bottom) -->
+<div class="absolute inset-0 top-10 bg-white/40 rounded-[32px] transform -rotate-[3deg] scale-[1.04] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] z-0"></div>
+<!-- Backing Card 2 (Middle) -->
+<div class="absolute inset-0 top-9 bg-white/70 rounded-[32px] transform rotate-[2deg] scale-[1.02] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] z-1"></div>
+<!-- Main Widget (Top) -->
+<div class="absolute inset-0 top-8 bg-white rounded-[32px] shadow-card p-6 flex flex-col justify-between z-10 transform transition-transform hover:-translate-y-2">
+<!-- From Section -->
+<div>
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded-full bg-payline-lime flex items-center justify-center text-xs">👤</div>
+<div class="text-sm text-gray-500">From <span class="text-black font-medium">William Grace</span></div>
+</div>
+<div class="text-3xl font-semibold text-left">$ 324.50</div>
+</div>
+<!-- Divider with Rate -->
+<div class="relative py-4 flex items-center justify-center"><div class="absolute inset-x-0 h-px bg-gray-100"></div></div>
+<!-- To Section -->
+<div>
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ5ACYb6oC1pUAQgsFXKXM8x8d3LrrNL4cHsphlOtftd6kg8fNBYCvv_GwPHzV4KXjcmxe6pa9ana3SppktA6BvM4pvlBBE6gPIL9IHU5WTxpme9TxfE_f4uTrDWqPErPx0QWCPaVNoUz7_0eWAOGdfkpJAVRxiR80qHaGNibUDN_xlUbEVg9p2yz_mN1GbbolmzxAJWZ0QwOfYP3AlF68eSPGCEGIptaXzoEppqIB7NzFTkE4HkaopNG7aa2hjUHiYGimPOridIE"/>
+</div>
+<div class="text-sm text-gray-500">To <span class="text-black font-medium">Escrow Vault</span></div>
+</div>
+<div class="text-3xl font-semibold text-left">$ 324.50</div>
+</div>
+<!-- Swipe Button -->
+<div class="mt-6 bg-gray-50 rounded-full p-1.5 flex items-center w-full">
+<div class="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"></path></svg>
+</div>
+<div class="flex-1 text-center text-sm text-gray-400 font-medium pl-2 pr-10">Swipe to secure funds</div>
+</div>
+</div></div>
+<h3 class="text-3xl font-semibold mb-4 text-payline-text-main tracking-tight">AI-Powered Verification</h3>
+<p class="text-payline-text-muted max-w-[300px] leading-relaxed">Our anomaly detection engine scores every transaction in real-time to protect you from high-risk accounts.</p>
+</div>
+<!-- Card 2: Small Businesses -->
+<div class="bg-payline-gray rounded-[40px] p-12 flex flex-col items-center text-center">
+<!-- Illustration -->
+<div class="relative w-full max-w-[360px] h-[340px] mb-12 flex justify-center items-center">
+<!-- Background Window -->
+<div class="w-[280px] h-[220px] bg-white rounded-t-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative z-0 opacity-80 mt-12">
+<div class="h-10 border-b border-gray-100 flex items-center justify-between px-4">
+<span class="text-xs font-medium">Dashboard</span>
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-3">
+<div class="h-4 bg-gray-100 rounded-full w-3/4"></div>
+<div class="h-4 bg-gray-100 rounded-full w-full"></div>
+<div class="h-4 bg-gray-100 rounded-full w-5/6"></div>
+<div class="mt-4 h-4 bg-gray-100 rounded-full w-1/3"></div>
+<div class="h-4 bg-gray-100 rounded-full w-full"></div>
+</div>
+</div>
+<!-- Floating Progress Bar -->
+<div class="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full shadow-lg p-2 flex items-center z-10 w-[110%] max-w-[380px] justify-center">
+<!-- User Step -->
+<div class="w-12 h-12 rounded-full border-2 border-[#82a300] ring-1 ring-black/10 p-0.5 z-20 bg-white">
+<img alt="User" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSwHjD6kDrHZF4qPnBRNTCTjsEnfSSIrz5dvFx-iSGXjOQJNiW6Zg2GJ-LjJfsDw9xTzP9fnW5kIvCTDrhL6tD_25e6h2_WFsngh91OOnN2p1egMfl6oqFsnd3Gt3PTtj7gVlfvG_38FqqFTD9TH2ybdF1rnxgAU3j81pxQeU-lr6rbwNbXaJRdEFKj1NpnCyXKgqhzjrt9v4eQ201mU-6rfDoXvqAB3_2isXYgrduWsuAevj8y3Qeq9dZhrmKcWj_BKAx-N7qA-8"/>
+</div>
+<!-- Line 1 -->
+<div class="flex-1 h-[2px] bg-black"></div>
+<!-- Compass Step -->
+<div class="w-12 h-12 rounded-full bg-[#a3cc00] flex items-center justify-center text-white z-20 shadow-sm">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="20"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+</div>
+<!-- Line 2 -->
+<div class="flex-1 h-[2px] bg-black"></div>
+<!-- Target Step -->
+<div class="w-12 h-12 rounded-full bg-[#a3cc00] ring-1 ring-black/20 flex items-center justify-center text-white z-20 relative shadow-sm">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="20"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+<!-- Sparkle -->
+<svg class="absolute -top-1 -right-1 text-white" fill="currentColor" height="12" viewbox="0 0 24 24" width="12"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"></path></svg>
+</div>
+</div>
+</div>
+<h3 class="text-3xl font-semibold mb-4 text-payline-text-main tracking-tight">Seamless Squad Integration</h3>
+<p class="text-payline-text-muted max-w-[300px] leading-relaxed">Easily fund your escrow contracts and receive instant payouts directly to your linked bank account.</p>
+</div>
+</div>
+</section>
+<!-- END: WEBFLOW 2 -->
+
+<!-- Section Divider -->
+<div class="section-divider"></div>
+
+<!-- ========================================
+     WEBFLOW 3: WHY BUSINESSES CHOOSE US
+     ======================================== -->
+<section id="why-us" class="max-w-7xl mx-auto px-6 pt-12 pb-24">
+<!-- Section Title -->
+<div class="text-center mb-16">
+<h2 class="text-5xl md:text-6xl tracking-tight text-brand-text leading-tight font-semibold">Why buyers and sellers<br/>trust ScrowPay</h2>
+</div>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Feature: Speed -->
+<div class="feature-card">
+<div class="icon-container">
+<div class="icon-base">
+<svg fill="none" height="32" viewbox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M12 6V12L16 14" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="icon-badge">
+<svg fill="none" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<h3 class="text-xl font-bold mb-2">Speed</h3>
+<p class="text-payline-text-light text-sm">Instant escrow funding via<br/>Squad API</p>
+</div>
+<!-- Feature: Security -->
+<div class="feature-card">
+<div class="icon-container">
+<div class="icon-base">
+<svg fill="none" height="32" viewbox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 22S20 18 20 12V6L12 2L4 6V12C4 18 12 22 12 22Z" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M9 12L11 14L15 10" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="icon-badge">
+<svg fill="none" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M12 8V12" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M12 16H12.01" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<h3 class="text-xl font-bold mb-2">Security</h3>
+<p class="text-payline-text-light text-sm">AI-driven anomaly and<br/>fraud detection</p>
+</div>
+<!-- Feature: Transparency -->
+<div class="feature-card">
+<div class="icon-container">
+<div class="icon-base">
+<svg fill="none" height="32" viewbox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M8 12H16M12 8V16" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="icon-badge">
+<svg fill="none" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 3L21 21M15 9C15 9 12 12 9 12C6 12 3 9 3 9M21 15C21 15 18 12 15 12" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<h3 class="text-xl font-bold mb-2">Transparency</h3>
+<p class="text-payline-text-light text-sm">Clear escrow terms and<br/>zero hidden fees</p>
+</div>
+<!-- Feature: Ease of use -->
+<div class="feature-card">
+<div class="icon-container">
+<div class="icon-base">
+<svg fill="none" height="32" viewbox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg">
+<path d="M18 20V10M12 20V4M6 20V14" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="icon-badge">
+<svg fill="none" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<h3 class="text-xl font-bold mb-2">Ease of use</h3>
+<p class="text-payline-text-light text-sm">Simple escrow contracts for<br/>everyday users</p>
+</div>
+</div>
+</section>
+<!-- END: WEBFLOW 3 -->
+
+<!-- Section Divider -->
+<div class="section-divider"></div>
+
+<!-- ========================================
+     WEBFLOW 4: CTA & FOOTER SECTION
+     ======================================== -->
+<section id="get-started" class="w-full px-4 py-8 md:px-8 flex justify-center">
+<div class="max-w-6xl w-full bg-gradient-scrow rounded-[3rem] p-12 md:p-24 relative flex flex-col items-center justify-center text-center min-h-[500px] overflow-hidden">
+<!-- Abstract Wave Background (Simulated with CSS) -->
+<svg class="absolute inset-0 w-full h-full opacity-20 pointer-events-none" preserveaspectratio="none" viewbox="0 0 1000 400">
+<path d="M0,100 C150,200 350,0 500,100 C650,200 850,0 1000,100 L1000,400 L0,400 Z" fill="none" stroke="currentColor" stroke-width="2"></path>
+<path d="M0,150 C150,250 350,50 500,150 C650,250 850,50 1000,150 L1000,400 L0,400 Z" fill="none" stroke="currentColor" stroke-width="2"></path>
+</svg>
+<!-- Center Logo Icon -->
+<!-- Hero Content -->
+<h1 class="text-5xl md:text-7xl text-scrow-dark mb-6 z-10 leading-tight font-normal">Ready to get<br/>started?</h1>
+<p class="text-gray-700 md:text-lg mb-10 z-10 max-w-md">Create a free account and start your first secure escrow today.</p>
+<div class="flex flex-col sm:flex-row items-center gap-4 z-10">
+<button class="bg-scrow-dark text-white px-8 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors shadow-lg" onclick="window.location.href='account-creation.html'">Create account</button>
+<button class="bg-white text-scrow-dark px-8 py-3 rounded-full font-medium border border-black hover:border-gray-600 transition-colors shadow-lg" onclick="window.location.href='#features'">Learn more</button>
+</div>
+<!-- Floating Elements (Placeholders for visual representation) -->
+<!-- Left Floating Element 1: Chart -->
+<div class="absolute left-4 md:left-12 top-[40%] transform -rotate-12 glass-panel rounded-3xl p-6 w-56 floating-shadow hidden lg:block z-30 border border-white/80">
+<div class="text-xs text-gray-500 mb-4 font-medium text-center">Average spend in half a year</div>
+<div class="flex items-end gap-2 h-20 w-full mb-2 justify-center">
+<div class="bg-purple-600 rounded-t w-4" style="height: 40%"></div>
+<div class="bg-purple-600 rounded-t w-4" style="height: 70%"></div>
+<div class="bg-purple-600 rounded-t w-4" style="height: 50%"></div>
+<div class="bg-purple-600 rounded-t w-4" style="height: 90%"></div>
+<div class="bg-purple-600 rounded-t w-4" style="height: 60%"></div>
+<div class="bg-purple-600 rounded-t w-4" style="height: 30%"></div>
+</div>
+<div class="flex justify-between text-[10px] text-gray-400 px-1">
+<span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+</div>
+</div>
+<!-- Left Floating Element 2: Profile Card -->
+<div class="absolute left-2 md:left-4 bottom-[15%] transform -rotate-6 glass-panel rounded-2xl p-4 w-60 floating-shadow hidden lg:flex flex-col gap-3 z-20 border border-white/80">
+<div class="flex items-center gap-3">
+<img alt="Jhon Barrel" class="w-12 h-12 rounded-full border border-gray-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEKXmJJQ1P_--ZCGGPeu2uZuC234z0k-2dzuwnwQ6gbHK8LjtQBVCUAcRKzFXwJhQdCF5rWKM1ABO6czF3Ttdlw_4hn_eToDgYX0MRVw8uNmcIVuxJzIR35Tf2rzNnHs5aiZ2vzUBbPs9SWCuPbbYAU3fovLN6JYHrn19TwoO8XxRNhJWkygmYN1gNGrfLHoaU6r5waMzYe2IVujYwMno0dhGHdgZ4rZM1zhM7yM4k3m8ipgx9kBi-asSjUa8m_QBUfmtzmZIg6Bt6"/>
+<div>
+<div class="text-base font-semibold text-gray-800">Jhon Barrel</div>
+<div class="text-xs text-gray-500">Personal account</div>
+</div>
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<div class="flex items-center gap-1 text-sm text-gray-600 font-medium">
+<span class="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">→</span> Transfer
           </div>
-          <div class="frame-chart-area">
-            <div class="frame-chart-title">Payment volume — last 7 days</div>
-            <div class="frame-chart-bars">
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:40%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:70%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar active" style="height:100%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:55%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:80%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:45%"></div></div>
-              <div class="frame-bar-wrap"><div class="frame-bar" style="height:65%"></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
+<div class="font-bold text-blue-900 text-sm italic">VISA</div>
+</div>
+</div>
+<!-- Right Floating Element 1: Share spendings -->
+<div class="absolute right-4 md:right-12 top-[15%] transform rotate-12 glass-panel rounded-3xl p-5 w-56 floating-shadow hidden lg:flex flex-col items-center gap-3 z-30 border border-white/80">
+<div class="flex -space-x-3 mb-1">
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white relative z-30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdel2dJSa8KyCckNGm5hZz9qoHMEAoLfQoiARCme1jQgd80ggYDA4EOBdVHmg4kyfkeNj1Tpf9GbhT92-CE3x8Uybb8YQ8cmSqMG-wefb37Sx3_RnijdxSLci_ETUl9UoVSKaZ4DW6wZ38AHs7CoiJFfzTj1SHUiv2tSvpMxIAPG0pI2urfPdu62E7mw5PywRTzehj798m2slHXpiemHfcpiwbAAGfrsED6Mk2Yo59MldWBQBLWNzuzx6Ned-XumlyQt0haqKWjUvr"/>
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white relative z-20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMiE1K4r0h06mGDvavmA8--zFCYg2xTiHW44aHdZaxaweyj42JLIV97S9Dfco3orZ8pYZGGj3zRfciM5RfEPnOlZVp5qVYTN6Vm_PYCK2Gs9gNYTZDyz4mggle3-0dvhS0mp5VA6CScUSehsN-foGqiuWD-JKZGG5VKzycE7Y4_MBMg5f6zIF6a2RDpa6sAdJi2z4qUXhz64mdPU0pPGfXZ0CS1H-kwMxyMrEOVTdyzwNWugxh41mQVhpANdDuTu2ihbczseAW6ndD"/>
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white relative z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkKjKXKFj9xGRFkB0jKV2xaB2S586cP2HsdT5QeG-OY7cllaYyUYcem4dfUCKsbtlZlx-6hSRzUYT-Tc7A6Osu8Kz2SD-i4PLX0tvsihU7uuxFqIR3fz1JYnCpcUlvDoSYgi57rKBXzmx33uD7hNwdoW6mFJfICCqI_k-cXa9OOiUFVUo4fUAOtQr9GMWtL5Hnj84HVRMZXt7iIKOj8njG5EKRpufmjP-FzKK-sKafAWNBtXCudirQsB6Mag-NF-4lQ8LxB4wckD-D"/>
+</div>
+<div class="text-sm font-medium text-gray-500">Share spendings</div>
+</div>
+<!-- Right Floating Element 2: Paypal -->
+<div class="absolute right-2 md:right-8 top-[35%] transform rotate-6 glass-panel rounded-full p-4 w-64 floating-shadow hidden lg:flex items-center gap-4 z-20 border border-white/80">
+<div class="bg-orange-100 rounded-lg p-2 flex items-center justify-center w-12 h-12 overflow-hidden"><span class="text-2xl">🏦</span></div>
+<div>
+<div class="text-base font-bold text-gray-800">GT Bank</div>
+<div class="text-sm text-gray-500">Transaction Secured</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Hero Section -->
 
-      <!-- Floating cards over desktop frame -->
-      <div class="float-card" style="--rot:-4deg; left:2%; top:12%; padding:12px 16px; transform:rotate(-4deg);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:32px;height:32px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">↗</div>
-          <span style="font-weight:700;font-size:14px;color:#111;">+₦347.23</span>
-        </div>
-      </div>
+<!-- BEGIN: Contact & Main Content -->
+<section id="contact" class="w-full px-4 py-16 md:px-8 max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 border-b border-gray-200 pb-20">
+<h2 class="text-4xl md:text-5xl font-semibold text-brand-text">Contact Us</h2>
+<a class="text-2xl md:text-4xl font-medium text-brand-text hover:text-gray-600 transition-colors break-all" href="mailto:scrowpay.ng@gmail.com">scrowpay.ng@gmail.com</a>
+</section>
+<!-- END: Contact & Main Content -->
 
-      <div class="float-card" style="--rot:5deg; right:2%; top:20%; padding:16px 20px; transform:rotate(5deg); width:200px;">
-        <div style="font-size:11px;color:#aaa;margin-bottom:10px;font-weight:500;">Trust Score</div>
-        <div style="display:flex;align-items:center;gap:-4px;margin-bottom:8px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#dbeafe;border:2px solid #fff;margin-right:-8px;display:flex;align-items:center;justify-content:center;font-size:12px;">A</div>
-          <div style="width:28px;height:28px;border-radius:50%;background:#fce7f3;border:2px solid #fff;margin-right:-8px;display:flex;align-items:center;justify-content:center;font-size:12px;">B</div>
-          <div style="width:28px;height:28px;border-radius:50%;background:#dcfce7;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;">C</div>
-        </div>
-        <div style="font-size:20px;font-weight:800;font-family:'Syne',sans-serif;">98 / 100</div>
-      </div>
-    </div>
+<!-- BEGIN: Footer Gradient Area -->
+<footer class="w-full bg-gradient-footer pt-20 pb-10 px-4 md:px-8 relative overflow-hidden">
+<!-- Large Background Logo Element -->
+<svg class="absolute -bottom-20 -left-20 w-96 h-96 text-scrow-dark opacity-10 pointer-events-none" fill="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 4C16.42 4 20 7.58 20 12C20 16.42 16.42 20 12 20C7.58 20 4 16.42 4 12C4 7.58 7.58 4 12 4Z"></path>
+<path d="M8 12C8 14.21 9.79 16 12 16C14.21 16 16 14.21 16 12C16 9.79 14.21 8 12 8C9.79 8 8 9.79 8 12Z" opacity="0.5"></path>
+</svg>
+<div class="max-w-6xl mx-auto flex flex-col lg:flex-row justify-between gap-12 relative z-10">
+<!-- Footer Links -->
+<div class="grid grid-cols-2 md:grid-cols-2 gap-12">
+<!-- Product -->
+<div>
+<h3 class="text-xl font-semibold text-scrow-dark mb-6">Product</h3>
+<ul class="flex flex-col gap-4 text-gray-500 font-medium">
+<li><a class="hover:text-scrow-dark transition-colors" href="#features">Features</a></li>
+<li><a class="hover:text-scrow-dark transition-colors" href="#why-us">Why Us</a></li>
+<li><a class="hover:text-scrow-dark transition-colors" href="account-creation.html">Get Started</a></li>
+</ul>
+</div>
+<!-- Support -->
+<div>
+<h3 class="text-xl font-semibold text-scrow-dark mb-6">Support</h3>
+<ul class="flex flex-col gap-4 text-gray-500 font-medium">
+<li><a class="hover:text-scrow-dark transition-colors" href="#contact">Contact Us</a></li>
+<li><a class="hover:text-scrow-dark transition-colors" href="sign-in.html">Sign In</a></li>
+<li><a class="hover:text-scrow-dark transition-colors" href="account-creation.html">Create Account</a></li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Bottom Footer -->
+<div class="max-w-6xl mx-auto mt-24 flex flex-col md:flex-row items-end justify-between gap-6 relative z-10 border-t border-gray-200 pt-8">
+<!-- Footer Logo -->
+<h2 class="text-5xl md:text-7xl font-bold text-scrow-dark tracking-tighter">SCROWPAY</h2>
+<!-- Footer Links & Copyright -->
+<div class="flex items-center gap-6 text-sm text-gray-500 font-medium pb-2">
+<a class="hover:text-brand-text transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-brand-text transition-colors" href="#">Terms of Service</a>
+<span>© 2026 ScrowPay</span>
+</div>
+</div>
+</footer>
+<!-- END: Footer Gradient Area -->
+<!-- END: WEBFLOW 4 -->
 
-    <!-- Mobile phone mockup -->
-    <div class="mobile-phone-wrap">
-      <div class="mobile-phone">
-        <div class="mobile-phone-inner">
-          <div class="mobile-balance-label">Wallet Balance</div>
-          <div class="mobile-balance-amount">₦0.00</div>
-          <div class="mobile-badge">
-            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-            Verified
-          </div>
-          <div class="mobile-actions-row">
-            <div class="mobile-action-btn">
-              <div class="mobile-action-icon"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg></div>
-              <span class="mobile-action-label">Escrow</span>
-            </div>
-            <div class="mobile-action-btn">
-              <div class="mobile-action-icon"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg></div>
-              <span class="mobile-action-label">History</span>
-            </div>
-            <div class="mobile-action-btn">
-              <div class="mobile-action-icon"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2"/></svg></div>
-              <span class="mobile-action-label">Add Funds</span>
-            </div>
-            <div class="mobile-action-btn">
-              <div class="mobile-action-icon"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg></div>
-              <span class="mobile-action-label">Settings</span>
-            </div>
-          </div>
-          <div class="mobile-escrow-card">
-            <div class="mobile-escrow-title">Start your first escrow deal</div>
-            <div class="mobile-escrow-sub">Safe, fast, zero risk</div>
-            <div class="mobile-escrow-steps">
-              <div class="m-step done"></div>
-              <div class="m-step"></div>
-              <div class="m-step"></div>
-              <div class="m-step"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+</body>
+</html>
+</html>
 
-  <!-- TRUST TICKER -->
-  <div class="ticker-section">
-    <div class="ticker-track" id="ticker">
-      <!-- Items duplicated for seamless loop -->
-      <div class="ticker-item"><span class="ticker-dot"></span>₦2.4B+ <strong>secured</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span><strong>14,000+</strong> transactions completed</div>
-      <div class="ticker-item"><span class="ticker-dot"></span><strong>0</strong> fraud cases reported</div>
-      <div class="ticker-item"><span class="ticker-dot"></span>Rated <strong>4.9 ★</strong> by users</div>
-      <div class="ticker-item"><span class="ticker-dot"></span>Avg settlement <strong>under 2 minutes</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span>CBN-compliant <strong>escrow protection</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span>AI-powered <strong>fraud detection</strong></div>
-      <!-- Duplicate for seamless -->
-      <div class="ticker-item"><span class="ticker-dot"></span>₦2.4B+ <strong>secured</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span><strong>14,000+</strong> transactions completed</div>
-      <div class="ticker-item"><span class="ticker-dot"></span><strong>0</strong> fraud cases reported</div>
-      <div class="ticker-item"><span class="ticker-dot"></span>Rated <strong>4.9 ★</strong> by users</div>
-      <div class="ticker-item"><span class="ticker-dot"></span>Avg settlement <strong>under 2 minutes</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span>CBN-compliant <strong>escrow protection</strong></div>
-      <div class="ticker-item"><span class="ticker-dot"></span>AI-powered <strong>fraud detection</strong></div>
-    </div>
-  </div>
-
-  <!-- FEATURES -->
-  <section class="section" id="features">
-    <p class="section-eyebrow reveal">What we offer</p>
-    <h2 class="section-title reveal reveal-delay-1">Secure your payments with intelligent escrow</h2>
-    <p class="section-sub reveal reveal-delay-2">Buy and sell securely without fear of being scammed. ScrowPay holds your funds safely and uses AI to block fraudulent actors in real-time.</p>
-
-    <div class="features-grid">
-      <div class="feat-card reveal">
-        <div class="feat-icon">
-          <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        </div>
-        <h3 class="feat-title">AI-Powered Verification</h3>
-        <p class="feat-desc">Our anomaly detection engine scores every transaction in real-time, flagging high-risk accounts before funds move. You're protected before you even know there's a threat.</p>
-      </div>
-
-      <div class="feat-card reveal reveal-delay-1">
-        <div class="feat-icon">
-          <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        </div>
-        <h3 class="feat-title">Instant Settlements</h3>
-        <p class="feat-desc">Once both parties confirm, funds are released in seconds — not days. Powered by Squad API for instant payouts directly to any Nigerian bank account.</p>
-      </div>
-
-      <div class="feat-card reveal reveal-delay-2">
-        <div class="feat-icon">
-          <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-        </div>
-        <h3 class="feat-title">Dispute Protection</h3>
-        <p class="feat-desc">If something goes wrong, our mediation team steps in. We review evidence from both parties and ensure a fair resolution — always.</p>
-      </div>
-
-      <div class="feat-card reveal reveal-delay-3">
-        <div class="feat-icon">
-          <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-        </div>
-        <h3 class="feat-title">Real-Time Deal Chat</h3>
-        <p class="feat-desc">Every escrow comes with a built-in thread so buyer and seller communicate clearly, with a full paper trail attached to the transaction.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class="section-divider"></div>
-
-  <!-- WHY US -->
-  <section class="why-section" id="why-us">
-    <div class="why-inner">
-      <p class="section-eyebrow reveal">Why choose ScrowPay</p>
-      <h2 class="section-title reveal reveal-delay-1">Why buyers and sellers trust us</h2>
-
-      <div class="why-grid">
-        <div class="why-card reveal">
-          <div class="why-icon-wrap">
-            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V12L16 14"/><circle cx="12" cy="12" r="10" stroke-linecap="round"/></svg>
-          </div>
-          <div class="why-title">Speed</div>
-          <div class="why-desc">Instant escrow funding and payouts via Squad API. No waiting days for clearance.</div>
-        </div>
-
-        <div class="why-card reveal reveal-delay-1">
-          <div class="why-icon-wrap">
-            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5-5v14a2 2 0 01-2 2H5a2 2 0 01-2-2V3"/></svg>
-          </div>
-          <div class="why-title">Security</div>
-          <div class="why-desc">AI-driven anomaly and fraud detection guards every transaction from start to finish.</div>
-        </div>
-
-        <div class="why-card reveal reveal-delay-2">
-          <div class="why-icon-wrap">
-            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <div class="why-title">Transparency</div>
-          <div class="why-desc">Clear escrow terms, zero hidden fees. You always know where your money is.</div>
-        </div>
-
-        <div class="why-card reveal reveal-delay-3">
-          <div class="why-icon-wrap">
-            <svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <div class="why-title">Ease of Use</div>
-          <div class="why-desc">Simple escrow contracts for everyday users. Set up a deal in under 60 seconds.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA -->
-  <section class="cta-section" id="get-started">
-    <div class="cta-box">
-      <!-- Left float -->
-      <div class="cta-float" style="left:32px;top:50%;transform:translateY(-50%) rotate(-8deg);padding:20px;width:200px;">
-        <div style="font-size:10px;color:#aaa;margin-bottom:12px;font-weight:500;">Average spend — 6 months</div>
-        <div style="display:flex;align-items:flex-end;gap:5px;height:52px;margin-bottom:6px;">
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:40%;opacity:0.3"></div>
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:70%;opacity:0.5"></div>
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:55%;opacity:0.4"></div>
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:90%;"></div>
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:65%;opacity:0.6"></div>
-          <div style="flex:1;background:#7c3aed;border-radius:3px 3px 0 0;height:35%;opacity:0.3"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#aaa;font-weight:500;">
-          <span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
-        </div>
-      </div>
-
-      <!-- Right float -->
-      <div class="cta-float" style="right:32px;top:50%;transform:translateY(-50%) rotate(8deg);padding:16px 20px;min-width:180px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <div style="width:36px;height:36px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🏦</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;color:#111;">GT Bank</div>
-            <div style="font-size:11px;color:#aaa;">Transaction Secured</div>
-          </div>
-        </div>
-        <div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:6px;">
-          <span style="color:#16a34a;font-size:12px;">✓</span>
-          <span style="font-size:12px;color:#15803d;font-weight:600;">₦150,000 held safely</span>
-        </div>
-      </div>
-
-      <h2 class="cta-title">Ready to get<br>started?</h2>
-      <p class="cta-sub">Create a free account and start your first secure escrow today.</p>
-      <div class="cta-btns">
-        <a class="btn-cta-dark" href="account-creation.html">Create Account</a>
-        <a class="btn-cta-ghost" href="#features">Learn More</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section class="contact-section" id="contact">
-    <h2 class="contact-title reveal">Contact Us</h2>
-    <a class="contact-email reveal reveal-delay-1" href="mailto:hello@scrowpay.business">hello@scrowpay.business</a>
-  </section>
-
-  <!-- FOOTER -->
-  <footer>
-    <svg class="footer-watermark" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12c0 5.52 4.48 10 10 10s10-4.48 10-10C22 6.48 17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
-    </svg>
-
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div class="footer-logo">
-            <div class="footer-logo-mark">
-              <svg fill="none" viewBox="0 0 24 24" width="20" height="20">
-                <path d="M4 12C4 12 7.5 7 12 12C16.5 17 20 12 20 12" stroke="#caff04" stroke-linecap="round" stroke-width="2.5"/>
-                <path d="M4 16C4 16 7.5 11 12 16C16.5 21 20 16 20 16" stroke="#caff04" stroke-linecap="round" stroke-width="2.5"/>
-                <path d="M4 8C4 8 7.5 3 12 8C16.5 13 20 8 20 8" stroke="#caff04" stroke-linecap="round" stroke-width="2.5"/>
-              </svg>
-            </div>
-            <span class="footer-logo-name">ScrowPay</span>
-          </div>
-          <p class="footer-tagline">Nigeria's most trusted escrow payment platform. Safe, fast, AI-protected.</p>
-        </div>
-
-        <div class="footer-links-grid">
-          <div class="footer-col">
-            <div class="footer-col-title">About</div>
-            <ul>
-              <li><a href="#">About Us</a></li>
-              <li><a href="#">Careers</a></li>
-              <li><a href="#">Press</a></li>
-            </ul>
-          </div>
-          <div class="footer-col">
-            <div class="footer-col-title">Product</div>
-            <ul>
-              <li><a href="#">Features</a></li>
-              <li><a href="#">Pricing</a></li>
-              <li><a href="#">API Docs</a></li>
-            </ul>
-          </div>
-          <div class="footer-col">
-            <div class="footer-col-title">Support</div>
-            <ul>
-              <li><a href="#">Help Center</a></li>
-              <li><a href="#">Security</a></li>
-              <li><a href="#contact">Contact Us</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <div class="footer-wordmark">SCROWPAY</div>
-        <div class="footer-legal">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <span>© 2025 ScrowPay</span>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    /* ── Morphing Nav on scroll ── */
-    const navWrap = document.getElementById('nav-wrap');
-    window.addEventListener('scroll', () => {
-      navWrap.classList.toggle('scrolled', window.scrollY > 60);
-    }, { passive: true });
-
-    /* ── Mobile menu ── */
-    document.getElementById('nav-burger').addEventListener('click', () => {
-      document.getElementById('mobile-menu').classList.add('open');
-    });
-    document.getElementById('mobile-menu-close').addEventListener('click', closeMobileMenu);
-    function closeMobileMenu() {
-      document.getElementById('mobile-menu').classList.remove('open');
+<script>
+  // Sticky Navigation on Scroll
+  const nav = document.getElementById('main-nav');
+  const body = document.body;
+  let lastScrollTop = 0;
+  const navOffset = 32; // Initial top offset (2rem = 32px)
+  let ticking = false;
+  
+  function updateNav() {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // When scrolled past the initial position, make it sticky
+    if (scrollTop > navOffset) {
+      if (!nav.classList.contains('sticky')) {
+        nav.classList.add('sticky');
+        body.classList.add('nav-sticky');
+      }
+    } else {
+      if (nav.classList.contains('sticky')) {
+        nav.classList.remove('sticky');
+        body.classList.remove('nav-sticky');
+      }
     }
-
-    /* ── Scroll reveal ── */
-    const revealEls = document.querySelectorAll('.reveal');
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
-    }, { threshold: 0.12 });
-    revealEls.forEach(el => io.observe(el));
-  </script>
+    
+    lastScrollTop = scrollTop;
+    ticking = false;
+  }
+  
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(updateNav);
+      ticking = true;
+    }
+  }, { passive: true });
+  
+  // Mobile menu functionality
+  document.getElementById('nav-burger').addEventListener('click', () => {
+    document.getElementById('mobile-menu').classList.add('open');
+  });
+  
+  document.getElementById('mobile-menu-close').addEventListener('click', closeMobileMenu);
+  
+  function closeMobileMenu() {
+    document.getElementById('mobile-menu').classList.remove('open');
+  }
+  
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const href = this.getAttribute('href');
+      if (href !== '#' && href.length > 1) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+  });
+</script>
 </body>
 </html>
