@@ -13,6 +13,9 @@ joblib>=1.3.0
 
 # Web framework (for API)
 flask>=3.0.0
+# Cross-origin support so the frontend (served from :8080) can call this
+# service running on :5000 without browser-level blocking.
+flask-cors>=4.0.0
 
 # Optional: For better performance
 # numba==0.58.1

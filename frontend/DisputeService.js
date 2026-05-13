@@ -1,15 +1,19 @@
 /**
  * DisputeService - Dispute resolution management for ScrowPay Escrow Dashboard
- * 
- * This service provides dispute resolution operations including:
- * - Dispute creation with photo upload and description
- * - AI-powered dispute analysis with confidence scoring
- * - Automatic resolution for high-confidence cases (>90%)
- * - Manual review flagging for low-confidence cases (≤90%)
- * - Notification system for both parties
- * - Fund transfer execution based on resolution
- * 
- * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7
+ *
+ * Responsibilities:
+ * - Dispute record persistence (`createDispute`, `getDisputeByTransactionId`)
+ * - Photo upload (base64 inline; real object storage is a TODO)
+ * - Mapping the DisputeAgent's verdict into a fund-transfer + state
+ *   transition (`resolveWithAgentVerdict` -> `applyResolution`)
+ * - Trust Engine attribution on auto-resolved cases
+ *
+ * IMPORTANT: The actual AI judgement now lives in `DisputeAgentService`
+ * (multimodal Gemini call). The previous `mockDisputeAnalysis` /
+ * `analyzeDispute` heuristic was removed because it was rule-based
+ * theatre (description length + photo count + keyword match) and
+ * couldn't read evidence. This service is now a thin adapter between
+ * the agent's verdict shape and our existing fund-transfer pipeline.
  */
 
 class DisputeService {
@@ -37,6 +41,16 @@ class DisputeService {
     
     // Timeout for AI analysis (5 seconds)
     this.AI_TIMEOUT = 5000;
+
+    // Optional Trust Engine — wired via setTrustEngine() from the
+    // dashboard bootstrap. When present, every auto-applied dispute
+    // resolution attributes a win/loss to the appropriate party.
+    this.trustEngine = null;
+  }
+
+  /** Wire in the TrustEngineService so dispute resolutions update scores. */
+  setTrustEngine(engine) {
+    this.trustEngine = engine || null;
   }
   
   /**
@@ -124,125 +138,94 @@ class DisputeService {
   }
   
   /**
-   * Analyzes a dispute using AI engine
-   * @param {Object} dispute - Dispute object
-   * @param {Object} transaction - Transaction object
-   * @returns {Promise<Object>} { success: boolean, analysis: Object, message?: string }
+   * Maps a DisputeAgentService verdict into the legacy analysis shape
+   * that `applyResolution` expects, then runs it. This is the single
+   * entry point the dashboard should use after collecting an agent
+   * verdict. It also persists the agent's reasoning + evidence list on
+   * the dispute row so the UI / future admin tools can replay it.
+   *
+   * @param {string} transactionId
+   * @param {Object} verdict - the canonical verdict from DisputeAgentService.analyze()
+   *   { action, favoredParty, confidence (0-1), payout, reasoning, evidenceCited }
+   * @returns {Promise<Object>} { success, resolutionType, message? }
    */
-  async analyzeDispute(dispute, transaction) {
+  async resolveWithAgentVerdict(transactionId, verdict) {
     try {
-      console.log('[DisputeService] Analyzing dispute with AI:', {
-        disputeId: dispute.id,
-        transactionId: dispute.transaction_id
-      });
-      
-      // For hackathon: Mock AI dispute analysis
-      // In production, this would call a real AI endpoint
-      
-      // Simulate AI analysis based on dispute characteristics
-      const analysis = await this.mockDisputeAnalysis(dispute, transaction);
-      
-      console.log('[DisputeService] ✅ AI analysis completed:', {
-        confidence: analysis.confidence,
-        resolution: analysis.resolution
-      });
-      
-      return {
-        success: true,
-        analysis
+      if (!verdict || verdict.action !== 'rule') {
+        // Caller should never pass an `ask` here, but guard anyway.
+        return {
+          success: false,
+          message: 'Cannot resolve: agent did not produce a final ruling.'
+        };
+      }
+
+      // Map the agent's structured verdict into the resolution enum the
+      // existing fund-transfer code understands. A pure 100/0 split maps
+      // to refund_buyer or release_to_seller; anything else is `split`.
+      const buyerPct = Number(verdict?.payout?.buyerPct) || 0;
+      const sellerPct = Number(verdict?.payout?.sellerPct) || 0;
+
+      let resolution;
+      if (buyerPct === 100 && sellerPct === 0) resolution = 'refund_buyer';
+      else if (sellerPct === 100 && buyerPct === 0) resolution = 'release_to_seller';
+      else resolution = 'split';
+
+      // Convert 0-1 confidence to 0-100 to match the legacy shape and
+      // the AUTO_RESOLUTION_THRESHOLD comparison in applyResolution.
+      const confidence100 = Math.max(0, Math.min(100, Math.round((Number(verdict.confidence) || 0) * 100)));
+
+      let resolutionType = 'manual_review';
+      if (confidence100 > this.AUTO_RESOLUTION_THRESHOLD) resolutionType = 'automated';
+      else if (confidence100 > 70) resolutionType = 'ai_assisted';
+
+      const analysis = {
+        confidence: confidence100,
+        resolution,
+        resolutionType,
+        reasoning: verdict.reasoning || '',
+        evidenceCited: Array.isArray(verdict.evidenceCited) ? verdict.evidenceCited : [],
+        favoredParty: verdict.favoredParty || null,
+        payout: { buyerPct, sellerPct },
+        timestamp: new Date().toISOString()
       };
-      
+
+      // Persist the full agent transcript on the dispute row BEFORE we
+      // execute the transfer, so even if the transfer step fails we
+      // still have a record of what the agent decided.
+      try {
+        await this.connect();
+        await this.dbService._executeHttp(
+          `UPDATE disputes
+              SET ai_resolution = ?,
+                  ai_confidence = ?,
+                  resolution_type = ?
+            WHERE transaction_id = ?`,
+          [
+            JSON.stringify({
+              resolution,
+              favoredParty: analysis.favoredParty,
+              payout: analysis.payout,
+              reasoning: analysis.reasoning,
+              evidenceCited: analysis.evidenceCited
+            }),
+            confidence100,
+            resolutionType,
+            transactionId
+          ]
+        );
+      } catch (e) {
+        console.warn('[DisputeService] Failed to persist agent transcript (non-fatal):', e.message);
+      }
+
+      // Delegate to the existing fund-transfer + state-transition path.
+      return await this.applyResolution(transactionId, analysis);
     } catch (error) {
-      console.error('[DisputeService] AI analysis failed:', error);
-      
+      console.error('[DisputeService] resolveWithAgentVerdict failed:', error);
       return {
         success: false,
-        message: 'Failed to analyze dispute: ' + error.message
+        message: 'Failed to apply agent verdict: ' + error.message
       };
     }
-  }
-  
-  /**
-   * Mock AI dispute analysis (for hackathon)
-   * In production, this would call the actual AI engine endpoint
-   * @private
-   * @param {Object} dispute - Dispute object
-   * @param {Object} transaction - Transaction object
-   * @returns {Promise<Object>} Analysis result
-   */
-  async mockDisputeAnalysis(dispute, transaction) {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock analysis logic based on dispute characteristics
-    let confidence = 50; // Default medium confidence
-    let resolution = 'refund_buyer'; // Default resolution
-    let reasoning = [];
-    
-    // Analyze description length and detail
-    if (dispute.description.length > 100) {
-      confidence += 15;
-      reasoning.push('Detailed description provided');
-    }
-    
-    // Analyze photo evidence
-    const photoUrls = dispute.photo_urls ? JSON.parse(dispute.photo_urls) : [];
-    if (photoUrls.length > 0) {
-      confidence += 20;
-      reasoning.push(`${photoUrls.length} photo(s) provided as evidence`);
-    }
-    
-    // Analyze transaction amount (higher amounts = more caution)
-    if (transaction.price > 100000) {
-      confidence -= 10;
-      reasoning.push('High-value transaction requires careful review');
-    }
-    
-    // Analyze keywords in description
-    const description = dispute.description.toLowerCase();
-    
-    if (description.includes('damaged') || description.includes('broken')) {
-      confidence += 10;
-      resolution = 'refund_buyer';
-      reasoning.push('Item damage reported');
-    }
-    
-    if (description.includes('not received') || description.includes('never arrived')) {
-      confidence += 15;
-      resolution = 'refund_buyer';
-      reasoning.push('Non-delivery reported');
-    }
-    
-    if (description.includes('wrong item') || description.includes('different')) {
-      confidence += 10;
-      resolution = 'refund_buyer';
-      reasoning.push('Wrong item reported');
-    }
-    
-    if (description.includes('fake') || description.includes('counterfeit')) {
-      confidence -= 20; // Requires manual verification
-      resolution = 'manual_review';
-      reasoning.push('Authenticity dispute requires expert review');
-    }
-    
-    // Clamp confidence to 1-100 range
-    confidence = Math.max(1, Math.min(100, confidence));
-    
-    // Determine resolution type based on confidence
-    let resolutionType = 'manual_review';
-    if (confidence > this.AUTO_RESOLUTION_THRESHOLD) {
-      resolutionType = 'automated';
-    } else if (confidence > 70) {
-      resolutionType = 'ai_assisted';
-    }
-    
-    return {
-      confidence,
-      resolution,
-      resolutionType,
-      reasoning,
-      timestamp: new Date().toISOString()
-    };
   }
   
   /**
@@ -299,6 +282,37 @@ class DisputeService {
         await this.updateTransactionState(transactionId, 'Completed');
         
         console.log('[DisputeService] ✅ Automatic resolution applied');
+
+        // Trust Engine: attribute win/loss based on the resolution.
+        //   refund_buyer       -> buyer was right (win)  / seller wrong (loss)
+        //   release_to_seller  -> seller was right (win) / buyer wrong (loss)
+        //   split              -> ambiguous, no attribution (no row added)
+        // Best-effort; never throws into the dispute flow.
+        if (this.trustEngine) {
+          try {
+            const sellerId = transaction.seller_id != null ? Number(transaction.seller_id) : null;
+            const buyerId = transaction.buyer_id != null ? Number(transaction.buyer_id) : null;
+            let winnerId = null;
+            let loserId = null;
+            if (analysis.resolution === 'refund_buyer') {
+              winnerId = buyerId;
+              loserId = sellerId;
+            } else if (analysis.resolution === 'release_to_seller') {
+              winnerId = sellerId;
+              loserId = buyerId;
+            }
+            if (winnerId || loserId) {
+              await this.trustEngine.onDisputeResolved({
+                winnerId,
+                loserId,
+                transactionId,
+                resolution: analysis.resolution
+              });
+            }
+          } catch (e) {
+            console.warn('[DisputeService] trust hook (disputeResolved) failed:', e.message);
+          }
+        }
         
         return {
           success: true,

@@ -15,6 +15,7 @@ Requirements:
 """
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import joblib
 import numpy as np
 import time
@@ -23,6 +24,19 @@ from datetime import datetime
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Permissive CORS — the frontend (vanilla JS, served from a different
+# origin in dev and from nginx in prod) needs to POST /api/v1/score
+# directly. We restrict to the relevant routes to avoid leaking other
+# endpoints if any are added later.
+CORS(app, resources={
+    r"/api/v1/*": {"origins": "*"},
+    r"/health":   {"origins": "*"}
+})
+
+# Engine version — bumped here AND in AnomalyDetectionEngine.js so we can
+# correlate decisions across services.
+ENGINE_API_VERSION = '2.0.0'
 
 # Global variables for model and scaler
 model = None
@@ -286,8 +300,8 @@ def score_transaction():
                 raise ValueError("account_age_days must be non-negative")
             if not (0 <= time_of_day <= 23):
                 raise ValueError("time_of_day must be between 0 and 23")
-            if not (1 <= counterparty_trust_score <= 100):
-                raise ValueError("counterparty_trust_score must be between 1 and 100")
+            if not (0 <= counterparty_trust_score <= 100):
+                raise ValueError("counterparty_trust_score must be between 0 and 100")
                 
         except (ValueError, TypeError) as e:
             return jsonify({
@@ -322,7 +336,34 @@ def score_transaction():
         
         # Identify anomaly indicators
         anomaly_indicators = identify_anomaly_indicators(features_dict, risk_score)
-        
+
+        # ----- Optional behavioral-signal boost (v2 callers) -----
+        # The umbrella AnomalyDetectionEngine on the frontend may pass a
+        # `behavioral_signals` dict alongside the standard 6-feature
+        # vector. We don't retrain on these (the model is fixed) —
+        # instead, we apply explicit, auditable additive boosts so the
+        # ML sub-score reflects strong behavioral cues. The umbrella
+        # then re-combines this with its own behavioral score, which is
+        # fine: we don't double-count because the JS layer applies the
+        # same boosts independently and the engine takes a weighted
+        # average, not a sum.
+        bx = data.get('behavioral_signals') or {}
+        ml_boost = 0
+        if isinstance(bx, dict):
+            if int(bx.get('pin_paste_count') or 0) > 0:
+                ml_boost += 15
+                anomaly_indicators.append('PIN paste detected')
+            if int(bx.get('fingerprint_distinct_users') or 0) >= 3:
+                ml_boost += 20
+                anomaly_indicators.append('Shared device across multiple accounts')
+            if int(bx.get('session_age_sec') or 9999) < 30 and float(features_dict['transaction_amount']) > 200000:
+                ml_boost += 10
+                anomaly_indicators.append('Funded immediately after login')
+        if ml_boost > 0:
+            risk_score = max(1, min(100, risk_score + ml_boost))
+            verdict = "fail" if risk_score > RISK_THRESHOLD else verdict
+            risk_flag = risk_score > RISK_THRESHOLD
+
         # Calculate response time
         response_time_ms = int((time.time() - start_time) * 1000)
         
@@ -333,6 +374,8 @@ def score_transaction():
             'verdict': verdict,
             'anomaly_indicators': anomaly_indicators,
             'model_version': MODEL_VERSION,
+            'engine_api_version': ENGINE_API_VERSION,
+            'ml_boost_applied': ml_boost,
             'response_time_ms': response_time_ms,
             'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         }

@@ -6,6 +6,9 @@
 # Environment configuration (contains secrets)
 frontend/env.js
 
+# Gemini API key (Trust Engine / Risk Profiling AI augmentation)
+frontend/gemini-config.js
+
 # Test files with hardcoded credentials
 frontend/test-schema.js
 

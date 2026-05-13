@@ -59,8 +59,13 @@ class AIRiskService {
     const accountCreatedAt = userContext.accountCreatedAt ? new Date(userContext.accountCreatedAt) : new Date();
     const accountAgeDays = Math.floor((Date.now() - accountCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Get device fingerprint (hash of device metadata)
-    const deviceFingerprint = this.generateDeviceFingerprint();
+    // Get device fingerprint. Prefer the integer derived from
+    // FingerprintJS (passed in via userContext.deviceFingerprint by the
+    // umbrella AnomalyDetectionEngine); fall back to the legacy hash
+    // when called directly without the engine in front.
+    const deviceFingerprint = (typeof userContext.deviceFingerprint === 'number')
+      ? userContext.deviceFingerprint
+      : this.generateDeviceFingerprint();
     
     // Get current hour (0-23)
     const timeOfDay = new Date().getHours();
@@ -77,6 +82,13 @@ class AIRiskService {
       time_of_day: timeOfDay,
       counterparty_trust_score: counterpartyTrustScore
     };
+
+    // v2: forward behavioral signals to the Python engine if available,
+    // so it can apply post-ML auditable boosts. Backward-compat: extra
+    // fields are silently ignored by older engine builds.
+    if (userContext.behavioralSignals && typeof userContext.behavioralSignals === 'object') {
+      features.behavioral_signals = userContext.behavioralSignals;
+    }
     
     console.log('[AIRiskService] Features extracted:', features);
     
@@ -233,60 +245,69 @@ class AIRiskService {
         };
       }
       
-      // Handle network errors (Requirement 5.7)
+      // Handle network errors.
+      //
+      // NOTE: This service used to fail-CLOSED on network errors,
+      // which bricked funding whenever the external Python AI engine
+      // at localhost:5000 was offline (the typical state during
+      // development). We now fail-OPEN here because the new
+      // RiskProfilingService runs deterministically in-browser and
+      // already surfaces a risk banner / acknowledgement checkbox to
+      // the user when warranted. The legacy AI engine, when present,
+      // adds an extra layer but is no longer the only line of
+      // defense.
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        console.warn('[AIRiskService] ⚠️ Network error - defaulting to "fail" verdict');
-        
-        // Log network failure
+        console.warn('[AIRiskService] ⚠️ Network error - failing OPEN (RiskProfilingService still active)');
+
         await this.logRiskScore(
           transactionData.transaction_id || null,
           userContext.userId,
-          100,
-          'fail',
-          ['Network error'],
+          0,
+          'pass',
+          ['AI engine unreachable; fallback pass'],
           this.extractFeatures(transactionData, userContext),
-          'network_error',
+          'network_error_fallback_pass',
           responseTime
         );
-        
+
         console.log('[AIRiskService] ========================================');
-        
+
         return {
           success: true,
-          risk_score: 100,
-          risk_flag: true,
-          verdict: 'fail',
-          anomaly_indicators: ['Network error'],
+          risk_score: 0,
+          risk_flag: false,
+          verdict: 'pass',
+          anomaly_indicators: [],
           fallback: true,
-          message: 'Unable to connect to risk scoring service. Transaction blocked for security.'
+          message: 'External AI engine unreachable. In-browser risk profiling is active.'
         };
       }
-      
-      // Handle other errors (Requirement 5.7)
-      console.warn('[AIRiskService] ⚠️ AI Engine error - defaulting to "fail" verdict');
-      
-      // Log error
+
+      // Other unexpected errors (parsing, non-200, etc.) — also fail
+      // open for the same reason. We log enough to debug later.
+      console.warn('[AIRiskService] ⚠️ AI Engine error - failing OPEN:', error.message);
+
       await this.logRiskScore(
         transactionData.transaction_id || null,
         userContext.userId,
-        100,
-        'fail',
-        ['AI engine error: ' + error.message],
+        0,
+        'pass',
+        ['AI engine error (fallback pass): ' + error.message],
         this.extractFeatures(transactionData, userContext),
-        'error',
+        'error_fallback_pass',
         responseTime
       );
-      
+
       console.log('[AIRiskService] ========================================');
-      
+
       return {
         success: true,
-        risk_score: 100,
-        risk_flag: true,
-        verdict: 'fail',
-        anomaly_indicators: ['AI engine unavailable'],
+        risk_score: 0,
+        risk_flag: false,
+        verdict: 'pass',
+        anomaly_indicators: [],
         fallback: true,
-        message: 'Risk scoring unavailable. Transaction blocked for security.'
+        message: 'External AI engine unavailable. In-browser risk profiling is active.'
       };
     }
   }

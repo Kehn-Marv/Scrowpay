@@ -22,6 +22,22 @@ class TransactionService {
   constructor(config) {
     this.dbService = new TursoDBService(config.turso.databaseUrl, config.turso.authToken);
     this.connected = false;
+    // Optional Trust Engine wiring — injected via `setTrustEngine` from
+    // the dashboard bootstrap. We keep it optional (and null-safe at
+    // every call site) so this class still works in tests / contexts
+    // where the trust engine isn't initialized.
+    this.trustEngine = null;
+  }
+
+  /**
+   * Wires in the TrustEngineService so every terminal-state action in
+   * this service (cancellations, mutual cancellations) updates the
+   * involved users' Trust Scores. Calling this is OPTIONAL — if no
+   * engine is set, the methods below skip the trust hooks silently.
+   * @param {TrustEngineService} engine
+   */
+  setTrustEngine(engine) {
+    this.trustEngine = engine || null;
   }
   
   /**
@@ -852,6 +868,20 @@ class TransactionService {
       trimmedReason ? `Cancelled by initiator. Reason: ${trimmedReason}` : 'Cancelled by initiator'
     );
 
+    // Trust Engine signal: unilateral cancel from the initiator. Mild
+    // negative signal — the txn never reached funding so there's no
+    // counterparty harm. Best-effort; never blocks the cancel.
+    if (this.trustEngine) {
+      try {
+        await this.trustEngine.onCancelInitiated({
+          initiatorId: Number(userId),
+          transactionId
+        });
+      } catch (e) {
+        console.warn('[TransactionService] trust hook (cancelInitiated) failed:', e.message);
+      }
+    }
+
     return { success: true, message: 'Transaction cancelled' };
   }
 
@@ -993,6 +1023,22 @@ class TransactionService {
           ? `Mutual cancellation accepted. Reason: ${trimmedReason}`
           : 'Mutual cancellation accepted. Funds refunded to buyer.'
       );
+
+      // Trust Engine signal: BOTH parties consented to a mutual
+      // cancellation on a funded transaction. Very mild penalty for
+      // each — they agreed, no harm — but still slightly suboptimal
+      // vs. a clean completion.
+      if (this.trustEngine) {
+        try {
+          await this.trustEngine.onMutualCancellation({
+            buyerId: txn.buyer_id != null ? Number(txn.buyer_id) : null,
+            sellerId: txn.seller_id != null ? Number(txn.seller_id) : null,
+            transactionId
+          });
+        } catch (e) {
+          console.warn('[TransactionService] trust hook (mutualCancel) failed:', e.message);
+        }
+      }
 
       return { success: true, message: 'Cancellation accepted. Buyer will be refunded.' };
     }

@@ -47,6 +47,20 @@ class StateMachineService {
     
     // Auto-release timers map: transactionId -> timerId
     this.autoReleaseTimers = new Map();
+
+    // Optional Trust Engine — wired via setTrustEngine() from the
+    // dashboard bootstrap. When present, every Completed transition
+    // (including auto-release and instant-release paths) updates both
+    // parties' Trust Scores. Null-safe everywhere it's used.
+    this.trustEngine = null;
+  }
+
+  /**
+   * Wires the TrustEngineService for terminal-state hooks.
+   * @param {TrustEngineService} engine
+   */
+  setTrustEngine(engine) {
+    this.trustEngine = engine || null;
   }
   
   /**
@@ -616,11 +630,63 @@ class StateMachineService {
       // Record state history (Requirement 6.8)
       await this.recordStateHistory(transactionId, currentState, newState, userId, metadata);
       
-      // Schedule auto-release if transitioning to In_Transit (Requirement 6.6, 9.5)
+      // Trust Engine: fire signal when a transaction reaches Completed.
+      // We pass `wasLate` by comparing current time to the seller's
+      // delivery deadline, and `autoRelease` from the transition's
+      // metadata. Best-effort; never blocks the state machine.
+      if (newState === 'Completed' && this.trustEngine) {
+        try {
+          const fresh = await this.getTransaction(transactionId);
+          const wasLate = this._isLateDelivery(fresh);
+          await this.trustEngine.onTransactionCompleted({
+            sellerId: fresh.seller_id != null ? Number(fresh.seller_id) : null,
+            buyerId: fresh.buyer_id != null ? Number(fresh.buyer_id) : null,
+            amount: Number(fresh.price) || 0,
+            transactionId,
+            wasLate,
+            autoRelease: Boolean(metadata && (metadata.autoRelease || metadata.instantRelease))
+          });
+        } catch (e) {
+          console.warn('[StateMachineService] trust hook (completed) failed:', e.message);
+        }
+      }
+
+      // ========================================================
+      // INSTANT ESCROW RELEASE
+      // --------------------------------------------------------
+      // When a Funded → In_Transit transition lands on a transaction
+      // that was flagged `auto_release_eligible` at funding time
+      // (seller is currently Elite-tier with >=10 successful
+      // deliveries and 0 disputes lost), we skip the inspection
+      // window and immediately transition to Completed.
+      //
+      // We DO NOT schedule the normal auto-release timer for these
+      // transactions — instead we re-enter transitionState() with
+      // `instantRelease: true` in metadata, which both bypasses the
+      // timer logic below and surfaces in the trust-hook reason.
+      // ========================================================
       if (newState === 'In_Transit') {
-        // Refresh transaction to get updated shipped_at timestamp
         const updatedTransaction = await this.getTransaction(transactionId);
-        this.scheduleAutoRelease(updatedTransaction);
+        const eligible = Number(updatedTransaction.auto_release_eligible) === 1;
+
+        if (eligible && !(metadata && metadata.skipInstantRelease)) {
+          console.log('[StateMachineService] ⚡ Instant Escrow Release path:', transactionId);
+          // Reentrancy guard: pass skipInstantRelease so the next
+          // transition's In_Transit branch is never re-evaluated for
+          // this same row. (Defensive — In_Transit is the FROM state
+          // in the next call, but we keep the flag for clarity.)
+          await this.transitionState(
+            transactionId,
+            'Completed',
+            updatedTransaction.seller_id, // system-acting on seller's behalf
+            { instantRelease: true, skipInstantRelease: true, reason: 'Instant Escrow Release (Elite-tier seller)' }
+          );
+          // The recursive call already handled history + trust hooks.
+          // Don't schedule the normal auto-release timer.
+        } else {
+          // Standard path: schedule the inspection-window auto-release.
+          this.scheduleAutoRelease(updatedTransaction);
+        }
       }
       
       // Cancel auto-release if transitioning from In_Transit
@@ -704,6 +770,32 @@ class StateMachineService {
    * Disconnects from the database
    * @returns {Promise<void>}
    */
+  /**
+   * Returns true if a Completed transaction was delivered after its
+   * promised window. Used by the Trust Engine `wasLate` signal.
+   *
+   * Heuristic: a delivery is "late" when shipped_at + delivery_timeline_days
+   * is earlier than completed_at. Returns false if any timestamp is
+   * missing — we don't penalize sellers for incomplete data.
+   *
+   * @private
+   * @param {Object} txn
+   * @returns {boolean}
+   */
+  _isLateDelivery(txn) {
+    try {
+      const shippedAt = txn && txn.shipped_at ? new Date(txn.shipped_at) : null;
+      const completedAt = txn && txn.completed_at ? new Date(txn.completed_at) : null;
+      const days = Number(txn && txn.delivery_timeline_days);
+      if (!shippedAt || !completedAt || !isFinite(days)) return false;
+      const deadline = new Date(shippedAt);
+      deadline.setDate(deadline.getDate() + days);
+      return completedAt.getTime() > deadline.getTime();
+    } catch (_) {
+      return false;
+    }
+  }
+
   async disconnect() {
     if (this.connected) {
       // Cancel all pending auto-release timers

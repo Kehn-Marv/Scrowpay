@@ -343,12 +343,36 @@ class TursoDBService {
       
       console.log('[TursoDBService] Existing columns:', columnNames);
       
-      // List of columns that should exist with their definitions
+      // List of columns that should exist with their definitions.
+      // Behavioral counters power the Dynamic Trust Engine — they are kept
+      // as cumulative totals on the user row so trust recalculation stays
+      // O(1) per terminal-state event instead of re-aggregating the entire
+      // transaction history every time. `trust_score` is the cached final
+      // number used everywhere in the UI.
       const requiredColumns = [
         { name: 'dob', definition: 'TEXT DEFAULT NULL' },
         { name: 'gender', definition: "TEXT DEFAULT NULL" },
         { name: 'virtual_account_number', definition: 'TEXT DEFAULT NULL' },
-        { name: 'bank_code', definition: 'TEXT DEFAULT NULL' }
+        { name: 'bank_code', definition: 'TEXT DEFAULT NULL' },
+        // ----- Trust Engine counters & cache -----
+        { name: 'trust_score',                     definition: 'REAL DEFAULT 50' },
+        { name: 'trust_score_updated_at',          definition: 'DATETIME' },
+        { name: 'successful_deliveries',           definition: 'INTEGER DEFAULT 0' },
+        { name: 'total_completed',                 definition: 'INTEGER DEFAULT 0' },
+        { name: 'total_cancellations_initiated',   definition: 'INTEGER DEFAULT 0' },
+        { name: 'mutual_cancellations',            definition: 'INTEGER DEFAULT 0' },
+        { name: 'disputes_won',                    definition: 'INTEGER DEFAULT 0' },
+        { name: 'disputes_lost',                   definition: 'INTEGER DEFAULT 0' },
+        { name: 'late_deliveries',                 definition: 'INTEGER DEFAULT 0' },
+        { name: 'failed_join_attempts',            definition: 'INTEGER DEFAULT 0' },
+        { name: 'total_volume_ngn',                definition: 'REAL DEFAULT 0' },
+        { name: 'avg_fulfillment_hours',           definition: 'REAL' },
+        { name: 'last_activity_at',                definition: 'DATETIME' },
+        // Peer-graph signal: # of DISTINCT counterparties this user has
+        // lost a dispute to. A user with 5 losses across 5 different
+        // counterparties is far riskier than 5 losses to the same
+        // chronic complainer; the AnomalyDetectionEngine reads this.
+        { name: 'distinct_dispute_losers',         definition: 'INTEGER DEFAULT 0' }
       ];
       
       // Add missing columns
@@ -408,7 +432,30 @@ class TursoDBService {
             //    rows so it shows up in the Details modal.
             { name: 'cancellation_requested_by', definition: 'INTEGER' },
             { name: 'cancellation_requested_at', definition: 'TEXT' },
-            { name: 'cancellation_reason', definition: 'TEXT' }
+            { name: 'cancellation_reason', definition: 'TEXT' },
+            // ----- Predictive Risk Profiling cache -----
+            // `risk_profile_score` is OUR own deterministic+Gemini score
+            // (0–100, higher = riskier), separate from the legacy
+            // `risk_score` produced by the external AI engine. We keep
+            // them split so we never confuse the two systems.
+            // `risk_profile_flags` stores the JSON-serialized rule hits
+            // so we can render the warning banner without recomputing.
+            { name: 'risk_profile_score', definition: 'REAL' },
+            { name: 'risk_profile_flags', definition: 'TEXT' },
+            { name: 'risk_profile_evaluated_at', definition: 'DATETIME' },
+            // Set at creation/funding time when the seller is currently
+            // Elite-tier (>=95) AND has >=10 successful deliveries AND
+            // 0 disputes lost. Read by StateMachineService when seller
+            // marks shipped — short-circuits the inspection window and
+            // releases funds immediately.
+            { name: 'auto_release_eligible', definition: 'INTEGER DEFAULT 0' },
+            // ----- AI Anomaly Detection Engine umbrella verdict -----
+            // The composite decision produced by AnomalyDetectionEngine
+            // (combining rules + ML + behavioral). Cached on the row so
+            // re-renders don't re-evaluate. Distinct from `ai_verdict`
+            // (ML-only legacy) and `risk_profile_score` (rules-only).
+            { name: 'anomaly_decision',        definition: "TEXT CHECK(anomaly_decision IN ('pass','review','block'))" },
+            { name: 'anomaly_engine_version',  definition: 'TEXT' }
           ];
 
           for (const column of requiredTxnColumns) {
@@ -523,6 +570,156 @@ class TursoDBService {
         }
       } catch (error) {
         console.error('[TursoDBService] transactions migration failed:', error);
+      }
+
+      // ----- trust_score_history (append-only audit log) -----
+      // Every time TrustEngineService.recalculate() changes a user's
+      // score we insert a row here. This powers:
+      //   1. The score-history sparkline in the user's own profile chip
+      //   2. The "What changed?" tooltip when a score changes after an
+      //      action (delta + reason).
+      //   3. Optional retroactive analysis if we ever want to tune
+      //      formula weights without hot-running migrations.
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS trust_score_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            score_before REAL,
+            score_after REAL NOT NULL,
+            delta REAL,
+            reason TEXT NOT NULL,
+            transaction_id TEXT,
+            metadata TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_tsh_user_created ON trust_score_history(user_id, created_at DESC)'
+        );
+        console.log('[TursoDBService] ✅ trust_score_history table ready');
+      } catch (e) {
+        console.error('[TursoDBService] trust_score_history setup failed:', e);
+      }
+
+      // ----- ai_risk_logs enrichment for the AnomalyDetectionEngine -----
+      // The legacy `ai_risk_logs` table only captured the ML sub-score.
+      // The umbrella engine (AnomalyDetectionEngine) needs to record the
+      // full composite picture: which sub-detectors ran, their individual
+      // scores, the device fingerprint, and the final composite decision.
+      // ALTER TABLE ADD COLUMN is idempotent in spirit — we swallow
+      // "duplicate column" errors so re-running this migration is safe.
+      try {
+        const arlCheck = await this._executeHttp(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_risk_logs'"
+        );
+        const arlExists =
+          arlCheck.results[0] &&
+          arlCheck.results[0].response &&
+          arlCheck.results[0].response.result &&
+          arlCheck.results[0].response.result.rows.length > 0;
+
+        if (arlExists) {
+          const arlSchema = await this._executeHttp('PRAGMA table_info(ai_risk_logs)');
+          const arlRows = arlSchema.results[0].response.result.rows;
+          const arlCols = arlRows.map(col => {
+            const cell = col[1];
+            return typeof cell === 'object' && cell.value !== undefined ? cell.value : cell;
+          });
+
+          const requiredArlColumns = [
+            { name: 'device_fingerprint_id', definition: 'TEXT' },
+            { name: 'behavioral_signals',    definition: 'TEXT' },
+            { name: 'engine_version',        definition: 'TEXT' },
+            { name: 'final_decision',        definition: "TEXT" },
+            { name: 'sub_scores',            definition: 'TEXT' }
+          ];
+
+          for (const column of requiredArlColumns) {
+            if (!arlCols.includes(column.name)) {
+              try {
+                await this._executeHttp(
+                  `ALTER TABLE ai_risk_logs ADD COLUMN ${column.name} ${column.definition}`
+                );
+                console.log(`[TursoDBService] ✅ Added ai_risk_logs column: ${column.name}`);
+              } catch (e) {
+                console.warn(`[TursoDBService] ai_risk_logs column ${column.name} skip:`, e.message);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[TursoDBService] ai_risk_logs enrichment failed:', e);
+      }
+
+      // ----- device_fingerprints (multi-account-from-device detection) -----
+      // Each row is one (fingerprint, user) pair the platform has seen.
+      // Many users sharing one fingerprint = sock-puppet pattern; one
+      // user across many fingerprints = device-rotation pattern. Both
+      // are flagged by BehavioralSignalsService.
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS device_fingerprints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fingerprint_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            seen_count INTEGER DEFAULT 1,
+            confidence REAL,
+            components TEXT,
+            user_agent TEXT,
+            UNIQUE(fingerprint_id, user_id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_df_fpid ON device_fingerprints(fingerprint_id)'
+        );
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_df_user ON device_fingerprints(user_id)'
+        );
+        console.log('[TursoDBService] ✅ device_fingerprints table ready');
+      } catch (e) {
+        console.error('[TursoDBService] device_fingerprints setup failed:', e);
+      }
+
+      // ----- anomaly_decisions (umbrella audit trail) -----
+      // One row per AnomalyDetectionEngine.evaluate() call. Lives
+      // alongside `ai_risk_logs` (which is ML-only) so we can still
+      // audit every decision even when the ML sub-detector was down.
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS anomaly_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_id TEXT,
+            user_id INTEGER NOT NULL,
+            decision TEXT NOT NULL CHECK(decision IN ('pass','review','block')),
+            composite_score REAL NOT NULL,
+            rules_score REAL,
+            ml_score REAL,
+            behavioral_score REAL,
+            flags TEXT,
+            layers_active TEXT,
+            fingerprint_id TEXT,
+            engine_version TEXT,
+            evaluated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_ad_user ON anomaly_decisions(user_id, evaluated_at DESC)'
+        );
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_ad_txn ON anomaly_decisions(transaction_id)'
+        );
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_ad_decision ON anomaly_decisions(decision)'
+        );
+        console.log('[TursoDBService] ✅ anomaly_decisions table ready');
+      } catch (e) {
+        console.error('[TursoDBService] anomaly_decisions setup failed:', e);
       }
 
       console.log('[TursoDBService] ✅ Migrations complete');

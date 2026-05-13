@@ -485,9 +485,8 @@
     }
     .modal-input:focus {
       outline: none;
-      border-color: var(--green);
+      border-color: var(--dark);
       background: white;
-      box-shadow: 0 0 0 3px rgba(202,255,4,0.1);
     }
     .modal-input::placeholder {
       color: #aaa;
@@ -646,19 +645,66 @@
     .uploader-icon { width: 32px; height: 32px; color: #888; margin: 0 0 4px; flex-shrink: 0; }
     .uploader-text { font-size: 13px; color: #555; font-weight: 600; margin: 0; }
     .uploader-hint { font-size: 11px; color: #aaa; margin: 0; }
-    .upload-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .upload-thumb {
-      position: relative; width: 64px; height: 64px; border-radius: 10px;
-      overflow: hidden; border: 1.5px solid #e0e0e0; background: #fff;
-      flex-shrink: 0;
+    /* Thumbnail row — polished, Gemini-style.
+       The extra top/right padding is what lets the remove button overhang
+       each thumb's corner without getting clipped by the modal chrome. */
+    .upload-thumbs {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      margin-top: 14px; padding: 10px 12px 4px 4px;
     }
-    .upload-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .upload-thumb {
+      position: relative;
+      width: 96px; height: 72px;
+      border-radius: 14px;
+      overflow: visible;              /* let the X button overhang the corner */
+      background: #f3f3f3;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
+    }
+    .upload-thumb:hover { transform: translateY(-1px); }
+    .upload-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 14px;
+      display: block;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    /* Remove button — solid-dark circle, overhangs the top-right corner.
+       The X itself is drawn by two rotated linear-gradient strokes so we
+       don't need to touch the existing innerHTML (which still contains
+       a `&times;` character as a fallback for when CSS fails to load). */
     .upload-thumb-remove {
-      position: absolute; top: 2px; right: 2px;
-      width: 18px; height: 18px; border-radius: 50%;
-      background: rgba(0,0,0,0.7); color: white; border: none;
+      position: absolute;
+      top: -8px; right: -8px;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #1c1c1c;
+      color: transparent;              /* hide the `&times;` glyph */
+      font-size: 0;
+      border: 2px solid #fff;
+      padding: 0;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+      transition: background 0.15s ease, transform 0.15s ease;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 10px; padding: 0;
+    }
+    .upload-thumb-remove::before,
+    .upload-thumb-remove::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 1.8px;
+      background: #fff;
+      border-radius: 1px;
+    }
+    .upload-thumb-remove::before { transform: rotate(45deg); }
+    .upload-thumb-remove::after  { transform: rotate(-45deg); }
+    .upload-thumb-remove:hover {
+      background: #000;
+      transform: scale(1.06);
+    }
+    .upload-thumb-remove:focus-visible {
+      outline: 2px solid #1c1c1c;
+      outline-offset: 2px;
     }
 
     /* Vault inspection (Join flow) */
@@ -1916,76 +1962,137 @@
     </div>
   </div>
   
-  <!-- Dispute Item Modal -->
+  <!--
+    Dispute Resolution Agent Modal
+    ------------------------------
+    Single modal with four swappable inner views, all driven by the
+    `dispute-agent-flow` controller in the inline script below:
+      #dispute-view-intake   -> first turn: user describes issue + photos
+      #dispute-view-thinking -> spinner while we call Gemini
+      #dispute-view-clarify  -> agent asked one clarifying question
+      #dispute-view-verdict  -> final ruling rendered for the user
+    Exactly one view is visible at a time. Conversation state lives on
+    `window.__disputeFlow` (cleared on close). The legacy `<form>` was
+    removed because submission is now button-driven (no implicit submit).
+  -->
   <div id="dispute-modal" class="modal">
     <div class="modal-content">
       <div class="p-8">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Dispute Transaction</h2>
-          <button id="btn-close-dispute-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-brand-dark font-bold">SP</div>
+            <div>
+              <h2 class="text-xl font-bold text-brand-dark">Dispute Agent</h2>
+              <p class="text-xs text-brand-subtext">AI-assisted resolution</p>
+            </div>
+          </div>
+          <button id="btn-close-dispute-modal" class="text-brand-subtext hover:text-brand-dark transition-colors" aria-label="Close">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
-        <p class="text-brand-subtext mb-6">
-          Please provide details about the issue with this transaction. Our team will review your dispute.
-        </p>
-        
-        <form id="dispute-form">
-          <div class="mb-6">
-            <label for="dispute-description" class="block text-sm font-medium text-brand-dark mb-2">
-              Description <span class="text-red-500">*</span>
+
+        <!-- Transaction summary chip (always visible) -->
+        <div class="bg-brand-gray rounded-xl p-3 mb-5 flex items-center justify-between text-sm">
+          <div>
+            <span class="text-brand-subtext">Transaction</span>
+            <span id="dispute-transaction-id" class="ml-2 font-mono font-semibold text-brand-dark">-</span>
+          </div>
+          <div class="text-right">
+            <span id="dispute-transaction-summary" class="text-brand-subtext">—</span>
+          </div>
+        </div>
+
+        <!-- Conversation transcript: agent + user bubbles populated by JS -->
+        <div id="dispute-transcript" class="space-y-3 max-h-72 overflow-y-auto mb-5 pr-1"></div>
+
+        <!-- VIEW: intake (first turn) -->
+        <div id="dispute-view-intake">
+          <label for="dispute-description" class="block text-sm font-medium text-brand-dark mb-2">
+            Tell the agent what happened <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            id="dispute-description"
+            rows="4"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark"
+            placeholder="Describe the issue in your own words. What did you receive? What's wrong with it? When did this happen?"
+          ></textarea>
+          <p id="error-dispute-description" class="error-text hidden"></p>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-brand-dark mb-2">
+              Photos as evidence <span class="text-brand-subtext font-normal">(optional, up to 4)</span>
             </label>
-            <textarea
-              id="dispute-description"
-              name="description"
-              rows="4"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-              placeholder="Describe the issue with the item or delivery"
-              required
-            ></textarea>
-            <p id="error-dispute-description" class="error-text hidden"></p>
-          </div>
-          
-          <div class="mb-6">
-            <label for="dispute-photos" class="block text-sm font-medium text-brand-dark mb-2">
-              Photos (optional)
+            <!--
+              The label-wrapped .uploader is the clickable dropzone. The real
+              file input sits hidden beside it (keeps id=dispute-photos so no
+              existing selectors break). The thumbnail row is populated live
+              by the dispute-agent-flow controller below.
+            -->
+            <label for="dispute-photos" class="uploader" id="dispute-uploader">
+              <svg class="uploader-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+              <p class="uploader-text">Add photos of the issue</p>
+              <p class="uploader-hint">Clear photos of damage, wrong item, or proof of non-delivery · up to 4</p>
             </label>
-            <input
-              type="file"
-              id="dispute-photos"
-              name="photos"
-              accept="image/*"
-              multiple
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-            />
-            <p class="text-xs text-brand-subtext mt-1">You can upload multiple photos</p>
+            <input id="dispute-photos" type="file" accept="image/*" multiple style="display:none;" />
+            <div class="upload-thumbs" id="dispute-thumbs"></div>
           </div>
-          
-          <div class="bg-brand-gray rounded-xl p-4 mb-6">
-            <p class="text-sm text-brand-subtext mb-1">Transaction ID</p>
-            <p id="dispute-transaction-id" class="font-mono font-semibold text-brand-dark">-</p>
-          </div>
-          
-          <div class="flex gap-4">
-            <button
-              type="button"
-              id="btn-cancel-dispute"
-              class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
-            >
+
+          <div class="flex gap-3 mt-6">
+            <button type="button" id="btn-cancel-dispute" class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors">
               Cancel
             </button>
-            <button
-              type="submit"
-              id="btn-submit-dispute"
-              class="flex-1 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Submit Dispute
+            <button type="button" id="btn-submit-dispute" class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+              Send to agent
             </button>
           </div>
-        </form>
+        </div>
+
+        <!-- VIEW: thinking -->
+        <div id="dispute-view-thinking" class="hidden text-center py-8">
+          <div class="inline-block w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p id="dispute-thinking-label" class="text-brand-dark font-medium">Reviewing your dispute…</p>
+          <p class="text-xs text-brand-subtext mt-1">The agent is reading the transaction history and your evidence.</p>
+        </div>
+
+        <!-- VIEW: clarifying question (second turn) -->
+        <div id="dispute-view-clarify" class="hidden">
+          <label for="dispute-clarify-answer" class="block text-sm font-medium text-brand-dark mb-2">
+            Your answer
+          </label>
+          <textarea
+            id="dispute-clarify-answer"
+            rows="3"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark"
+            placeholder="Type your answer here…"
+          ></textarea>
+          <div class="flex gap-3 mt-6">
+            <button type="button" id="btn-cancel-dispute-clarify" class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="button" id="btn-submit-dispute-clarify" class="flex-1 px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+              Send answer
+            </button>
+          </div>
+        </div>
+
+        <!-- VIEW: verdict -->
+        <div id="dispute-view-verdict" class="hidden">
+          <div id="dispute-verdict-card" class="rounded-xl p-5 mb-4 border">
+            <div class="flex items-center justify-between mb-2">
+              <h3 id="dispute-verdict-title" class="text-lg font-bold">Ruling</h3>
+              <span id="dispute-verdict-confidence" class="text-xs px-2 py-1 rounded-full bg-white/70 font-mono"></span>
+            </div>
+            <p id="dispute-verdict-reasoning" class="text-sm text-brand-dark mb-3"></p>
+            <ul id="dispute-verdict-evidence" class="text-xs text-brand-subtext space-y-1 list-disc list-inside"></ul>
+          </div>
+          <div class="flex justify-end">
+            <button type="button" id="btn-close-dispute-verdict" class="px-6 py-3 bg-brand-dark text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2310,7 +2417,7 @@
               <input
                 type="date"
                 id="filter-date-from"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               />
             </div>
             
@@ -2320,7 +2427,7 @@
               <input
                 type="date"
                 id="filter-date-to"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               />
             </div>
             
@@ -2329,7 +2436,7 @@
               <label for="filter-state" class="block text-sm font-medium text-brand-dark mb-2">State</label>
               <select
                 id="filter-state"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               >
                 <option value="">All States</option>
                 <option value="Created">Created</option>
@@ -2345,7 +2452,7 @@
               <label for="filter-role" class="block text-sm font-medium text-brand-dark mb-2">Role</label>
               <select
                 id="filter-role"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               >
                 <option value="">All Transactions</option>
                 <option value="buyer">As Buyer</option>
@@ -2360,7 +2467,7 @@
               <label for="sort-by" class="block text-sm font-medium text-brand-dark mb-2">Sort By</label>
               <select
                 id="sort-by"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               >
                 <option value="created_at">Date</option>
                 <option value="price">Amount</option>
@@ -2372,7 +2479,7 @@
               <label for="sort-order" class="block text-sm font-medium text-brand-dark mb-2">Order</label>
               <select
                 id="sort-order"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-brand-dark text-sm"
               >
                 <option value="DESC">Newest First</option>
                 <option value="ASC">Oldest First</option>
@@ -2489,10 +2596,50 @@
   <script src="InputValidationService.js"></script>
   <script src="transaction-service.js"></script>
   <script src="TrustScoreService.js"></script>
+  <!--
+    Trust Engine v2 (counter-based, signal-driven). Active engine.
+    The legacy TrustScoreService is kept above purely as a fallback for
+    older code paths that haven't migrated yet.
+  -->
+  <script src="TrustEngineService.js"></script>
   <script src="AIRiskService.js"></script>
   <script src="squad-api-service.js"></script>
   <script src="StateMachineService.js"></script>
   <script src="BalanceService.js"></script>
+
+  <!--
+    AI Anomaly Detection Engine v2.0 stack. Loaded in dependency order.
+
+      DeviceFingerprintService  - real FingerprintJS-based device ID
+                                  (loaded from CDN at runtime). Provides
+                                  the visitorId used by behavioral
+                                  signals + the ML engine's fingerprint
+                                  feature.
+      BehavioralSignalsService  - session-scoped behavioral signals
+                                  (PIN paste detection, tab-blur,
+                                  multi-account-from-device, etc.).
+      RiskProfilingService      - deterministic in-browser rules.
+      AnomalyDetectionEngine    - umbrella orchestrator. Composes
+                                  rules + ML (AIRiskService) + behavioral
+                                  into ONE verdict. The funding flow
+                                  calls engine.evaluate() and uses the
+                                  returned `decision` ('pass'/'review'/
+                                  'block') instead of querying any single
+                                  sub-detector.
+  -->
+  <script src="DeviceFingerprintService.js"></script>
+  <script src="BehavioralSignalsService.js"></script>
+  <script src="RiskProfilingService.js"></script>
+  <script src="AnomalyDetectionEngine.js"></script>
+
+  <!--
+    DisputeAgentService: Gemini-powered dispute resolution agent.
+    Multimodal (reads dispute description + uploaded photos) and produces
+    a binding verdict that DisputeService applies. Reads its API key from
+    the same `gemini-config.js` block as before. If the key is missing,
+    the dispute flow falls back to manual review (no auto-resolve).
+  -->
+  <script src="DisputeAgentService.js"></script>
   <script src="DisputeService.js"></script>
   
   <script>
@@ -2955,7 +3102,12 @@
     // Initialize Services
     let transactionService;
     let trustScoreService;
-    let aiRiskService;
+    let trustEngine;             // Trust Engine v2 (active)
+    let aiRiskService;           // ML sub-detector (Python Isolation Forest)
+    let riskProfilingService;    // Rules sub-detector
+    let deviceFingerprint;       // FingerprintJS-backed visitor ID
+    let behavioralSignals;       // Session-scoped behavioral collector
+    let anomalyEngine;           // Umbrella AI Anomaly Detection Engine
     let stateMachineService;
     let balanceService;
     let disputeService;
@@ -3448,7 +3600,53 @@
         aiRiskService = new AIRiskService(CONFIG);
         await aiRiskService.connect();
         console.log('AI risk service initialized');
-        
+
+        // ========================================
+        // AI ANOMALY DETECTION ENGINE v2.0
+        // ========================================
+        // Build the umbrella engine with all sub-detectors. Order
+        // matters: fingerprint feeds behavioral; behavioral + rules +
+        // ML feed the engine.
+        try {
+          trustEngine = new TrustEngineService(CONFIG);
+          await trustEngine.connect();
+          console.log('Trust engine v2 initialized');
+
+          deviceFingerprint = new DeviceFingerprintService(CONFIG);
+          // Kick off the FingerprintJS CDN load in the background; we
+          // don't await it because the engine handles fallback if it's
+          // not ready by the time evaluate() runs.
+          deviceFingerprint.ready();
+
+          behavioralSignals = new BehavioralSignalsService(CONFIG, {
+            fingerprint: deviceFingerprint
+          });
+          behavioralSignals.startSession(currentUserId);
+
+          riskProfilingService = new RiskProfilingService(CONFIG, {
+            trustEngine
+          });
+          await riskProfilingService.connect();
+
+          anomalyEngine = new AnomalyDetectionEngine(CONFIG, {
+            riskProfiling: riskProfilingService,
+            aiRisk: aiRiskService,
+            behavioral: behavioralSignals,
+            fingerprint: deviceFingerprint
+          });
+          console.log('[Dashboard] ✅ AnomalyDetectionEngine v' + anomalyEngine.version + ' ready');
+
+          // Persist this device for the current user (sock-puppet
+          // detection later relies on this row existing).
+          deviceFingerprint.identify().then(fp => {
+            if (fp && fp.visitorId) {
+              deviceFingerprint.recordForUser(currentUserId, fp.visitorId);
+            }
+          }).catch(() => {});
+        } catch (engineErr) {
+          console.error('[Dashboard] AnomalyDetectionEngine init failed (will fall back to legacy AIRiskService):', engineErr);
+        }
+
         stateMachineService = new StateMachineService(CONFIG);
         await stateMachineService.connect();
         console.log('State machine service initialized');
@@ -4064,10 +4262,8 @@
             `;
             copyBtn.style.background = '#e8f5e9';
             copyBtn.style.borderColor = '#00c853';
-            
-            // Show success notification
-            showSuccessNotification('Account number copied!');
-            
+            // No toast — the checkmark icon swap is enough feedback.
+
             // Reset button after 2 seconds
             setTimeout(() => {
               copyBtn.innerHTML = originalHTML;
@@ -4478,6 +4674,13 @@
           document.getElementById('risk-blocked-message').classList.add('hidden');
           document.getElementById('btn-fund-escrow').disabled = false;
 
+          // Notify the behavioral collector that the funding modal is
+          // now open. Used by AnomalyDetectionEngine to detect coaching
+          // patterns (long blur during funding, etc.).
+          if (behavioralSignals) {
+            behavioralSignals.markFundingModalOpened();
+          }
+
           openModal('fund-escrow-modal');
           return;
         }
@@ -4639,10 +4842,55 @@
             accountCreatedAt: accountCreatedAt.toISOString(),
             counterpartyTrustScore: sellerTrustScore
           };
-          
-          // Call AI Risk Service BEFORE Squad API (Requirement 4.6, 5.1)
-          console.log('Calling AI Risk Service...');
-          const riskResult = await aiRiskService.scoreTransaction(currentTransaction, userContext);
+
+          // ----- AI Anomaly Detection Engine (umbrella) -----
+          // Prefer the unified engine. It composes RULES + ML +
+          // BEHAVIORAL into one decision and persists the audit trail
+          // to anomaly_decisions. If engine init failed at startup we
+          // fall back to the bare ML call so the funding flow still
+          // works end-to-end.
+          let anomalyResult = null;
+          let riskResult;
+          if (anomalyEngine) {
+            try {
+              const counterparty = {
+                id: currentTransaction.seller_id,
+                trust_score: sellerTrustScore,
+                created_at: currentTransaction.seller_created_at || null,
+                disputes_lost: 0,
+                total_completed: 0
+              };
+              anomalyResult = await anomalyEngine.evaluate({
+                transaction: currentTransaction,
+                actor: { id: currentUserId },
+                counterparty,
+                userContext
+              });
+              // Translate the umbrella verdict into the legacy
+              // riskResult shape the rest of this handler already
+              // understands. `block` -> verdict: 'fail'; review and
+              // pass both proceed through the same UI path with a
+              // banner.
+              riskResult = {
+                risk_score: anomalyResult.compositeScore,
+                verdict: anomalyResult.decision === 'block' ? 'fail' : 'pass',
+                anomaly_indicators: (anomalyResult.flags || []).map(f => f.message),
+                anomaly_decision: anomalyResult.decision,
+                sub_scores: anomalyResult.subScores,
+                layers_active: anomalyResult.layersActive
+              };
+              console.log('[Funding] AnomalyEngine verdict:', anomalyResult.decision,
+                '(composite=' + anomalyResult.compositeScore + ', layers=' + anomalyResult.layersActive.join('+') + ')');
+            } catch (engineErr) {
+              console.warn('[Funding] AnomalyEngine evaluate failed, falling back to AIRiskService:', engineErr);
+              anomalyResult = null;
+            }
+          }
+          if (!riskResult) {
+            // Legacy path: bare ML call.
+            console.log('Calling AI Risk Service (legacy path)...');
+            riskResult = await aiRiskService.scoreTransaction(currentTransaction, userContext);
+          }
           
           // Hide loading, show result
           document.getElementById('risk-scoring-loading').classList.add('hidden');
@@ -4650,7 +4898,8 @@
           
           // Display risk results
           document.getElementById('risk-score-value').textContent = riskResult.risk_score;
-          document.getElementById('risk-verdict-value').textContent = riskResult.verdict.toUpperCase();
+          document.getElementById('risk-verdict-value').textContent =
+            (riskResult.anomaly_decision || riskResult.verdict).toUpperCase();
           
           // Display anomaly indicators if any
           if (riskResult.anomaly_indicators && riskResult.anomaly_indicators.length > 0) {
@@ -4667,7 +4916,12 @@
           }
           
           // Check verdict (Requirement 5.4)
-          if (riskResult.verdict === 'fail') {
+          // Block on either the legacy verdict='fail' OR the umbrella
+          // engine's decision='block'. 'review' is allowed through
+          // (with the warning banner) so the user can self-confirm.
+          const isBlocked = riskResult.verdict === 'fail' ||
+                            riskResult.anomaly_decision === 'block';
+          if (isBlocked) {
             // Block transaction
             console.log('Transaction blocked due to high risk');
             
@@ -4678,7 +4932,9 @@
               'High risk score',
               {
                 risk_score: riskResult.risk_score,
-                anomaly_indicators: riskResult.anomaly_indicators
+                anomaly_indicators: riskResult.anomaly_indicators,
+                anomaly_decision: riskResult.anomaly_decision || null,
+                sub_scores: riskResult.sub_scores || null
               }
             );
             
@@ -4990,7 +5246,7 @@
             <button
               type="button"
               data-view-details="${txn.transaction_id}"
-              class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-dark hover:text-brand-green focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 rounded-md px-2 py-1 transition-colors"
+              class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-dark hover:text-brand-green focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 rounded-md px-2 py-1 transition-colors"
               aria-label="View full transaction details and history"
             >
               View full details &amp; history
@@ -5046,6 +5302,47 @@
             openDisputeModal(txn.transaction_id);
           };
           actionsContainer.appendChild(disputeButton);
+        }
+
+        // ------------------------------------------------------------------
+        // EXTENDED DISPUTE TRIGGERS (agent flow)
+        // ------------------------------------------------------------------
+        // (a) Seller in In_Transit can raise a dispute when the buyer is
+        //     dragging out acceptance past the inspection window. The
+        //     agent will see `raisedBy: 'seller'` and weigh whether the
+        //     buyer is plausibly stalling or genuinely inspecting.
+        if (state === 'In_Transit' && isSellerView) {
+          const sellerDisputeBtn = document.createElement('button');
+          sellerDisputeBtn.className = 'flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
+          sellerDisputeBtn.textContent = 'Report a problem';
+          sellerDisputeBtn.title = 'Open a dispute (e.g., buyer is stalling acceptance)';
+          sellerDisputeBtn.onclick = (e) => {
+            e.stopPropagation();
+            openDisputeModal(txn.transaction_id);
+          };
+          actionsContainer.appendChild(sellerDisputeBtn);
+        }
+
+        // (b) Buyer in Funded_Locked can raise a dispute once the seller
+        //     has missed the delivery deadline. We compute the deadline
+        //     from `funded_at + delivery_timeline_days`. If the timeline
+        //     fields are missing we conservatively show the button after
+        //     the transaction has been funded for >7 days as a fallback.
+        if (state === 'Funded_Locked' && isBuyerView) {
+          const fundedAt = txn.funded_at ? new Date(txn.funded_at).getTime() : null;
+          const days = Number(txn.delivery_timeline_days) > 0 ? Number(txn.delivery_timeline_days) : 7;
+          const overdue = fundedAt && (Date.now() - fundedAt) > days * 24 * 60 * 60 * 1000;
+          if (overdue) {
+            const overdueBtn = document.createElement('button');
+            overdueBtn.className = 'flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
+            overdueBtn.textContent = 'Seller missed delivery';
+            overdueBtn.title = 'Open a dispute — the seller has not shipped within the agreed timeline';
+            overdueBtn.onclick = (e) => {
+              e.stopPropagation();
+              openDisputeModal(txn.transaction_id);
+            };
+            actionsContainer.appendChild(overdueBtn);
+          }
         }
 
         // ------------------------------------------------------------------
@@ -5503,211 +5800,510 @@
       // DISPUTE ITEM (Task 7.2)
       // ========================================
       
-      let currentDisputeTransactionId = null;
-      
-      function openDisputeModal(transactionId) {
-        currentDisputeTransactionId = transactionId;
-        document.getElementById('dispute-transaction-id').textContent = transactionId;
-        document.getElementById('dispute-form').reset();
-        clearFieldError('dispute-description');
-        openModal('dispute-modal');
+      // ========================================
+      // CONVERSATIONAL DISPUTE AGENT FLOW
+      // ----------------------------------------
+      // The dispute modal hosts a multi-turn conversation with the
+      // Gemini-backed `disputeAgentService`. Flow:
+      //
+      //   open  -> agent greeting drawn from transaction context
+      //   turn1 -> user types complaint + uploads photos -> agent.analyze()
+      //         -> agent EITHER asks one clarifying question (rare)
+      //         -> OR returns a final verdict
+      //   turn2 -> if asked, user answers -> agent.analyze() with priorTurn
+      //         -> agent must rule (no further questions)
+      //   verdict -> disputeService.resolveWithAgentVerdict() executes
+      //              fund transfer, state transitions to Disputed,
+      //              both parties are notified.
+      //
+      // Conversation state is held on `window.__disputeFlow` so the
+      // submit handlers can read what was said earlier without
+      // re-querying the DOM. Cleared on every modal close.
+      // ========================================
+
+      function _df() { return window.__disputeFlow; }
+
+      // ---- VIEW SWITCHER -----------------------------------------
+      function _showDisputeView(name) {
+        ['intake', 'thinking', 'clarify', 'verdict'].forEach(v => {
+          const el = document.getElementById('dispute-view-' + v);
+          if (el) el.classList.toggle('hidden', v !== name);
+        });
       }
-      
-      document.getElementById('btn-close-dispute-modal').addEventListener('click', () => {
+
+      // ---- TRANSCRIPT BUBBLES ------------------------------------
+      // We render bubbles directly into #dispute-transcript so the user
+      // can scroll back through the conversation across turns.
+      function _appendDisputeBubble(role, text) {
+        const wrap = document.getElementById('dispute-transcript');
+        if (!wrap || !text) return;
+        const isAgent = role === 'agent';
+        const bubble = document.createElement('div');
+        bubble.className = isAgent
+          ? 'flex items-start gap-2'
+          : 'flex items-start gap-2 justify-end';
+        bubble.innerHTML = isAgent
+          ? `<div class="w-7 h-7 rounded-full bg-brand-green flex items-center justify-center text-brand-dark text-xs font-bold shrink-0">SP</div>
+             <div class="bg-brand-gray rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-brand-dark max-w-[85%] whitespace-pre-wrap"></div>`
+          : `<div class="bg-brand-dark text-white rounded-2xl rounded-tr-sm px-4 py-2 text-sm max-w-[85%] whitespace-pre-wrap"></div>
+             <div class="w-7 h-7 rounded-full bg-brand-dark flex items-center justify-center text-white text-xs font-bold shrink-0">You</div>`;
+        // textContent (not innerHTML) on the inner div to neutralise any
+        // HTML the agent or user might inject into the transcript.
+        const textHost = bubble.querySelector(isAgent ? 'div.bg-brand-gray' : 'div.bg-brand-dark.text-white');
+        textHost.textContent = text;
+        wrap.appendChild(bubble);
+        wrap.scrollTop = wrap.scrollHeight;
+      }
+
+      // ---- FILE -> base64 data-URL -------------------------------
+      function _fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error || new Error('read failed'));
+          fr.readAsDataURL(file);
+        });
+      }
+
+      // ---- OPEN ---------------------------------------------------
+      // Bootstraps the flow: fetches the transaction, derives whether
+      // the disputer is buyer or seller, primes the transcript with a
+      // contextual greeting, and shows the intake view.
+      async function openDisputeModal(transactionId) {
+        try {
+          const txn = await transactionService.getTransaction(transactionId);
+          if (!txn) {
+            showErrorNotification('Transaction not found');
+            return;
+          }
+          const raisedBy = txn.seller_id === currentUserId ? 'seller' : 'buyer';
+
+          window.__disputeFlow = {
+            transactionId,
+            transaction: txn,
+            raisedBy,
+            description: '',
+            photoFiles: [],
+            photoDataUrls: [],
+            lastQuestion: null,
+            disputeRecordId: null
+          };
+
+          document.getElementById('dispute-transaction-id').textContent = transactionId;
+          document.getElementById('dispute-transaction-summary').textContent =
+            (txn.item_description ? String(txn.item_description).slice(0, 40) + (txn.item_description.length > 40 ? '…' : '') : '') +
+            (txn.price ? ` · ₦${Number(txn.price).toLocaleString()}` : '');
+
+          document.getElementById('dispute-transcript').innerHTML = '';
+          document.getElementById('dispute-description').value = '';
+          document.getElementById('dispute-photos').value = '';
+          _disputeRenderThumbs(); // wipes any leftover thumbs from a prior open
+          clearFieldError('dispute-description');
+
+          // Pre-flight greeting (the real one comes from the agent on
+          // first analyze() call; this is just a friendly waiting line).
+          const youAre = raisedBy === 'seller' ? 'as the seller' : 'as the buyer';
+          _appendDisputeBubble(
+            'agent',
+            `Hi — I'm the ScrowPay Dispute Agent. I see you're opening a dispute ${youAre} on a ₦${Number(txn.price || 0).toLocaleString()} transaction. Tell me what happened, and attach any photos that show it. I'll take it from there.`
+          );
+
+          _showDisputeView('intake');
+          openModal('dispute-modal');
+        } catch (err) {
+          console.error('[Dashboard] openDisputeModal failed:', err);
+          showErrorNotification('Could not open dispute: ' + (err.message || 'unknown error'));
+        }
+      }
+
+      // ---- CLOSE / CANCEL ----------------------------------------
+      function _closeDisputeModal() {
         closeModal('dispute-modal');
-        currentDisputeTransactionId = null;
-      });
-      
-      document.getElementById('btn-cancel-dispute').addEventListener('click', () => {
-        closeModal('dispute-modal');
-        currentDisputeTransactionId = null;
-      });
-      
-      document.getElementById('dispute-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'dispute-modal') {
-          closeModal('dispute-modal');
-          currentDisputeTransactionId = null;
+        window.__disputeFlow = null;
+      }
+      document.getElementById('btn-close-dispute-modal').addEventListener('click', _closeDisputeModal);
+      document.getElementById('btn-cancel-dispute').addEventListener('click', _closeDisputeModal);
+      document.getElementById('btn-cancel-dispute-clarify').addEventListener('click', _closeDisputeModal);
+      document.getElementById('btn-close-dispute-verdict').addEventListener('click', () => {
+        _closeDisputeModal();
+        // Refresh the dashboard so the new state ('Disputed' / 'Completed')
+        // shows up immediately.
+        loadActiveTransactions().catch(() => {});
+        if (typeof optimisticBalanceUpdate === 'function') {
+          optimisticBalanceUpdate().catch(() => {});
         }
       });
-      
-      document.getElementById('dispute-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        if (!currentDisputeTransactionId) {
+      document.getElementById('dispute-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'dispute-modal') _closeDisputeModal();
+      });
+
+      // ---- PHOTO ATTACHMENTS (thumbnail grid) --------------------
+      // `flow.photoFiles` is the single source of truth for which photos
+      // will be sent to the agent. The hidden <input type=file> is only
+      // used to OPEN the native picker; its own `.files` is never read
+      // by the submit handler. Rendering the thumb grid from
+      // `flow.photoFiles` lets us support drag-and-drop, per-thumb
+      // removal, and additive selection (re-clicking the picker adds
+      // more photos instead of replacing the set).
+
+      function _disputeRenderThumbs() {
+        const wrap = document.getElementById('dispute-thumbs');
+        if (!wrap) return;
+        // Revoke previous object URLs before clearing to avoid leaks.
+        wrap.querySelectorAll('img[data-blob-url]').forEach(img => {
+          try { URL.revokeObjectURL(img.getAttribute('data-blob-url')); } catch (_) {}
+        });
+        wrap.innerHTML = '';
+        const flow = _df();
+        if (!flow) return;
+        flow.photoFiles.forEach((file, i) => {
+          const url = URL.createObjectURL(file);
+          const thumb = document.createElement('div');
+          thumb.className = 'upload-thumb';
+          thumb.innerHTML =
+            `<img src="${url}" alt="${(file.name || 'photo').replace(/"/g, '')}" data-blob-url="${url}" />` +
+            `<button type="button" class="upload-thumb-remove" data-i="${i}" aria-label="Remove photo">&times;</button>`;
+          wrap.appendChild(thumb);
+        });
+      }
+
+      function _disputeAddFiles(fileList) {
+        const flow = _df();
+        if (!flow) return;
+        const incoming = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith('image/'));
+        if (incoming.length === 0) return;
+        const merged = flow.photoFiles.concat(incoming).slice(0, 4);
+        if (merged.length < flow.photoFiles.length + incoming.length) {
+          showErrorNotification('Only the first 4 photos are kept.');
+        }
+        flow.photoFiles = merged;
+        flow.photoDataUrls = []; // invalidate — next analyze() will re-encode
+        _disputeRenderThumbs();
+      }
+
+      // One-time wiring: change-on-picker, drag-and-drop on the dropzone,
+      // click-to-remove delegated on the thumb grid. This runs at script
+      // load because the modal's DOM is already in the tree above.
+      (function initDisputeUploader() {
+        const input    = document.getElementById('dispute-photos');
+        const dropZone = document.getElementById('dispute-uploader');
+        const thumbs   = document.getElementById('dispute-thumbs');
+        if (!input || !dropZone || !thumbs) return;
+
+        input.addEventListener('change', () => {
+          _disputeAddFiles(input.files);
+          input.value = ''; // let the user re-pick the same file later
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+          dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+          });
+        });
+        ['dragleave', 'dragend', 'drop'].forEach(evt => {
+          dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+          });
+        });
+        dropZone.addEventListener('drop', e => {
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+            _disputeAddFiles(e.dataTransfer.files);
+          }
+        });
+
+        thumbs.addEventListener('click', e => {
+          const btn = e.target.closest('.upload-thumb-remove');
+          if (!btn) return;
+          e.preventDefault();
+          const flow = _df();
+          if (!flow) return;
+          const idx = parseInt(btn.dataset.i, 10);
+          if (!Number.isInteger(idx)) return;
+          flow.photoFiles.splice(idx, 1);
+          flow.photoDataUrls = [];
+          _disputeRenderThumbs();
+        });
+      })();
+
+      // ---- HELPER: collect stats for the agent prompt ------------
+      // We prefer the legacy TrustScoreService when available because
+      // it's the only score source actually wired into HEAD. If it's
+      // missing, we pass nulls and DisputeAgentService falls back to
+      // safe defaults inside the prompt builder.
+      async function _statsForAgent(userId) {
+        if (!userId) return null;
+        try {
+          if (window.trustScoreService && typeof window.trustScoreService.getScore === 'function') {
+            const r = await window.trustScoreService.getScore(userId);
+            return {
+              trust_score: r && r.score != null ? r.score : null,
+              successful_deliveries: r && r.successful_deliveries,
+              disputes_lost: r && r.disputes_lost,
+              disputes_won: r && r.disputes_won,
+              account_age_days: r && r.account_age_days
+            };
+          }
+        } catch (_) { /* non-fatal */ }
+        return null;
+      }
+
+      // ---- ANALYZE (shared by turn 1 and turn 2) -----------------
+      // Returns the agent verdict object. Caller decides whether to
+      // route to clarify view or verdict view based on `verdict.action`.
+      async function _runDisputeAnalysis({ priorTurn = null } = {}) {
+        const flow = _df();
+        if (!flow) return null;
+
+        _showDisputeView('thinking');
+        document.getElementById('dispute-thinking-label').textContent = priorTurn
+          ? 'Considering your answer…'
+          : 'Reviewing your dispute…';
+
+        // Lazily encode photos to base64 once. We keep the encoded list
+        // on flow so a follow-up call (after a clarifying question)
+        // doesn't re-read the FileList.
+        if (flow.photoDataUrls.length === 0 && flow.photoFiles.length > 0) {
+          try {
+            flow.photoDataUrls = await Promise.all(
+              Array.from(flow.photoFiles).slice(0, 4).map(_fileToDataUrl)
+            );
+          } catch (e) {
+            console.warn('[Dashboard] Photo encoding failed:', e.message);
+            flow.photoDataUrls = [];
+          }
+        }
+
+        // Pull both parties' stats in parallel.
+        const [buyerStats, sellerStats] = await Promise.all([
+          _statsForAgent(flow.transaction.buyer_id),
+          _statsForAgent(flow.transaction.seller_id)
+        ]);
+
+        if (!window.disputeAgentService) {
+          // Defensive: should always be present (loaded as a script tag
+          // before the dashboard inline code), but if it isn't we want
+          // the dispute to still close out as manual review.
+          return {
+            action: 'rule',
+            greeting: '',
+            clarifyingQuestion: '',
+            favoredParty: null,
+            confidence: 0,
+            payout: { buyerPct: 0, sellerPct: 0 },
+            reasoning: 'Dispute agent unavailable — routing to manual review.',
+            evidenceCited: []
+          };
+        }
+
+        return await window.disputeAgentService.analyze({
+          transaction: flow.transaction,
+          buyerStats,
+          sellerStats,
+          stateHistory: [], // optional; cheap to omit
+          raisedBy: flow.raisedBy,
+          userMessage: flow.description,
+          photos: flow.photoDataUrls,
+          priorTurn
+        });
+      }
+
+      // ---- RENDER VERDICT ----------------------------------------
+      // Paints the verdict card, applies the colour scheme based on
+      // who was favoured, and exposes the user-facing close button.
+      function _renderVerdict(verdict, resolutionResult) {
+        const card = document.getElementById('dispute-verdict-card');
+        const titleEl = document.getElementById('dispute-verdict-title');
+        const confEl = document.getElementById('dispute-verdict-confidence');
+        const reasonEl = document.getElementById('dispute-verdict-reasoning');
+        const evList = document.getElementById('dispute-verdict-evidence');
+
+        // Colour-code by favored party for instant recognisability.
+        let cls = 'bg-yellow-50 border-yellow-200';
+        let title = 'Sent for human review';
+        if (verdict.favoredParty === 'buyer') {
+          cls = 'bg-green-50 border-green-200';
+          title = 'Refund to buyer';
+        } else if (verdict.favoredParty === 'seller') {
+          cls = 'bg-blue-50 border-blue-200';
+          title = 'Funds released to seller';
+        } else if (verdict.favoredParty === 'split') {
+          cls = 'bg-purple-50 border-purple-200';
+          title = `Split ${verdict.payout.buyerPct}% / ${verdict.payout.sellerPct}%`;
+        }
+        card.className = 'rounded-xl p-5 mb-4 border ' + cls;
+        titleEl.textContent = title;
+
+        const confPct = Math.round((Number(verdict.confidence) || 0) * 100);
+        confEl.textContent = confPct + '% confidence';
+
+        const auto = resolutionResult && resolutionResult.success && (resolutionResult.resolutionType === 'automated');
+        reasonEl.textContent = (verdict.reasoning || '') +
+          (auto ? '' : '\n\nThis dispute will be reviewed by our team within 24-48 hours.');
+
+        evList.innerHTML = '';
+        (verdict.evidenceCited || []).forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          evList.appendChild(li);
+        });
+
+        _showDisputeView('verdict');
+      }
+
+      // ---- TURN 1 SUBMIT -----------------------------------------
+      document.getElementById('btn-submit-dispute').addEventListener('click', async () => {
+        const flow = _df();
+        if (!flow) {
           showErrorNotification('No transaction selected');
           return;
         }
-        
+
         const description = document.getElementById('dispute-description').value.trim();
-        
         if (!description || description.length < 10) {
-          showFieldError('dispute-description', 'Please provide at least 10 characters describing the issue');
+          showFieldError('dispute-description', 'Please give the agent at least 10 characters describing the issue.');
           return;
         }
-        
         clearFieldError('dispute-description');
-        
-        const submitButton = document.getElementById('btn-submit-dispute');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Submitting...';
-        
+
+        // Photos are already in `flow.photoFiles` — maintained live by the
+        // thumbnail UI (see _disputeAddFiles / the remove click-handler).
+        // The 4-file cap is enforced there too; this is a defensive check.
+        if (flow.photoFiles.length > 4) {
+          showFieldError('dispute-description', 'Please attach no more than 4 photos.');
+          return;
+        }
+
+        flow.description = description;
+        // flow.photoDataUrls may already be stale from a prior turn; clear
+        // it so _runDisputeAnalysis re-encodes the current photo set.
+        flow.photoDataUrls = [];
+
+        // Echo the user's message into the transcript before the
+        // agent replies, so the conversation reads naturally.
+        _appendDisputeBubble('user', description + (flow.photoFiles.length ? `\n[${flow.photoFiles.length} photo(s) attached]` : ''));
+
         try {
-          console.log('[Dashboard] Disputing transaction:', currentDisputeTransactionId);
-          
-          // Get photo files (if any) - Requirement 10.2
-          const photoFiles = document.getElementById('dispute-photos').files;
-          let photoUrls = [];
-          
-          // Upload photos if provided
-          if (photoFiles.length > 0) {
-            console.log(`[Dashboard] Uploading ${photoFiles.length} photos...`);
-            submitButton.textContent = 'Uploading photos...';
-            
-            try {
-              photoUrls = await disputeService.uploadPhotos(photoFiles);
-              console.log('[Dashboard] ✅ Photos uploaded successfully');
-            } catch (uploadError) {
-              console.error('[Dashboard] Photo upload failed:', uploadError);
-              showErrorNotification('Failed to upload photos: ' + uploadError.message);
-              submitButton.disabled = false;
-              submitButton.textContent = 'Submit Dispute';
-              return;
+          // Persist the dispute record once, up front. The agent
+          // verdict + transcript will be written onto this row by
+          // disputeService.resolveWithAgentVerdict().
+          if (!flow.disputeRecordId) {
+            // We pass an empty photoUrls list to createDispute because
+            // base64 photo storage is a known TODO. The photos still
+            // get sent to the agent for analysis above.
+            const createResult = await disputeService.createDispute(
+              flow.transactionId, currentUserId, description, []
+            );
+            if (!createResult.success) {
+              throw new Error(createResult.message || 'Failed to create dispute record');
             }
+            flow.disputeRecordId = createResult.dispute && createResult.dispute.id;
           }
-          
-          submitButton.textContent = 'Creating dispute...';
-          
-          // Create dispute record - Requirement 10.1, 10.2
-          const createResult = await disputeService.createDispute(
-            currentDisputeTransactionId,
-            currentUserId,
-            description,
-            photoUrls
-          );
-          
-          if (!createResult.success) {
-            throw new Error(createResult.message || 'Failed to create dispute');
+
+          const verdict = await _runDisputeAnalysis();
+
+          if (verdict && verdict.action === 'ask') {
+            flow.lastQuestion = verdict.clarifyingQuestion;
+            _appendDisputeBubble('agent', verdict.clarifyingQuestion);
+            document.getElementById('dispute-clarify-answer').value = '';
+            _showDisputeView('clarify');
+            return;
           }
-          
-          console.log('[Dashboard] ✅ Dispute created:', createResult.dispute.id);
-          
-          submitButton.textContent = 'Analyzing dispute...';
-          
-          // Get transaction details for AI analysis
-          const transaction = await transactionService.getTransaction(currentDisputeTransactionId);
-          
-          if (!transaction) {
-            throw new Error('Transaction not found');
-          }
-          
-          // Analyze dispute with AI - Requirement 10.3
-          const analysisResult = await disputeService.analyzeDispute(createResult.dispute, transaction);
-          
-          if (!analysisResult.success) {
-            console.warn('[Dashboard] AI analysis failed, will require manual review');
-            // Continue anyway - dispute is created, just needs manual review
-          }
-          
-          const analysis = analysisResult.analysis || {
-            confidence: 50,
-            resolution: 'manual_review',
-            resolutionType: 'manual_review',
-            reasoning: ['AI analysis unavailable']
-          };
-          
-          console.log('[Dashboard] AI Analysis:', {
-            confidence: analysis.confidence,
-            resolution: analysis.resolution,
-            resolutionType: analysis.resolutionType
-          });
-          
-          submitButton.textContent = 'Applying resolution...';
-          
-          // Apply resolution based on AI confidence - Requirement 10.4, 10.5
-          const resolutionResult = await disputeService.applyResolution(
-            currentDisputeTransactionId,
-            analysis
-          );
-          
-          if (!resolutionResult.success) {
-            console.warn('[Dashboard] Resolution application failed:', resolutionResult.message);
-          }
-          
-          // Transition state to Disputed via StateMachineService
-          const stateResult = await stateMachineService.transitionState(
-            currentDisputeTransactionId,
-            'Disputed',
-            currentUserId,
-            {
-              disputedBy: currentUserId,
-              description: description,
-              photoCount: photoUrls.length,
-              aiConfidence: analysis.confidence,
-              aiResolution: analysis.resolution,
-              resolutionType: analysis.resolutionType
-            }
-          );
-          
-          if (!stateResult.success) {
-            console.warn('[Dashboard] State transition failed:', stateResult.message);
-          }
-          
-          // Notify both parties - Requirement 10.6
-          let notificationMessage = '';
-          if (analysis.confidence > 90) {
-            notificationMessage = `Dispute resolved automatically. Resolution: ${analysis.resolution}. Funds have been transferred accordingly.`;
-          } else {
-            notificationMessage = `Dispute submitted for review. Our team will investigate and contact you within 24-48 hours.`;
-          }
-          
-          await disputeService.notifyParties(
-            currentDisputeTransactionId,
-            analysis.resolutionType,
-            notificationMessage
-          );
-          
-          console.log('[Dashboard] ✅ Dispute process completed');
-          
-          // Recalculate trust score within 5 seconds (Requirement 2.4)
-          setTimeout(async () => {
-            await recalculateTrustScore();
-          }, 2000);
-          
-          // Close dispute modal
-          closeModal('dispute-modal');
-          currentDisputeTransactionId = null;
-          
-          // Show success message with resolution details
-          document.getElementById('action-success-title').textContent = 'Dispute Submitted!';
-          
-          if (analysis.confidence > 90) {
-            document.getElementById('action-success-message').textContent = 
-              `Your dispute has been resolved automatically with ${analysis.confidence}% confidence. ` +
-              `Resolution: ${analysis.resolution.replace('_', ' ')}. Funds have been transferred accordingly.`;
-          } else {
-            document.getElementById('action-success-message').textContent = 
-              `Your dispute has been submitted for manual review (AI confidence: ${analysis.confidence}%). ` +
-              `Our team will investigate and contact you within 24-48 hours.`;
-          }
-          
-          openModal('action-success-modal');
-          
-          showSuccessNotification('Dispute submitted successfully!');
-          
-          // Reload transactions and balances
-          await Promise.all([
-            loadActiveTransactions(),
-            optimisticBalanceUpdate()
-          ]);
-          
-        } catch (error) {
-          console.error('[Dashboard] Submit dispute failed:', error);
-          showErrorNotification(error.message || 'Failed to submit dispute');
-        } finally {
-          submitButton.disabled = false;
-          submitButton.textContent = 'Submit Dispute';
+
+          await _finalizeDispute(verdict);
+        } catch (err) {
+          console.error('[Dashboard] Dispute analysis failed:', err);
+          showErrorNotification(err.message || 'Dispute failed');
+          _showDisputeView('intake');
         }
       });
+
+      // ---- TURN 2 SUBMIT (clarifier answer) ----------------------
+      document.getElementById('btn-submit-dispute-clarify').addEventListener('click', async () => {
+        const flow = _df();
+        if (!flow || !flow.lastQuestion) return;
+        const answer = document.getElementById('dispute-clarify-answer').value.trim();
+        if (!answer) {
+          showErrorNotification('Please type an answer for the agent.');
+          return;
+        }
+        _appendDisputeBubble('user', answer);
+        try {
+          const verdict = await _runDisputeAnalysis({
+            priorTurn: { question: flow.lastQuestion, answer }
+          });
+          // Agent may technically still ask again, but the prompt
+          // forbids it on a follow-up. Treat any further `ask` as
+          // a manual-review case to stay bounded.
+          if (verdict && verdict.action === 'ask') {
+            verdict.action = 'rule';
+            verdict.confidence = 0;
+            verdict.favoredParty = null;
+            verdict.reasoning = 'Agent could not decide after one clarifier — routing to manual review.';
+          }
+          await _finalizeDispute(verdict);
+        } catch (err) {
+          console.error('[Dashboard] Clarifier analysis failed:', err);
+          showErrorNotification(err.message || 'Dispute failed');
+          _showDisputeView('clarify');
+        }
+      });
+
+      // ---- FINALIZE: apply verdict, transition state, notify -----
+      async function _finalizeDispute(verdict) {
+        const flow = _df();
+        if (!flow) return;
+
+        // 1. Apply the verdict to funds via DisputeService. This also
+        //    persists the agent's reasoning + evidence on the dispute row.
+        const resolutionResult = await disputeService.resolveWithAgentVerdict(flow.transactionId, verdict);
+        if (!resolutionResult.success) {
+          console.warn('[Dashboard] Resolution application failed:', resolutionResult.message);
+        }
+
+        // 2. Always move the transaction into the Disputed state so
+        //    the UI reflects what happened. (resolveWithAgentVerdict
+        //    may already have moved it on auto-resolve; this is a
+        //    best-effort and is fine to fail.)
+        try {
+          await stateMachineService.transitionState(
+            flow.transactionId, 'Disputed', currentUserId,
+            {
+              disputedBy: currentUserId,
+              raisedBy: flow.raisedBy,
+              description: flow.description,
+              photoCount: flow.photoFiles.length,
+              aiConfidence: Math.round((verdict.confidence || 0) * 100),
+              favoredParty: verdict.favoredParty,
+              resolutionType: resolutionResult.resolutionType
+            }
+          );
+        } catch (e) {
+          console.warn('[Dashboard] State transition failed (non-fatal):', e.message);
+        }
+
+        // 3. Notify both parties — best-effort, no UX blocker.
+        try {
+          let msg;
+          if (resolutionResult.resolutionType === 'automated') {
+            msg = `Dispute resolved automatically. Outcome: ${verdict.favoredParty || 'split'}.`;
+          } else {
+            msg = 'Dispute submitted for review. Our team will investigate within 24-48 hours.';
+          }
+          await disputeService.notifyParties(flow.transactionId, resolutionResult.resolutionType, msg);
+        } catch (_) { /* non-fatal */ }
+
+        // 4. Show the agent's final word in the transcript, then the verdict card.
+        _appendDisputeBubble('agent', verdict.reasoning || 'Ruling recorded.');
+        _renderVerdict(verdict, resolutionResult);
+
+        // 5. Trust score recalc (best-effort; function may not exist if
+        //    the trust engine isn't wired into HEAD yet).
+        if (typeof recalculateTrustScore === 'function') {
+          setTimeout(() => { recalculateTrustScore().catch(() => {}); }, 1500);
+        }
+      }
       
       // Close Action Success Modal
       document.getElementById('btn-close-action-success-modal').addEventListener('click', () => {
