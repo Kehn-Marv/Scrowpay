@@ -95,11 +95,21 @@ class TursoDBService {
               // Already typed
               return arg;
             }
-            // Auto-type based on JavaScript type
+            // Auto-type based on JavaScript type.
+            // NOTE: Turso's Hrana HTTP protocol requires integer/float values
+            // to be encoded as JSON STRINGS (so 64-bit precision survives
+            // JSON's number type). Sending `{ type: 'integer', value: 1 }`
+            // gets rejected with HTTP 400 (which the browser surfaces as a
+            // CORS error, since 400 responses omit CORS headers).
             if (typeof arg === 'number') {
-              return { type: Number.isInteger(arg) ? 'integer' : 'float', value: arg };
+              // Hrana 3 spec: integer.value MUST be a JSON string (to preserve
+              // 64-bit precision), float.value MUST be a JSON number.
+              if (Number.isInteger(arg)) {
+                return { type: 'integer', value: String(arg) };
+              }
+              return { type: 'float', value: arg };
             } else if (typeof arg === 'boolean') {
-              return { type: 'integer', value: arg ? 1 : 0 };
+              return { type: 'integer', value: arg ? '1' : '0' };
             } else {
               // Default to text for strings and everything else
               return { type: 'text', value: String(arg) };
@@ -116,9 +126,10 @@ class TursoDBService {
           { type: 'close' }
         ];
         
-        console.log(`[TursoDBService] Executing SQL (attempt ${attempt + 1}/${retries + 1}):`, sql);
+        console.log(`[TursoDBService v3] Executing SQL (attempt ${attempt + 1}/${retries + 1}):`, sql);
         if (args.length > 0) {
-          console.log('[TursoDBService] Args:', args);
+          console.log('[TursoDBService v3] Raw args:', args);
+          console.log('[TursoDBService v3] Typed args sent to Turso:', stmt.args);
         }
         
         const response = await fetch(`${this.httpUrl}/v2/pipeline`, {
@@ -353,7 +364,64 @@ class TursoDBService {
           }
         }
       }
-      
+
+      // ----- transactions table migrations (dual-axis Buyer/Seller flow) -----
+      try {
+        const txnTableCheck = await this._executeHttp(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'"
+        );
+        const txnExists =
+          txnTableCheck.results[0] &&
+          txnTableCheck.results[0].response &&
+          txnTableCheck.results[0].response.result &&
+          txnTableCheck.results[0].response.result.rows.length > 0;
+
+        if (txnExists) {
+          const txnSchema = await this._executeHttp('PRAGMA table_info(transactions)');
+          const txnRows = txnSchema.results[0].response.result.rows;
+          const txnCols = txnRows.map(col => {
+            const nameCell = col[1];
+            return typeof nameCell === 'object' && nameCell.value !== undefined ? nameCell.value : nameCell;
+          });
+
+          console.log('[TursoDBService] Existing transactions columns:', txnCols);
+
+          // Columns required by the current TransactionService / dashboard flow.
+          // SQLite ALTER TABLE ADD COLUMN cannot add NOT NULL without a default,
+          // so all of these are nullable to stay safe on existing rows.
+          const requiredTxnColumns = [
+            { name: 'initiator_id', definition: 'INTEGER' },
+            { name: 'initiator_role', definition: "TEXT CHECK(initiator_role IN ('buyer','seller'))" },
+            { name: 'joiner_id', definition: 'INTEGER' },
+            { name: 'proof_urls', definition: 'TEXT' },
+            { name: 'fulfillment_proof', definition: 'TEXT' },
+            { name: 'risk_score', definition: 'INTEGER' },
+            { name: 'ai_verdict', definition: 'TEXT' }
+          ];
+
+          for (const column of requiredTxnColumns) {
+            if (!txnCols.includes(column.name)) {
+              console.log(`[TursoDBService] Adding missing transactions column: ${column.name}`);
+              try {
+                await this._executeHttp(
+                  `ALTER TABLE transactions ADD COLUMN ${column.name} ${column.definition}`
+                );
+                console.log(`[TursoDBService] ✅ Added transactions column: ${column.name}`);
+              } catch (error) {
+                console.error(
+                  `[TursoDBService] Failed to add transactions column ${column.name}:`,
+                  error
+                );
+              }
+            }
+          }
+        } else {
+          console.log('[TursoDBService] transactions table not found, skipping its migrations');
+        }
+      } catch (error) {
+        console.error('[TursoDBService] transactions migration failed:', error);
+      }
+
       console.log('[TursoDBService] ✅ Migrations complete');
       
     } catch (error) {

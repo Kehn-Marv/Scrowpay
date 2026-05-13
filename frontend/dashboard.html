@@ -407,6 +407,18 @@
     .modal.active {
       display: flex;
     }
+
+    /* Body scroll-lock applied while any .modal.active is on the page.
+       Using position:fixed (with top set in JS to -scrollY) prevents the
+       page underneath from scrolling AND keeps the visible viewport in
+       place — overflow:hidden alone is not enough on iOS Safari. */
+    body.modal-open {
+      position: fixed;
+      left: 0;
+      right: 0;
+      width: 100%;
+      overflow: hidden;
+    }
     
     .modal-content {
       background: white;
@@ -1171,11 +1183,15 @@
               name="itemDescription"
               rows="3"
               class="modal-input"
-              placeholder="Describe the goods or services (minimum 10 characters)"
+              placeholder="Describe the goods or services (10-500 characters)"
               required
+              maxlength="500"
               style="resize: vertical; min-height: 80px;"
             ></textarea>
-            <p id="error-item-description" class="error-text hidden"></p>
+            <div class="flex items-center justify-between mt-1">
+              <p id="error-item-description" class="error-text hidden" style="margin: 0;"></p>
+              <p id="item-description-counter" class="text-xs text-brand-subtext ml-auto" aria-live="polite">0 / 500</p>
+            </div>
           </div>
           
           <!-- Price -->
@@ -1845,7 +1861,7 @@
           
           <div class="mb-4">
             <p class="text-sm text-brand-subtext mb-1">Item Description</p>
-            <p id="details-item-description" class="text-brand-dark">-</p>
+            <p id="details-item-description" class="text-brand-dark break-words whitespace-pre-wrap leading-relaxed">-</p>
           </div>
           
           <div class="grid grid-cols-2 gap-4 mb-4">
@@ -2285,6 +2301,7 @@
   <script src="transaction-service.js"></script>
   <script src="TrustScoreService.js"></script>
   <script src="AIRiskService.js"></script>
+  <script src="squad-api-service.js"></script>
   <script src="StateMachineService.js"></script>
   <script src="BalanceService.js"></script>
   <script src="DisputeService.js"></script>
@@ -2699,21 +2716,50 @@
     }
     
     // Modal Functions
+    //
+    // Body scroll-lock: while any modal is active we lock the page underneath
+    // so the background can't scroll behind the dialog. We use a recompute
+    // helper instead of a manual counter so it stays correct even if modals
+    // are toggled by code paths that don't go through open/closeModal (e.g.
+    // backdrop click handlers that just remove the .active class). Scroll
+    // position is preserved via `position: fixed; top: -<scrollY>px` on the
+    // body, then restored when the last modal closes.
+    function _syncBodyScrollLock() {
+      const anyActive = document.querySelectorAll('.modal.active').length > 0;
+      const body = document.body;
+      if (anyActive) {
+        if (!body.classList.contains('modal-open')) {
+          const y = window.scrollY || window.pageYOffset || 0;
+          body.dataset.scrollLockY = String(y);
+          body.style.top = `-${y}px`;
+          body.classList.add('modal-open');
+        }
+      } else if (body.classList.contains('modal-open')) {
+        const y = parseInt(body.dataset.scrollLockY || '0', 10);
+        body.classList.remove('modal-open');
+        body.style.top = '';
+        delete body.dataset.scrollLockY;
+        window.scrollTo(0, y);
+      }
+    }
+
     function openModal(modalId) {
       console.log('Opening modal:', modalId);
       const modal = document.getElementById(modalId);
       if (modal) {
         console.log('Modal found, adding active class');
         modal.classList.add('active');
+        _syncBodyScrollLock();
       } else {
         console.error('Modal not found:', modalId);
       }
     }
-    
+
     function closeModal(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) {
         modal.classList.remove('active');
+        _syncBodyScrollLock();
       }
     }
     
@@ -3508,6 +3554,24 @@
           clearFieldError('item-description');
         }
       });
+
+      // Live character counter for item description (max 500 chars).
+      // Updates on every keystroke / paste so the user always knows how
+      // much room they have left before the textarea hits the cap.
+      const itemDescEl = document.getElementById('item-description');
+      const itemDescCounter = document.getElementById('item-description-counter');
+      if (itemDescEl && itemDescCounter) {
+        const MAX_DESC = 500;
+        const updateDescCounter = () => {
+          const len = itemDescEl.value.length;
+          itemDescCounter.textContent = `${len} / ${MAX_DESC}`;
+          // Tint red as we approach the cap so it's obvious.
+          itemDescCounter.classList.toggle('text-red-600', len >= MAX_DESC);
+          itemDescCounter.classList.toggle('text-brand-subtext', len < MAX_DESC);
+        };
+        itemDescEl.addEventListener('input', updateDescCounter);
+        updateDescCounter();
+      }
       
       document.getElementById('price').addEventListener('blur', (e) => {
         const error = validatePrice(e.target.value);
@@ -3606,17 +3670,84 @@
       });
       
       // Copy Transaction ID
-      document.getElementById('btn-copy-transaction-id').addEventListener('click', () => {
-        const transactionId = document.getElementById('transaction-id-display').textContent;
-        
-        // Copy to clipboard
-        navigator.clipboard.writeText(transactionId).then(() => {
-          showSuccessNotification('Transaction ID copied to clipboard!');
-        }).catch((error) => {
-          console.error('Failed to copy:', error);
-          showErrorNotification('Failed to copy Transaction ID');
+      //
+      // In addition to the toast, give the button itself an immediate "Copied!"
+      // confirmation: swap the clipboard icon + label for a green check mark
+      // and "Copied!" text for ~1.5s, then restore. This is the inline,
+      // unmissable feedback the user asked for.
+      const copyBtn = document.getElementById('btn-copy-transaction-id');
+      const COPY_BTN_DEFAULT_HTML = copyBtn ? copyBtn.innerHTML : '';
+      let copyBtnResetTimer = null;
+
+      function flashCopyConfirmation() {
+        if (!copyBtn) return;
+        copyBtn.innerHTML = `
+          <svg style="width: 16px; height: 16px; stroke: #16a34a;" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span style="color: #16a34a; font-weight: 600;">Copied!</span>
+        `;
+        copyBtn.disabled = true;
+        copyBtn.setAttribute('aria-live', 'polite');
+
+        if (copyBtnResetTimer) clearTimeout(copyBtnResetTimer);
+        copyBtnResetTimer = setTimeout(() => {
+          copyBtn.innerHTML = COPY_BTN_DEFAULT_HTML;
+          copyBtn.disabled = false;
+          copyBtnResetTimer = null;
+        }, 1500);
+      }
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          const transactionId = document.getElementById('transaction-id-display').textContent;
+
+          const onSuccess = () => {
+            flashCopyConfirmation();
+            showSuccessNotification('Transaction ID copied to clipboard!');
+          };
+          const onFailure = (error) => {
+            console.error('Failed to copy:', error);
+            showErrorNotification('Failed to copy Transaction ID');
+          };
+
+          // Prefer the async Clipboard API; fall back to a hidden textarea +
+          // execCommand for older / non-secure-context browsers.
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(transactionId).then(onSuccess).catch((err) => {
+              try {
+                const ta = document.createElement('textarea');
+                ta.value = transactionId;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'absolute';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                if (ok) onSuccess(); else onFailure(err);
+              } catch (fallbackErr) {
+                onFailure(fallbackErr);
+              }
+            });
+          } else {
+            try {
+              const ta = document.createElement('textarea');
+              ta.value = transactionId;
+              ta.setAttribute('readonly', '');
+              ta.style.position = 'absolute';
+              ta.style.left = '-9999px';
+              document.body.appendChild(ta);
+              ta.select();
+              const ok = document.execCommand('copy');
+              document.body.removeChild(ta);
+              if (ok) onSuccess(); else onFailure(new Error('execCommand returned false'));
+            } catch (err) {
+              onFailure(err);
+            }
+          }
         });
-      });
+      }
       
       // ========================================
       // JOIN TRANSACTION & FUNDING FLOW
@@ -4538,10 +4669,30 @@
         return section;
       }
       
+      // Minimal HTML/attribute escaping helpers — used anywhere we interpolate
+      // user-generated content (e.g. item_description) into innerHTML so a
+      // crafted description can't inject markup or break out of attributes.
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+      function escapeAttr(str) {
+        // For values placed inside double-quoted attributes.
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
       // Create transaction card HTML
       function createTransactionCard(txn, state) {
         const card = document.createElement('div');
-        card.className = 'bg-brand-gray rounded-xl p-6 hover:shadow-md transition-shadow cursor-pointer';
+        card.className = 'bg-brand-gray rounded-xl p-6 hover:shadow-md transition-shadow';
         
         const isSellerView = txn.seller_id === currentUserId;
         const isBuyerView = txn.buyer_id === currentUserId;
@@ -4587,7 +4738,10 @@
           
           <div class="mb-4">
             <p class="text-sm text-brand-subtext mb-1">Item Description</p>
-            <p class="text-brand-dark">${txn.item_description}</p>
+            <p
+              class="text-brand-dark line-clamp-2 break-words"
+              title="${escapeAttr(txn.item_description || '')}"
+            >${escapeHtml(txn.item_description || '')}</p>
           </div>
           
           <div class="grid grid-cols-3 gap-4 mb-4">
@@ -4616,24 +4770,35 @@
             </div>
           ` : ''}
           
-          <div class="mb-4 text-center">
-            <button class="text-sm text-brand-dark hover:text-brand-green font-medium transition-colors" onclick="event.stopPropagation(); showTransactionDetails('${txn.transaction_id}')">
-              View Full Details & History →
-            </button>
-          </div>
-          
           <div id="actions-${txn.transaction_id}" class="flex gap-3">
             <!-- Action buttons will be inserted here -->
           </div>
+
+          <div class="mt-5 pt-4 border-t border-gray-200 flex justify-end">
+            <button
+              type="button"
+              data-view-details="${txn.transaction_id}"
+              class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-dark hover:text-brand-green focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 rounded-md px-2 py-1 transition-colors"
+              aria-label="View full transaction details and history"
+            >
+              View full details &amp; history
+              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
         `;
-        
-        // Add click handler to show transaction details (Requirement 8.6)
-        card.addEventListener('click', (e) => {
-          // Don't trigger if clicking on action buttons
-          if (!e.target.closest(`#actions-${txn.transaction_id}`) && !e.target.closest('button')) {
+
+        // Open the details modal ONLY via the explicit button (not when
+        // clicking blank areas of the card). Using a data attribute avoids
+        // brittle inline onclick handlers and keeps escaping safe.
+        const detailsBtn = card.querySelector(`button[data-view-details="${txn.transaction_id}"]`);
+        if (detailsBtn) {
+          detailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             showTransactionDetails(txn.transaction_id);
-          }
-        });
+          });
+        }
         
         // Add action buttons based on state and user role
         const actionsContainer = card.querySelector(`#actions-${txn.transaction_id}`);
@@ -5184,23 +5349,43 @@
             ? (transaction.buyer_id === currentUserId ? 'You' : `Buyer (ID: ${transaction.buyer_id})`)
             : 'Pending';
           
-          // Show risk score if available
-          if (transaction.risk_score !== null && transaction.risk_score !== undefined) {
+          // Show risk score if available. Coerce defensively — Turso may hand us a
+          // numeric string and older rows may carry the raw typed-cell object.
+          const rawRisk = transaction.risk_score;
+          const riskNumber = (rawRisk === null || rawRisk === undefined || typeof rawRisk === 'object')
+            ? null
+            : Number(rawRisk);
+          if (riskNumber !== null && Number.isFinite(riskNumber)) {
             document.getElementById('details-risk-section').classList.remove('hidden');
-            document.getElementById('details-risk-score').textContent = transaction.risk_score.toFixed(1);
-            document.getElementById('details-ai-verdict').textContent = transaction.ai_verdict 
-              ? transaction.ai_verdict.toUpperCase() 
+            document.getElementById('details-risk-score').textContent = riskNumber.toFixed(1);
+            document.getElementById('details-ai-verdict').textContent = transaction.ai_verdict
+              ? String(transaction.ai_verdict).toUpperCase()
               : 'N/A';
           } else {
             document.getElementById('details-risk-section').classList.add('hidden');
           }
-          
-          // Fetch state history
-          const stateHistory = await stateMachineService.getStateHistory(transactionId);
-          
-          // Render state history
+
+          // Fetch state history. A failure here must NOT close the whole details
+          // modal (older bug: stateMachineService could be undefined and the
+          // resulting TypeError flashed the modal closed). Degrade gracefully.
           const historyContainer = document.getElementById('state-history-container');
-          
+          let stateHistory = [];
+          try {
+            if (!stateMachineService || typeof stateMachineService.getStateHistory !== 'function') {
+              throw new Error('State machine service unavailable');
+            }
+            stateHistory = await stateMachineService.getStateHistory(transactionId);
+          } catch (historyErr) {
+            console.warn('[Dashboard] State history unavailable:', historyErr);
+            historyContainer.innerHTML = `
+              <div class="text-center py-4 text-brand-subtext">
+                <p>State history unavailable right now</p>
+              </div>
+            `;
+            console.log('Transaction details loaded (without state history)');
+            return;
+          }
+
           if (!stateHistory || stateHistory.length === 0) {
             historyContainer.innerHTML = `
               <div class="text-center py-4 text-brand-subtext">
@@ -5258,7 +5443,21 @@
         } catch (error) {
           console.error('Failed to load transaction details:', error);
           showErrorNotification('Failed to load transaction details');
-          closeModal('transaction-details-modal');
+          // Do NOT auto-close the modal here. Previously this catch ran when
+          // the state-history fetch threw (because stateMachineService was
+          // undefined) and the modal vanished a frame after opening. The
+          // state-history failure is now handled inline; this catch only fires
+          // for truly fatal errors (e.g. transaction fetch failed), in which
+          // case leaving the modal open with the loading spinner is preferable
+          // to a flash-and-close that the user can't read.
+          const container = document.getElementById('state-history-container');
+          if (container) {
+            container.innerHTML = `
+              <div class="text-center py-4 text-brand-subtext">
+                <p>Unable to load transaction details. Please close and try again.</p>
+              </div>
+            `;
+          }
         }
       }
       
@@ -5543,29 +5742,35 @@
         await loadTransactionHistory();
       }
       
-      // Transaction History Modal Event Listeners
-      document.getElementById('btn-view-history').addEventListener('click', openTransactionHistory);
-      
-      document.getElementById('btn-close-history-modal').addEventListener('click', () => {
-        closeModal('transaction-history-modal');
-      });
-      
-      document.getElementById('transaction-history-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'transaction-history-modal') {
-          closeModal('transaction-history-modal');
-        }
-      });
-      
-      document.getElementById('btn-apply-filters').addEventListener('click', applyHistoryFilters);
-      
-      document.getElementById('btn-prev-page').addEventListener('click', async () => {
+      // Transaction History Modal Event Listeners.
+      // These are wired defensively: some entries (e.g. btn-view-history) may
+      // not exist in the current markup, and an uncaught null.addEventListener
+      // here used to abort every listener below it, silently breaking the
+      // history modal's close/filter/pagination controls.
+      const wireClick = (id, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', handler);
+      };
+      wireClick('btn-view-history', openTransactionHistory);
+      wireClick('btn-close-history-modal', () => closeModal('transaction-history-modal'));
+
+      const historyModalEl = document.getElementById('transaction-history-modal');
+      if (historyModalEl) {
+        historyModalEl.addEventListener('click', (e) => {
+          if (e.target.id === 'transaction-history-modal') {
+            closeModal('transaction-history-modal');
+          }
+        });
+      }
+
+      wireClick('btn-apply-filters', applyHistoryFilters);
+      wireClick('btn-prev-page', async () => {
         if (currentHistoryPage > 1) {
           currentHistoryPage--;
           await loadTransactionHistory();
         }
       });
-      
-      document.getElementById('btn-next-page').addEventListener('click', async () => {
+      wireClick('btn-next-page', async () => {
         currentHistoryPage++;
         await loadTransactionHistory();
       });

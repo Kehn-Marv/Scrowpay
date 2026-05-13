@@ -207,6 +207,17 @@ class TransactionService {
       // Dual-axis support: derive seller/buyer based on initiator role.
       // Backwards compatible: if initiatorRole is absent, behaves as legacy seller-initiated flow.
       const initiatorRole = data.initiatorRole === 'buyer' ? 'buyer' : 'seller';
+      // Coerce IDs to numbers. TursoDB returns integer columns as strings
+      // (cellValue.value is always a string), so session.userId may arrive
+      // here as a numeric string like "1". Normalise once, up front.
+      const toNumericId = (v) => {
+        if (v === undefined || v === null || v === '') return undefined;
+        const n = typeof v === 'number' ? v : parseInt(v, 10);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      if (data.sellerId !== undefined) data.sellerId = toNumericId(data.sellerId);
+      if (data.buyerId !== undefined) data.buyerId = toNumericId(data.buyerId);
+      if (data.initiatorId !== undefined) data.initiatorId = toNumericId(data.initiatorId);
       const initiatorId = data.initiatorId || data.sellerId || data.buyerId;
       // For buyer-initiated, seller_id is NOT NULL so we use the initiator as a placeholder
       // until a real seller joins (then updateSeller swaps it). buyer_id is set directly.
@@ -260,9 +271,17 @@ class TransactionService {
       // Generate unique Transaction_ID (Requirement 3.3)
       const transactionId = this.generateTransactionId();
       
-      // Serialize proof URLs (base64 data URIs or remote URLs) as JSON
-      const proofUrlsJson = Array.isArray(data.proofUrls) && data.proofUrls.length > 0
-        ? JSON.stringify(data.proofUrls)
+      // Serialize proof URLs as JSON. We DO NOT persist base64 `data:` URIs
+      // here — Turso's /v2/pipeline endpoint rejects oversized statements with
+      // HTTP 400 (which surfaces as a CORS error in the browser), and a single
+      // phone photo as base64 is easily several MB. Only remote URLs are
+      // stored; data URIs stay in-memory on the client until real object
+      // storage is wired up.
+      const remoteProofUrls = Array.isArray(data.proofUrls)
+        ? data.proofUrls.filter(u => typeof u === 'string' && !u.startsWith('data:'))
+        : [];
+      const proofUrlsJson = remoteProofUrls.length > 0
+        ? JSON.stringify(remoteProofUrls)
         : null;
 
       // Save to database with state "Created" (Requirement 3.4)
@@ -341,13 +360,25 @@ class TransactionService {
         return null;
       }
       
-      // Convert row array to object using column names
+      // Convert row array to object using column names.
+      // Turso returns typed cells: { type: 'integer'|'text'|'float'|'null'|'blob', value?: ... }
+      // For null cells the object is { type: 'null' } with no `value` key, so we must
+      // map it to JS null explicitly — otherwise downstream code that does e.g.
+      // `transaction.risk_score.toFixed(1)` will crash on the raw cell object.
       const transaction = {};
       cols.forEach((col, index) => {
         const cellValue = rows[0][index];
-        transaction[col.name] = typeof cellValue === 'object' && cellValue.value !== undefined 
-          ? cellValue.value 
-          : cellValue;
+        if (cellValue && typeof cellValue === 'object') {
+          if (cellValue.type === 'null') {
+            transaction[col.name] = null;
+          } else if (cellValue.value !== undefined) {
+            transaction[col.name] = cellValue.value;
+          } else {
+            transaction[col.name] = null;
+          }
+        } else {
+          transaction[col.name] = cellValue;
+        }
       });
       
       console.log('[TransactionService] ✅ Transaction retrieved:', transactionId);
