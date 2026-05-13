@@ -203,12 +203,28 @@ class TransactionService {
   async createTransaction(data) {
     try {
       console.log('[TransactionService] Creating transaction:', data);
+
+      // Dual-axis support: derive seller/buyer based on initiator role.
+      // Backwards compatible: if initiatorRole is absent, behaves as legacy seller-initiated flow.
+      const initiatorRole = data.initiatorRole === 'buyer' ? 'buyer' : 'seller';
+      const initiatorId = data.initiatorId || data.sellerId || data.buyerId;
+      // For buyer-initiated, seller_id is NOT NULL so we use the initiator as a placeholder
+      // until a real seller joins (then updateSeller swaps it). buyer_id is set directly.
+      let resolvedSellerId, resolvedBuyerId;
+      if (initiatorRole === 'buyer') {
+        resolvedSellerId = initiatorId; // placeholder
+        resolvedBuyerId = initiatorId;
+      } else {
+        resolvedSellerId = data.sellerId || initiatorId;
+        resolvedBuyerId = null;
+      }
+      data.sellerId = resolvedSellerId;
       
       // Ensure connection
       await this.connect();
       
       // Check rate limit (Requirement 19.6)
-      const rateLimitCheck = await this.checkRateLimit(data.sellerId);
+      const rateLimitCheck = await this.checkRateLimit(initiatorId);
       
       if (!rateLimitCheck.allowed) {
         // Log rate limit violation
@@ -244,21 +260,30 @@ class TransactionService {
       // Generate unique Transaction_ID (Requirement 3.3)
       const transactionId = this.generateTransactionId();
       
+      // Serialize proof URLs (base64 data URIs or remote URLs) as JSON
+      const proofUrlsJson = Array.isArray(data.proofUrls) && data.proofUrls.length > 0
+        ? JSON.stringify(data.proofUrls)
+        : null;
+
       // Save to database with state "Created" (Requirement 3.4)
       const sql = `INSERT INTO transactions (
         transaction_id, seller_id, buyer_id, item_description, price,
-        delivery_timeline_days, inspection_window_days, state
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-      
+        delivery_timeline_days, inspection_window_days, state,
+        initiator_id, initiator_role, proof_urls
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
       const args = [
         transactionId,
-        data.sellerId,
-        null,  // buyer_id is NULL until transaction is funded
+        resolvedSellerId,
+        resolvedBuyerId,
         data.itemDescription.trim(),
         data.price,
         data.deliveryTimelineDays,
         data.inspectionWindowDays,
-        'Created'
+        'Created',
+        initiatorId,
+        initiatorRole,
+        proofUrlsJson
       ];
       
       const result = await this.dbService._executeHttp(sql, args);
@@ -269,13 +294,16 @@ class TransactionService {
       return {
         id: result.results[0].response.result.last_insert_rowid,
         transaction_id: transactionId,
-        seller_id: data.sellerId,
-        buyer_id: null,
+        seller_id: resolvedSellerId,
+        buyer_id: resolvedBuyerId,
         item_description: data.itemDescription.trim(),
         price: data.price,
         delivery_timeline_days: data.deliveryTimelineDays,
         inspection_window_days: data.inspectionWindowDays,
         state: 'Created',
+        initiator_id: initiatorId,
+        initiator_role: initiatorRole,
+        proof_urls: proofUrlsJson,
         risk_score: null,
         ai_verdict: null,
         created_at: new Date().toISOString(),
@@ -589,6 +617,56 @@ class TransactionService {
     }
   }
   
+  /**
+   * Updates a transaction's seller_id when a seller joins a buyer-initiated request
+   * @param {string} transactionId - Transaction ID
+   * @param {number} sellerId - Seller's user ID
+   * @returns {Promise<boolean>} True if update successful
+   */
+  async updateSeller(transactionId, sellerId) {
+    try {
+      console.log('[TransactionService] Updating seller for transaction:', transactionId);
+      await this.connect();
+      const sql = `
+        UPDATE transactions
+        SET seller_id = ?, joiner_id = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE transaction_id = ?
+      `;
+      await this.dbService._executeHttp(sql, [sellerId, sellerId, transactionId]);
+      console.log('[TransactionService] ✅ Seller updated successfully');
+      return true;
+    } catch (error) {
+      console.error('[TransactionService] Seller update failed:', error);
+      throw new Error('Failed to update seller: ' + error.message);
+    }
+  }
+
+  /**
+   * Stores fulfillment proof (base64 image refs / URLs) uploaded by a seller
+   * after joining a buyer-initiated request.
+   * @param {string} transactionId - Transaction ID
+   * @param {Array<string>} proofUrls - Array of base64 data URIs or URLs
+   * @returns {Promise<boolean>} True if update successful
+   */
+  async uploadFulfillmentProof(transactionId, proofUrls) {
+    try {
+      console.log('[TransactionService] Uploading fulfillment proof for:', transactionId);
+      await this.connect();
+      const proofJson = Array.isArray(proofUrls) ? JSON.stringify(proofUrls) : null;
+      const sql = `
+        UPDATE transactions
+        SET fulfillment_proof = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE transaction_id = ?
+      `;
+      await this.dbService._executeHttp(sql, [proofJson, transactionId]);
+      console.log('[TransactionService] ✅ Fulfillment proof saved');
+      return true;
+    } catch (error) {
+      console.error('[TransactionService] Fulfillment proof upload failed:', error);
+      throw new Error('Failed to upload fulfillment proof: ' + error.message);
+    }
+  }
+
   /**
    * Updates a transaction's risk score and AI verdict
    * @param {string} transactionId - Transaction ID

@@ -667,6 +667,25 @@ class TursoDBService {
       
       await this._executeHttp(createTransactionsTableSql);
       console.log('[TursoDBService] ✅ Transactions table created');
+
+      // Idempotent migrations for dual-axis (Buyer/Seller) initiator support.
+      // SQLite ignores duplicate ALTER TABLE ADD COLUMN by throwing; we catch and continue.
+      const transactionMigrations = [
+        "ALTER TABLE transactions ADD COLUMN initiator_id INTEGER",
+        "ALTER TABLE transactions ADD COLUMN initiator_role TEXT",
+        "ALTER TABLE transactions ADD COLUMN proof_urls TEXT",
+        "ALTER TABLE transactions ADD COLUMN joiner_id INTEGER",
+        "ALTER TABLE transactions ADD COLUMN fulfillment_proof TEXT"
+      ];
+      for (const sql of transactionMigrations) {
+        try {
+          await this._executeHttp(sql);
+          console.log('[TursoDBService] ✅ Migration applied:', sql);
+        } catch (e) {
+          // Column already exists - safe to ignore
+          console.log('[TursoDBService] Migration skipped (already applied):', sql.split(' ').slice(-2).join(' '));
+        }
+      }
       
       // Create indexes for transactions table
       const transactionIndexes = [

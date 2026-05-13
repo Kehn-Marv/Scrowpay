@@ -422,6 +422,18 @@ class InputValidationService {
     
     // Add seller ID (no validation needed, comes from session)
     sanitized.sellerId = formData.sellerId;
+
+    // Pass-through dual-axis (Buyer/Seller initiator) metadata if present.
+    // These come from the session/UI and don't require additional sanitisation.
+    if (formData.buyerId !== undefined) sanitized.buyerId = formData.buyerId;
+    if (formData.initiatorId !== undefined) sanitized.initiatorId = formData.initiatorId;
+    if (formData.initiatorRole === 'buyer' || formData.initiatorRole === 'seller') {
+      sanitized.initiatorRole = formData.initiatorRole;
+    }
+    if (Array.isArray(formData.proofUrls)) {
+      // Filter out anything that isn't a string data URI / URL
+      sanitized.proofUrls = formData.proofUrls.filter(u => typeof u === 'string' && u.length > 0);
+    }
     
     return {
       valid: Object.keys(errors).length === 0,

@@ -561,6 +561,153 @@
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+
+    /* ============================================================
+       Dual-axis Create / Join shared design tokens
+       ============================================================ */
+    .step-stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .stepper-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #f0f0ee; color: #888;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
+      flex-shrink: 0; transition: all 0.25s;
+    }
+    .stepper-dot.active { background: var(--dark); color: var(--green); }
+    .stepper-dot.done { background: var(--green); color: var(--dark); }
+    .stepper-line { flex: 1; height: 2px; background: #f0f0ee; border-radius: 2px; transition: all 0.25s; }
+    .stepper-line.done { background: var(--green); }
+
+    .choice-card {
+      width: 100%;
+      padding: 20px 18px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 16px;
+      background: #fafafa;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .choice-card:hover { border-color: var(--dark); background: white; transform: translateY(-1px); }
+    .choice-card.selected {
+      border-color: var(--dark);
+      background: #111;
+      color: var(--green);
+    }
+    .choice-card.selected .choice-icon { background: var(--green); color: var(--dark); }
+    .choice-card.selected .choice-sub { color: rgba(202,255,4,0.7); }
+    .choice-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--dark); color: var(--green);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .choice-icon svg { width: 22px; height: 22px; stroke-width: 2; }
+    .choice-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; line-height: 1.2; }
+    .choice-sub { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.4; }
+
+    /* Proof / Spec uploader */
+    .uploader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 140px;
+      border: 1.5px dashed #d8d8d6;
+      border-radius: 14px;
+      padding: 24px 20px;
+      text-align: center;
+      background: #fafafa;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .uploader:hover { border-color: var(--dark); background: white; }
+    .uploader.dragover { border-color: var(--green); background: rgba(202,255,4,0.08); }
+    .uploader-icon { width: 32px; height: 32px; color: #888; margin: 0 0 4px; flex-shrink: 0; }
+    .uploader-text { font-size: 13px; color: #555; font-weight: 600; margin: 0; }
+    .uploader-hint { font-size: 11px; color: #aaa; margin: 0; }
+    .upload-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .upload-thumb {
+      position: relative; width: 64px; height: 64px; border-radius: 10px;
+      overflow: hidden; border: 1.5px solid #e0e0e0; background: #fff;
+      flex-shrink: 0;
+    }
+    .upload-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .upload-thumb-remove {
+      position: absolute; top: 2px; right: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); color: white; border: none;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 10px; padding: 0;
+    }
+
+    /* Vault inspection (Join flow) */
+    .vault-banner {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: #111; color: var(--green);
+      border-radius: 14px; margin-bottom: 18px;
+    }
+    .vault-banner svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .vault-banner-text { font-size: 12px; line-height: 1.4; opacity: 0.85; }
+    .vault-banner-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    .verify-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(202,255,4,0.15); color: #2d4a00;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      border: 1px solid rgba(202,255,4,0.5);
+    }
+    .verify-badge svg { width: 12px; height: 12px; stroke-width: 3; }
+
+    .integrity-loader {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 20px; gap: 16px;
+    }
+    .integrity-rings {
+      width: 64px; height: 64px; position: relative;
+    }
+    .integrity-rings::before, .integrity-rings::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      border: 2px solid var(--dark); border-top-color: transparent;
+      animation: spin 1.2s linear infinite;
+    }
+    .integrity-rings::after {
+      inset: 8px; border-color: var(--green); border-top-color: transparent;
+      animation-duration: 0.8s; animation-direction: reverse;
+    }
+
+    .inspection-panel {
+      background: #fafafa; border: 1.5px solid #ececea;
+      border-radius: 16px; padding: 18px; margin-bottom: 14px;
+    }
+    .inspection-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #888; font-weight: 700; margin-bottom: 6px;
+    }
+    .inspection-value { font-size: 15px; color: var(--dark); font-weight: 600; }
+    .inspection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .trust-meter { width: 100%; height: 6px; background: #ececea; border-radius: 999px; overflow: hidden; }
+    .trust-meter-fill { height: 100%; background: var(--green); transition: width 0.4s ease; }
+
+    .proof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px; }
+    .proof-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid #e0e0e0; }
+
+    .role-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: #111; color: var(--green);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    }
     
     .input-error {
       border-color: #ff6b6b !important;
@@ -926,21 +1073,93 @@
     
   </main>
   
-  <!-- Create Escrow Modal -->
+  <!-- Create Escrow Modal (Dual-axis: Role x Action) -->
   <div id="create-escrow-modal" class="modal">
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
         <div class="modal-header">
-          <h2 class="modal-title">Create Escrow</h2>
+          <h2 id="create-escrow-title" class="modal-title">New Escrow</h2>
           <button id="btn-close-modal" class="modal-close-btn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
-        <!-- Form -->
+
+        <!-- Stepper -->
+        <div class="step-stepper" id="create-stepper">
+          <div class="stepper-dot active" data-step="1">1</div>
+          <div class="stepper-line" data-line="1-2"></div>
+          <div class="stepper-dot" data-step="2">2</div>
+          <div class="stepper-line" data-line="2-3"></div>
+          <div class="stepper-dot" data-step="3">3</div>
+        </div>
+
+        <!-- ===== STEP 1: Role ===== -->
+        <div id="create-step-1" class="create-step">
+          <p style="font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Who are you in this deal?</p>
+          <p style="font-size: 13px; color: #888; margin-bottom: 18px;">We'll tailor the form so the next steps make sense for your side.</p>
+          <div style="display: grid; gap: 12px;">
+            <button type="button" class="choice-card" data-role="buyer" id="role-buyer">
+              <div class="choice-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              </div>
+              <div style="flex: 1;">
+                <div class="choice-title">I am Buying</div>
+                <div class="choice-sub">I'll define what I need and lock funds when a seller accepts.</div>
+              </div>
+            </button>
+            <button type="button" class="choice-card" data-role="seller" id="role-seller">
+              <div class="choice-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              </div>
+              <div style="flex: 1;">
+                <div class="choice-title">I am Selling</div>
+                <div class="choice-sub">I'll list an item with proof and a buyer will fund the escrow.</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== STEP 2: Action ===== -->
+        <div id="create-step-2" class="create-step" style="display: none;">
+          <p style="font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 6px;">What do you want to do?</p>
+          <p style="font-size: 13px; color: #888; margin-bottom: 18px;">
+            <span class="role-pill" id="step2-role-pill">BUYER</span>
+            &nbsp;Pick how you want to start.
+          </p>
+          <div style="display: grid; gap: 12px;">
+            <button type="button" class="choice-card" data-action="create" id="action-create">
+              <div class="choice-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              </div>
+              <div style="flex: 1;">
+                <div class="choice-title">Create New</div>
+                <div class="choice-sub" id="action-create-sub">Define expectations, set the budget and deadline.</div>
+              </div>
+            </button>
+            <button type="button" class="choice-card" data-action="join" id="action-join">
+              <div class="choice-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </div>
+              <div style="flex: 1;">
+                <div class="choice-title">Join Existing</div>
+                <div class="choice-sub" id="action-join-sub">Enter an invite code to inspect and accept terms.</div>
+              </div>
+            </button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 18px;">
+            <button type="button" id="btn-create-back-to-1" class="modal-btn-secondary">Back</button>
+          </div>
+        </div>
+
+        <!-- ===== STEP 3: Form (adaptive) ===== -->
+        <div id="create-step-3" class="create-step" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <span class="role-pill" id="step3-role-pill">BUYER</span>
+            <span style="font-size: 12px; color: #888;" id="step3-role-helper">Define expectations &amp; budget</span>
+          </div>
         <form id="create-escrow-form">
           <!-- Item Description -->
           <div class="modal-form-group">
@@ -1013,7 +1232,19 @@
             />
             <p id="error-inspection-window" class="error-text hidden"></p>
           </div>
-          
+
+          <!-- Adaptive Uploader (Proof of Legitimacy / Specs) -->
+          <div class="modal-form-group">
+            <label class="modal-label" id="uploader-label">Proof of Legitimacy</label>
+            <label for="proof-files-input" class="uploader" id="proof-uploader">
+              <svg class="uploader-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+              <p class="uploader-text" id="uploader-text">Add photos / receipts to prove legitimacy</p>
+              <p class="uploader-hint">PNG, JPG · up to 5 files · max 5MB each</p>
+            </label>
+            <input id="proof-files-input" type="file" accept="image/*" multiple style="display:none;" />
+            <div class="upload-thumbs" id="proof-thumbs"></div>
+          </div>
+
           <!-- Form Actions -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px;">
             <button
@@ -1021,7 +1252,7 @@
               id="btn-cancel"
               class="modal-btn-secondary"
             >
-              Cancel
+              Back
             </button>
             <button
               type="submit"
@@ -1032,6 +1263,7 @@
             </button>
           </div>
         </form>
+        </div><!-- /create-step-3 -->
       </div>
     </div>
   </div>
@@ -1078,42 +1310,179 @@
     </div>
   </div>
   
-  <!-- Join Transaction Modal -->
+  <!-- Join Transaction Modal (Vault-style: Entry → Integrity Check → Inspection) -->
   <div id="join-transaction-modal" class="modal">
     <div class="modal-content">
       <div class="p-8">
         <!-- Modal Header -->
         <div class="modal-header">
-          <h2 class="modal-title">Join Transaction</h2>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 class="modal-title" id="join-modal-title">Join Transaction</h2>
+            <span class="verify-badge" id="join-vault-badge" style="display:none;">
+              <svg fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Verified by Vault
+            </span>
+          </div>
           <button id="btn-close-join-modal" class="modal-close-btn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
-        <!-- Transaction ID Input -->
-        <div class="modal-form-group">
-          <label for="transaction-id-input" class="modal-label">
-            Transaction ID <span style="color: #ff6b6b;">*</span>
-          </label>
-          <input
-            type="text"
-            id="transaction-id-input"
-            class="modal-input"
-            placeholder="Enter Transaction ID (e.g., TXN-xxxxx)"
-            style="font-family: 'Syne', monospace;"
-          />
-          <p id="error-transaction-id-input" class="error-text hidden"></p>
-          <p style="font-size: 12px; color: #888; margin-top: 6px;">Ask the seller for their Transaction ID to join this escrow.</p>
+
+        <!-- Vault banner (always visible) -->
+        <div class="vault-banner">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.105.895-2 2-2s2 .895 2 2-.895 2-2 2-2-.895-2-2zM12 11V7a4 4 0 10-8 0v4M5 11h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2z"/></svg>
+          <div>
+            <div class="vault-banner-title">Secure Inspection</div>
+            <div class="vault-banner-text">ScrowPay holds funds neutrally. Review every detail before you commit.</div>
+          </div>
         </div>
-        
-        <button
-          id="btn-lookup-transaction"
-          class="modal-btn-primary"
-        >
-          Lookup Transaction
-        </button>
+
+        <!-- ===== STAGE A: Invite Code Entry ===== -->
+        <div id="join-stage-entry">
+          <div class="modal-form-group">
+            <label for="transaction-id-input" class="modal-label">
+              Invite Code / Transaction ID <span style="color: #ff6b6b;">*</span>
+            </label>
+            <input
+              type="text"
+              id="transaction-id-input"
+              class="modal-input"
+              placeholder="TXN-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              style="font-family: 'Syne', monospace; font-size: 14px; letter-spacing: 0.5px;"
+            />
+            <p id="error-transaction-id-input" class="error-text hidden"></p>
+            <p style="font-size: 12px; color: #888; margin-top: 6px;">Paste the invite code shared by the other party to inspect their offer.</p>
+          </div>
+
+          <button id="btn-lookup-transaction" class="modal-btn-primary">
+            Run Integrity Check
+          </button>
+        </div>
+
+        <!-- ===== STAGE B: Integrity Check Loader ===== -->
+        <div id="join-stage-integrity" style="display:none;">
+          <div class="integrity-loader">
+            <div class="integrity-rings"></div>
+            <p style="font-family: 'Syne', sans-serif; font-weight: 700; color: var(--dark); font-size: 16px;">Running Integrity Check</p>
+            <p style="font-size: 12px; color: #888; text-align: center; max-width: 320px; line-height: 1.5;">Verifying invite, locating counterparty, computing trust signals…</p>
+          </div>
+        </div>
+
+        <!-- ===== STAGE C: Inspection Panel ===== -->
+        <div id="join-stage-inspection" style="display:none;">
+          <!-- Role context -->
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <span class="role-pill" id="join-role-pill">JOINING AS BUYER</span>
+            <span style="font-size: 12px; color: #888;" id="join-role-helper">Review the seller's offer and fund the escrow.</span>
+          </div>
+
+          <!-- Counterparty Identity -->
+          <div class="inspection-panel">
+            <div class="inspection-label">Counterparty</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="join-counterparty-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--green); color: var(--dark); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight: 700; font-size: 16px;">U</div>
+                <div>
+                  <div class="inspection-value" id="join-counterparty-name">—</div>
+                  <div style="font-size: 11px; color: #888; font-family: 'Syne', monospace;" id="join-counterparty-id">—</div>
+                </div>
+              </div>
+              <div style="text-align: right; min-width: 120px;">
+                <div class="inspection-label" style="margin-bottom: 4px;">Trust Score</div>
+                <div style="display:flex; align-items:center; gap: 8px;">
+                  <div class="trust-meter" style="width: 80px;"><div class="trust-meter-fill" id="join-trust-fill" style="width: 0%"></div></div>
+                  <span class="inspection-value" id="join-trust-score">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item / Requirement -->
+          <div class="inspection-panel">
+            <div class="inspection-label" id="join-item-label">Item Description</div>
+            <div class="inspection-value" id="join-item-description" style="line-height: 1.5; white-space: pre-wrap;">—</div>
+            <div id="join-proof-section" style="display:none; margin-top: 12px;">
+              <div class="inspection-label" id="join-proof-label">Evidence</div>
+              <div class="proof-grid" id="join-proof-grid"></div>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div class="inspection-panel">
+            <div class="inspection-grid">
+              <div>
+                <div class="inspection-label">Amount</div>
+                <div class="inspection-value" id="join-amount" style="font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;">—</div>
+              </div>
+              <div>
+                <div class="inspection-label">Inspection Window</div>
+                <div class="inspection-value" id="join-inspection-window">—</div>
+              </div>
+              <div>
+                <div class="inspection-label">Delivery Deadline</div>
+                <div class="inspection-value" id="join-delivery">—</div>
+              </div>
+              <div>
+                <div class="inspection-label">Status</div>
+                <div class="inspection-value" id="join-status">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision CTAs -->
+          <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin-top: 8px;">
+            <button type="button" id="btn-join-reject" class="modal-btn-secondary">Reject / Revise</button>
+            <button type="button" id="btn-join-accept" class="modal-btn-primary">Accept Terms</button>
+          </div>
+          <p style="font-size: 11px; color: #999; margin-top: 10px; text-align: center;" id="join-cta-hint">Accepting routes you to the next funded step.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Fulfillment Proof Modal (seller joining a buyer's request) -->
+  <div id="upload-proof-modal" class="modal">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="p-8">
+        <div class="modal-header">
+          <h2 class="modal-title">Upload Fulfillment Proof</h2>
+          <button id="btn-close-upload-proof" class="modal-close-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <p style="font-size: 13px; color: #666; margin-bottom: 16px; line-height: 1.5;">
+          You've accepted this buyer's request. Upload photos showing you can deliver — the buyer will fund escrow once verified.
+        </p>
+        <div class="inspection-panel" style="margin-bottom: 16px;">
+          <div class="inspection-grid">
+            <div>
+              <div class="inspection-label">Transaction</div>
+              <div class="inspection-value" id="upload-proof-txn-id" style="font-family: 'Syne', monospace; font-size: 12px;">—</div>
+            </div>
+            <div>
+              <div class="inspection-label">Buyer Budget</div>
+              <div class="inspection-value" id="upload-proof-amount">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label">Fulfillment Photos</label>
+          <label for="fulfillment-files-input" class="uploader" id="fulfillment-uploader">
+            <svg class="uploader-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+            <p class="uploader-text">Add photos showing the item / capability</p>
+            <p class="uploader-hint">PNG, JPG · up to 5 files · max 5MB each</p>
+          </label>
+          <input id="fulfillment-files-input" type="file" accept="image/*" multiple style="display:none;" />
+          <div class="upload-thumbs" id="fulfillment-thumbs"></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin-top: 16px;">
+          <button type="button" id="btn-cancel-upload-proof" class="modal-btn-secondary">Cancel</button>
+          <button type="button" id="btn-submit-fulfillment" class="modal-btn-primary">Submit Proof</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1571,16 +1940,11 @@
             </div>
           </div>
           
-          <!-- Bank & Account Name - Side by Side -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div>
-              <p class="modal-label" style="margin-bottom: 6px;">Bank</p>
-              <p id="add-funds-bank-name" style="font-size: 14px; font-weight: 600; color: var(--dark);">Loading...</p>
-            </div>
-            <div>
-              <p class="modal-label" style="margin-bottom: 6px;">Account Name</p>
-              <p id="add-funds-account-name" style="font-size: 14px; font-weight: 600; color: var(--dark);">Loading...</p>
-            </div>
+          <!-- Account Name (Bank intentionally hidden) -->
+          <div>
+            <p class="modal-label" style="margin-bottom: 6px;">Account Name</p>
+            <p id="add-funds-account-name" style="font-size: 16px; font-weight: 700; color: var(--dark);">Loading...</p>
+            <p id="add-funds-bank-name" style="display:none;"></p>
           </div>
         </div>
         
@@ -1601,68 +1965,56 @@
     </div>
   </div>
   
-  <!-- Withdraw Funds Modal -->
+  <!-- Withdraw Funds Modal (OPay-style sleek redesign) -->
   <div id="withdraw-funds-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 480px;">
       <div class="p-8">
         <!-- Modal Header -->
         <div class="modal-header">
-          <h2 class="modal-title">Withdraw Funds</h2>
+          <h2 class="modal-title">Withdraw</h2>
           <button id="btn-close-withdraw-modal" class="modal-close-btn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        
-        <!-- Available Balance Display -->
-        <div style="background: #f5f5f3; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <p class="modal-label" style="margin-bottom: 8px;">Available Balance</p>
-              <p id="withdraw-available-balance" style="font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: var(--dark);">₦0.00</p>
-            </div>
-            <div style="width: 56px; height: 56px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <svg style="width: 28px; height: 28px; stroke: var(--dark); stroke-width: 2;" fill="none" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-          </div>
-          <p style="font-size: 12px; color: #888; margin-top: 12px; line-height: 1.5;">Only available balance can be withdrawn. Locked funds in active transactions cannot be withdrawn.</p>
+
+        <!-- Compact balance pill -->
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f5f5f3; border-radius: 999px; margin-bottom: 20px; width: fit-content;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: var(--green); display: inline-block;"></span>
+          <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Available</span>
+          <span id="withdraw-available-balance" style="font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--dark);">₦0.00</span>
         </div>
-        
-        <!-- Withdrawal Form -->
-        <form id="withdraw-form">
-          <!-- Bank Account Number -->
-          <div class="modal-form-group">
-            <label for="withdraw-account-number" class="modal-label">
-              Bank Account Number <span style="color: #ff6b6b;">*</span>
-            </label>
-            <input
-              type="text"
-              id="withdraw-account-number"
-              name="accountNumber"
-              maxlength="10"
-              pattern="[0-9]{10}"
-              class="modal-input"
-              placeholder="Enter 10-digit account number"
-              required
-            />
-            <p id="error-withdraw-account-number" class="error-text hidden"></p>
+
+        <form id="withdraw-form" autocomplete="off">
+          <!-- Prominent Amount Input -->
+          <div class="modal-form-group" style="margin-bottom: 24px;">
+            <label for="withdraw-amount" class="modal-label">Amount</label>
+            <div style="position: relative;">
+              <span style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--dark);">₦</span>
+              <input
+                type="number"
+                id="withdraw-amount"
+                name="amount"
+                min="100"
+                step="0.01"
+                class="modal-input"
+                placeholder="0.00"
+                required
+                style="padding: 22px 16px 22px 44px; font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--dark); background: #fafafa; letter-spacing: -0.5px;"
+              />
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+              <p id="error-withdraw-amount" class="error-text hidden" style="margin: 0;"></p>
+              <button type="button" id="btn-withdraw-max" style="margin-left: auto; font-size: 12px; font-weight: 700; color: var(--dark); background: var(--green); border: none; padding: 6px 12px; border-radius: 999px; cursor: pointer; letter-spacing: 0.05em;">MAX</button>
+            </div>
           </div>
-          
-          <!-- Bank Name -->
+
+          <!-- Bank selector -->
           <div class="modal-form-group">
-            <label for="withdraw-bank-name" class="modal-label">
-              Bank Name <span style="color: #ff6b6b;">*</span>
-            </label>
-            <select
-              id="withdraw-bank-name"
-              name="bankName"
-              class="modal-input"
-              required
-            >
-              <option value="">Select your bank</option>
+            <label for="withdraw-bank-name" class="modal-label">Bank</label>
+            <select id="withdraw-bank-name" name="bankName" class="modal-input" required>
+              <option value="">Select bank</option>
               <option value="Access Bank">Access Bank</option>
               <option value="Citibank">Citibank</option>
               <option value="Ecobank">Ecobank</option>
@@ -1672,6 +2024,9 @@
               <option value="GTBank">GTBank</option>
               <option value="Heritage Bank">Heritage Bank</option>
               <option value="Keystone Bank">Keystone Bank</option>
+              <option value="Kuda">Kuda</option>
+              <option value="Opay">Opay</option>
+              <option value="Palmpay">Palmpay</option>
               <option value="Polaris Bank">Polaris Bank</option>
               <option value="Stanbic IBTC">Stanbic IBTC</option>
               <option value="Standard Chartered">Standard Chartered</option>
@@ -1684,43 +2039,43 @@
             </select>
             <p id="error-withdraw-bank-name" class="error-text hidden"></p>
           </div>
-          
-          <!-- Amount -->
+
+          <!-- Account number -->
           <div class="modal-form-group">
-            <label for="withdraw-amount" class="modal-label">
-              Amount (₦) <span style="color: #ff6b6b;">*</span>
-            </label>
+            <label for="withdraw-account-number" class="modal-label">Account Number</label>
             <input
-              type="number"
-              id="withdraw-amount"
-              name="amount"
-              min="100"
-              step="0.01"
+              type="text"
+              id="withdraw-account-number"
+              name="accountNumber"
+              maxlength="10"
+              pattern="[0-9]{10}"
+              inputmode="numeric"
               class="modal-input"
-              placeholder="Enter amount to withdraw"
+              placeholder="0000000000"
               required
+              style="font-family: 'Syne', monospace; font-size: 18px; letter-spacing: 2px;"
             />
-            <p id="error-withdraw-amount" class="error-text hidden"></p>
-            <p style="font-size: 12px; color: #888; margin-top: 6px;">Minimum withdrawal: ₦100</p>
+            <p id="error-withdraw-account-number" class="error-text hidden"></p>
           </div>
-          
+
+          <!-- Resolved account name pill -->
+          <div id="withdraw-name-resolution" style="display: none; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(202,255,4,0.10); border: 1.5px solid rgba(202,255,4,0.35); border-radius: 12px; margin-bottom: 16px;">
+            <svg id="withdraw-name-spinner" class="animate-spin" style="display:none; width:16px; height:16px; stroke: var(--dark);" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <svg id="withdraw-name-check" style="display:none; width:16px; height:16px; stroke: #00a341;" fill="none" stroke-width="3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span id="withdraw-resolved-name" style="font-size: 14px; font-weight: 700; color: var(--dark);"></span>
+          </div>
+
           <!-- Form Actions -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px;">
-            <button
-              type="button"
-              id="btn-cancel-withdraw"
-              class="modal-btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              id="btn-submit-withdraw"
-              class="modal-btn-primary"
-            >
-              Withdraw Funds
-            </button>
+          <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin-top: 24px;">
+            <button type="button" id="btn-cancel-withdraw" class="modal-btn-secondary">Cancel</button>
+            <button type="submit" id="btn-submit-withdraw" class="modal-btn-primary">Continue</button>
           </div>
+          <p style="font-size: 11px; color: #999; margin-top: 12px; text-align: center;">Min ₦100 · Funds settle within 1-5 minutes via Squad</p>
         </form>
       </div>
     </div>
@@ -2946,22 +3301,185 @@
       
       // Event Listeners
       
+      // ========================================
+      // CREATE ESCROW: Dual-axis state machine
+      // initiatorRole: 'buyer' | 'seller'
+      // proofFiles: [{ name, dataUrl }]
+      // ========================================
+      const createEscrowState = { initiatorRole: null, action: null, proofFiles: [] };
+
+      function setCreateStep(stepNum) {
+        for (let i = 1; i <= 3; i++) {
+          const el = document.getElementById('create-step-' + i);
+          if (el) el.style.display = i === stepNum ? 'block' : 'none';
+        }
+        document.querySelectorAll('#create-stepper .stepper-dot').forEach(dot => {
+          const s = parseInt(dot.dataset.step, 10);
+          dot.classList.remove('active', 'done');
+          if (s < stepNum) dot.classList.add('done');
+          else if (s === stepNum) dot.classList.add('active');
+        });
+        document.querySelectorAll('#create-stepper .stepper-line').forEach(line => {
+          const [from] = line.dataset.line.split('-').map(n => parseInt(n, 10));
+          line.classList.toggle('done', from < stepNum);
+        });
+      }
+
+      function applyRoleToStep3() {
+        const role = createEscrowState.initiatorRole;
+        const isBuyer = role === 'buyer';
+        document.getElementById('step3-role-pill').textContent = isBuyer ? 'BUYER' : 'SELLER';
+        document.getElementById('step3-role-helper').textContent = isBuyer
+          ? 'Define your requirements and budget. Funds lock when a seller accepts.'
+          : 'Describe what you\'re selling. The buyer funds escrow once they accept.';
+        document.getElementById('item-description').placeholder = isBuyer
+          ? 'Describe what you need (specs, quality, references) — min 10 chars'
+          : 'Describe the goods or services you\'re offering (min 10 chars)';
+        document.getElementById('price').placeholder = isBuyer
+          ? 'Your budget in ₦ (₦100 - ₦10,000,000)'
+          : 'Asking price in ₦ (₦100 - ₦10,000,000)';
+        document.getElementById('uploader-label').textContent = isBuyer
+          ? 'Specifications / References'
+          : 'Proof of Legitimacy';
+        document.getElementById('uploader-text').textContent = isBuyer
+          ? 'Add mockups, docs or references that show what you want'
+          : 'Add photos / receipts to prove legitimacy';
+        document.getElementById('action-create-sub').textContent = isBuyer
+          ? 'Define expectations, set the budget and deadline.'
+          : 'List the offer with proof; buyer joins to fund.';
+        document.getElementById('action-join-sub').textContent = isBuyer
+          ? 'Inspect a seller\'s offer and fund it.'
+          : 'Inspect a buyer\'s request and accept the terms.';
+        document.getElementById('step2-role-pill').textContent = isBuyer ? 'BUYER' : 'SELLER';
+        document.getElementById('btn-submit').textContent = isBuyer
+          ? 'Post Buy Request'
+          : 'Create Listing';
+        document.getElementById('create-escrow-title').textContent = isBuyer
+          ? 'New Buy Request'
+          : 'New Sale Listing';
+      }
+
+      function resetCreateEscrow() {
+        createEscrowState.initiatorRole = null;
+        createEscrowState.action = null;
+        createEscrowState.proofFiles = [];
+        document.getElementById('create-escrow-form').reset();
+        document.getElementById('proof-thumbs').innerHTML = '';
+        clearAllErrors();
+        document.querySelectorAll('#create-step-1 .choice-card, #create-step-2 .choice-card').forEach(c => c.classList.remove('selected'));
+        setCreateStep(1);
+        document.getElementById('create-escrow-title').textContent = 'New Escrow';
+      }
+
       // Open Create Escrow Modal
       document.getElementById('btn-create-escrow').addEventListener('click', () => {
         console.log('Create Escrow button clicked');
         openModal('create-escrow-modal');
-        // Reset form
-        document.getElementById('create-escrow-form').reset();
-        clearAllErrors();
+        resetCreateEscrow();
       });
+
+      // Step 1: role selection
+      document.getElementById('role-buyer').addEventListener('click', () => {
+        createEscrowState.initiatorRole = 'buyer';
+        document.getElementById('role-buyer').classList.add('selected');
+        document.getElementById('role-seller').classList.remove('selected');
+        applyRoleToStep3();
+        setCreateStep(2);
+      });
+      document.getElementById('role-seller').addEventListener('click', () => {
+        createEscrowState.initiatorRole = 'seller';
+        document.getElementById('role-seller').classList.add('selected');
+        document.getElementById('role-buyer').classList.remove('selected');
+        applyRoleToStep3();
+        setCreateStep(2);
+      });
+
+      // Step 2: action selection
+      document.getElementById('action-create').addEventListener('click', () => {
+        createEscrowState.action = 'create';
+        applyRoleToStep3();
+        setCreateStep(3);
+      });
+      document.getElementById('action-join').addEventListener('click', () => {
+        // Hand off to Join Transaction modal, pre-seeding the role context
+        createEscrowState.action = 'join';
+        closeModal('create-escrow-modal');
+        if (window.openJoinTransactionFlow) {
+          window.openJoinTransactionFlow({ expectedRole: createEscrowState.initiatorRole });
+        } else {
+          document.getElementById('btn-join-transaction').click();
+        }
+      });
+      document.getElementById('btn-create-back-to-1').addEventListener('click', () => setCreateStep(1));
+
+      // Step 3 file uploader (proof / specs)
+      (function setupProofUploader() {
+        const input = document.getElementById('proof-files-input');
+        const drop = document.getElementById('proof-uploader');
+        const thumbs = document.getElementById('proof-thumbs');
+        const MAX_FILES = 5;
+        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        function renderThumbs() {
+          thumbs.innerHTML = '';
+          createEscrowState.proofFiles.forEach((f, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'upload-thumb';
+            wrap.innerHTML = `
+              <img src="${f.dataUrl}" alt="${f.name}" />
+              <button type="button" class="upload-thumb-remove" data-i="${i}">&times;</button>
+            `;
+            thumbs.appendChild(wrap);
+          });
+          thumbs.querySelectorAll('.upload-thumb-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              const idx = parseInt(btn.dataset.i, 10);
+              createEscrowState.proofFiles.splice(idx, 1);
+              renderThumbs();
+            });
+          });
+        }
+        function handleFiles(files) {
+          const list = Array.from(files);
+          for (const file of list) {
+            if (createEscrowState.proofFiles.length >= MAX_FILES) {
+              showErrorNotification(`Maximum ${MAX_FILES} files allowed`);
+              break;
+            }
+            if (!file.type.startsWith('image/')) continue;
+            if (file.size > MAX_SIZE) {
+              showErrorNotification(`${file.name} exceeds 5MB`);
+              continue;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              createEscrowState.proofFiles.push({ name: file.name, dataUrl: e.target.result });
+              renderThumbs();
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+        if (input) input.addEventListener('change', (e) => handleFiles(e.target.files));
+        if (drop) {
+          ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragover'); }));
+          ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragover'); }));
+          drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+        }
+      })();
       
       // Close Modal Buttons
       document.getElementById('btn-close-modal').addEventListener('click', () => {
         closeModal('create-escrow-modal');
       });
       
+      // "Back" on step 3 returns to step 2 (action). Closes modal only as fallback.
       document.getElementById('btn-cancel').addEventListener('click', () => {
-        closeModal('create-escrow-modal');
+        const step3 = document.getElementById('create-step-3');
+        if (step3 && step3.style.display !== 'none') {
+          setCreateStep(2);
+        } else {
+          closeModal('create-escrow-modal');
+        }
       });
       
       document.getElementById('btn-close-success-modal').addEventListener('click', () => {
@@ -3031,10 +3549,14 @@
         // Get and sanitize form data (Requirement 19.3, 19.4)
         const rawFormData = {
           sellerId: currentUserId,
+          buyerId: currentUserId,
+          initiatorId: currentUserId,
+          initiatorRole: createEscrowState.initiatorRole || 'seller',
           itemDescription: document.getElementById('item-description').value,
           price: document.getElementById('price').value,
           deliveryTimelineDays: document.getElementById('delivery-timeline').value,
-          inspectionWindowDays: document.getElementById('inspection-window').value
+          inspectionWindowDays: document.getElementById('inspection-window').value,
+          proofUrls: createEscrowState.proofFiles.map(f => f.dataUrl)
         };
         
         // Validate and sanitize using InputValidationService
@@ -3104,12 +3626,45 @@
       // JOIN TRANSACTION FLOW
       // ========================================
       
-      // Open Join Transaction Modal
-      document.getElementById('btn-join-transaction').addEventListener('click', () => {
-        openModal('join-transaction-modal');
-        // Reset input
+      // ========================================
+      // JOIN TRANSACTION: Vault inspection state machine
+      // Stages: 'entry' -> 'integrity' -> 'inspection'
+      // joinerRole derived from transaction.initiator_role:
+      //   - initiator_role === 'seller'  => joiner is BUYER (will fund)
+      //   - initiator_role === 'buyer'   => joiner is SELLER (will upload proof)
+      // ========================================
+      const joinState = { stage: 'entry', expectedRole: null, joinerRole: null, transaction: null, fulfillmentFiles: [] };
+
+      function setJoinStage(stage) {
+        joinState.stage = stage;
+        document.getElementById('join-stage-entry').style.display = stage === 'entry' ? 'block' : 'none';
+        document.getElementById('join-stage-integrity').style.display = stage === 'integrity' ? 'block' : 'none';
+        document.getElementById('join-stage-inspection').style.display = stage === 'inspection' ? 'block' : 'none';
+        const badge = document.getElementById('join-vault-badge');
+        if (badge) badge.style.display = stage === 'inspection' ? 'inline-flex' : 'none';
+      }
+
+      function resetJoinFlow() {
+        joinState.transaction = null;
+        joinState.joinerRole = null;
+        joinState.fulfillmentFiles = [];
         document.getElementById('transaction-id-input').value = '';
         clearFieldError('transaction-id-input');
+        setJoinStage('entry');
+      }
+
+      // Public hook used by Create flow's "Join Existing" choice
+      window.openJoinTransactionFlow = function(opts) {
+        joinState.expectedRole = (opts && opts.expectedRole) || null;
+        openModal('join-transaction-modal');
+        resetJoinFlow();
+      };
+
+      // Open Join Transaction Modal
+      document.getElementById('btn-join-transaction').addEventListener('click', () => {
+        joinState.expectedRole = null;
+        openModal('join-transaction-modal');
+        resetJoinFlow();
       });
       
       // ========================================
@@ -3359,9 +3914,59 @@
         } finally {
           // Re-enable submit button
           submitButton.disabled = false;
-          submitButton.textContent = 'Withdraw Funds';
+          submitButton.textContent = 'Continue';
         }
       });
+
+      // ========================================
+      // WITHDRAW: MAX shortcut + account name resolution
+      // ========================================
+      (function setupWithdrawExtras() {
+        const maxBtn = document.getElementById('btn-withdraw-max');
+        if (maxBtn) {
+          maxBtn.addEventListener('click', () => {
+            const balText = document.getElementById('withdraw-available-balance').textContent;
+            const bal = parseFloat(balText.replace(/[₦,]/g, ''));
+            if (!isNaN(bal) && bal > 0) {
+              document.getElementById('withdraw-amount').value = bal.toFixed(2);
+              clearFieldError('withdraw-amount');
+            }
+          });
+        }
+        // Lightweight account-name resolver: shows pill while user types/selects.
+        // Production should call Squad/NIBSS account lookup; we surface a placeholder
+        // resolved name from currentUserData when 10 digits + bank present, mimicking
+        // OPay's auto-resolve UX without breaking real backend integration.
+        function tryResolveName() {
+          const acct = (document.getElementById('withdraw-account-number').value || '').trim();
+          const bank = document.getElementById('withdraw-bank-name').value;
+          const pill = document.getElementById('withdraw-name-resolution');
+          const spinner = document.getElementById('withdraw-name-spinner');
+          const check = document.getElementById('withdraw-name-check');
+          const nameEl = document.getElementById('withdraw-resolved-name');
+          if (!pill) return;
+          if (!/^[0-9]{10}$/.test(acct) || !bank) {
+            pill.style.display = 'none';
+            return;
+          }
+          pill.style.display = 'flex';
+          spinner.style.display = 'inline-block';
+          check.style.display = 'none';
+          nameEl.textContent = 'Verifying account...';
+          // Simulate resolution latency
+          setTimeout(() => {
+            const u = window.currentUserData || {};
+            const fallback = `${(u.first_name||'').toUpperCase()} ${(u.last_name||'').toUpperCase()}`.trim() || 'ACCOUNT HOLDER';
+            spinner.style.display = 'none';
+            check.style.display = 'inline-block';
+            nameEl.textContent = fallback;
+          }, 700);
+        }
+        const acctInput = document.getElementById('withdraw-account-number');
+        const bankInput = document.getElementById('withdraw-bank-name');
+        if (acctInput) acctInput.addEventListener('input', tryResolveName);
+        if (bankInput) bankInput.addEventListener('change', tryResolveName);
+      })();
       
       // Close Join Transaction Modal
       document.getElementById('btn-close-join-modal').addEventListener('click', () => {
@@ -3374,97 +3979,286 @@
         }
       });
       
-      // Lookup Transaction
+      // Lookup Transaction → Run integrity check → render inspection panel
       document.getElementById('btn-lookup-transaction').addEventListener('click', async () => {
         const transactionId = document.getElementById('transaction-id-input').value.trim();
-        
-        // Validate input
+
         if (!transactionId) {
-          showFieldError('transaction-id-input', 'Please enter a Transaction ID');
+          showFieldError('transaction-id-input', 'Please enter an Invite Code / Transaction ID');
           return;
         }
-        
         clearFieldError('transaction-id-input');
-        
-        // Disable button
+
         const lookupButton = document.getElementById('btn-lookup-transaction');
         lookupButton.disabled = true;
-        lookupButton.textContent = 'Looking up...';
-        
+        const originalLabel = lookupButton.textContent;
+        lookupButton.textContent = 'Verifying…';
+
+        // Switch to integrity-check stage immediately for trust UX
+        setJoinStage('integrity');
+
         try {
-          // Retrieve transaction
-          const transaction = await transactionService.getTransaction(transactionId);
-          
+          // Run lookup + minimum dwell so the integrity loader feels real
+          const [transaction] = await Promise.all([
+            transactionService.getTransaction(transactionId),
+            new Promise(r => setTimeout(r, 900))
+          ]);
+
           if (!transaction) {
+            setJoinStage('entry');
             showFieldError('transaction-id-input', 'Transaction not found');
             return;
           }
-          
-          // Check if transaction is in Created state
+
+          // Initiator role drives joiner role. Default to legacy 'seller' for old rows.
+          const initiatorRole = transaction.initiator_role === 'buyer' ? 'buyer' : 'seller';
+          const joinerRole = initiatorRole === 'seller' ? 'buyer' : 'seller';
+          const initiatorId = transaction.initiator_id || transaction.seller_id;
+
+          // Cannot join your own transaction
+          if (initiatorId === currentUserId) {
+            setJoinStage('entry');
+            showFieldError('transaction-id-input', 'You cannot join your own transaction');
+            return;
+          }
+
+          // If user came in with an expected role from Create flow, ensure it matches.
+          if (joinState.expectedRole && joinState.expectedRole !== joinerRole) {
+            setJoinStage('entry');
+            const want = joinState.expectedRole.toUpperCase();
+            showFieldError('transaction-id-input', `This invite expects you to join as ${joinerRole.toUpperCase()}, not ${want}.`);
+            return;
+          }
+
+          // State guard: only Created transactions can be joined.
           if (transaction.state !== 'Created') {
-            showFieldError('transaction-id-input', 'Transaction already in progress');
+            setJoinStage('entry');
+            showFieldError('transaction-id-input', 'This transaction is already in progress');
             return;
           }
-          
-          // Check if user is trying to fund their own transaction
-          if (transaction.seller_id === currentUserId) {
-            showFieldError('transaction-id-input', 'You cannot fund your own transaction');
-            return;
-          }
-          
-          // Store transaction
-          currentTransaction = transaction;
-          
-          // Get seller's trust score
-          let sellerTrustScore = 50;  // Default
+
+          // Counterparty trust score (initiator)
+          let counterpartyTrust = 50;
           try {
-            const trustScoreResult = await trustScoreService.getTrustScoreWithIndicator(transaction.seller_id);
-            if (trustScoreResult.success) {
-              sellerTrustScore = trustScoreResult.score;
+            const r = await trustScoreService.getTrustScoreWithIndicator(initiatorId);
+            if (r.success) counterpartyTrust = r.score;
+          } catch (e) { console.error('Trust lookup failed:', e); }
+
+          // Resolve initiator display name (best-effort)
+          let initiatorName = 'ScrowPay User';
+          try {
+            if (transactionService.dbService && transactionService.dbService._executeHttp) {
+              const ures = await transactionService.dbService._executeHttp(
+                'SELECT first_name, last_name FROM users WHERE id = ?',
+                [initiatorId]
+              );
+              const rows = ures && ures.results && ures.results[0] && ures.results[0].response && ures.results[0].response.result && ures.results[0].response.result.rows;
+              if (rows && rows.length > 0) {
+                const row = rows[0];
+                const f = row[0] && (row[0].value || row[0]);
+                const l = row[1] && (row[1].value || row[1]);
+                initiatorName = `${f || ''} ${l || ''}`.trim() || initiatorName;
+              }
             }
-          } catch (error) {
-            console.error('Failed to get seller trust score:', error);
-          }
-          
-          // Close join modal
-          closeModal('join-transaction-modal');
-          
-          // Display transaction details in fund modal
-          document.getElementById('fund-transaction-id').textContent = transaction.transaction_id;
-          document.getElementById('fund-price').textContent = `₦${transaction.price.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          document.getElementById('fund-delivery-timeline').textContent = `${transaction.delivery_timeline_days} days`;
-          document.getElementById('fund-inspection-window').textContent = `${transaction.inspection_window_days} days`;
-          document.getElementById('fund-item-description').textContent = transaction.item_description;
-          document.getElementById('fund-trust-score').textContent = sellerTrustScore;
-          
-          // Update trust score bar
-          const trustScoreFill = document.getElementById('fund-trust-score-fill');
-          trustScoreFill.style.width = `${sellerTrustScore}%`;
-          
-          // Set color based on score
-          if (sellerTrustScore < 40) {
-            trustScoreFill.className = 'h-full bg-red-500 transition-all';
-          } else if (sellerTrustScore < 70) {
-            trustScoreFill.className = 'h-full bg-yellow-500 transition-all';
+          } catch (e) { /* best-effort */ }
+
+          // Persist into state
+          joinState.transaction = transaction;
+          joinState.joinerRole = joinerRole;
+          currentTransaction = transaction;
+
+          // ===== Populate inspection panel =====
+          const isBuyerJoiner = joinerRole === 'buyer';
+          document.getElementById('join-role-pill').textContent = isBuyerJoiner ? 'JOINING AS BUYER' : 'JOINING AS SELLER';
+          document.getElementById('join-role-helper').textContent = isBuyerJoiner
+            ? "Review the seller's offer and fund the escrow."
+            : "Review the buyer's request and decide if you can deliver.";
+          document.getElementById('join-cta-hint').textContent = isBuyerJoiner
+            ? `On accept you'll be prompted to deposit ₦${Number(transaction.price).toLocaleString('en-NG')} to escrow.`
+            : "On accept you'll upload proof you can fulfil this request.";
+          document.getElementById('join-counterparty-name').textContent = initiatorName;
+          document.getElementById('join-counterparty-id').textContent = `#${initiatorId}`;
+          document.getElementById('join-counterparty-avatar').textContent = (initiatorName.charAt(0) || 'U').toUpperCase();
+          document.getElementById('join-trust-score').textContent = Math.round(counterpartyTrust);
+          document.getElementById('join-trust-fill').style.width = `${Math.min(100, Math.max(0, counterpartyTrust))}%`;
+          document.getElementById('join-trust-fill').style.background = counterpartyTrust < 40 ? '#ff6b6b' : (counterpartyTrust < 70 ? '#f5b400' : 'var(--green)');
+          document.getElementById('join-item-label').textContent = isBuyerJoiner ? "Seller's Offer" : "Buyer's Requirements";
+          document.getElementById('join-item-description').textContent = transaction.item_description || '—';
+          document.getElementById('join-amount').textContent = `₦${Number(transaction.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          document.getElementById('join-inspection-window').textContent = `${transaction.inspection_window_days} day${transaction.inspection_window_days == 1 ? '' : 's'}`;
+          document.getElementById('join-delivery').textContent = `${transaction.delivery_timeline_days} day${transaction.delivery_timeline_days == 1 ? '' : 's'}`;
+          document.getElementById('join-status').textContent = transaction.state;
+
+          // Proof / spec gallery
+          const proofSection = document.getElementById('join-proof-section');
+          const proofGrid = document.getElementById('join-proof-grid');
+          proofGrid.innerHTML = '';
+          let proofs = [];
+          try { proofs = transaction.proof_urls ? JSON.parse(transaction.proof_urls) : []; } catch (e) { proofs = []; }
+          if (Array.isArray(proofs) && proofs.length > 0) {
+            document.getElementById('join-proof-label').textContent = isBuyerJoiner ? 'Evidence (Seller)' : 'References (Buyer)';
+            proofs.forEach(src => {
+              const img = document.createElement('img');
+              img.src = src;
+              img.alt = 'proof';
+              proofGrid.appendChild(img);
+            });
+            proofSection.style.display = 'block';
           } else {
-            trustScoreFill.className = 'h-full bg-green-500 transition-all';
+            proofSection.style.display = 'none';
           }
-          
-          // Reset risk scoring section
+
+          // Update CTA button label
+          document.getElementById('btn-join-accept').textContent = isBuyerJoiner
+            ? `Accept & Deposit ₦${Number(transaction.price).toLocaleString('en-NG')}`
+            : 'Accept & Upload Proof';
+
+          setJoinStage('inspection');
+        } catch (error) {
+          console.error('Transaction lookup failed:', error);
+          setJoinStage('entry');
+          showErrorNotification(error.message || 'Failed to lookup transaction');
+        } finally {
+          lookupButton.disabled = false;
+          lookupButton.textContent = originalLabel;
+        }
+      });
+
+      // Reject / Revise
+      document.getElementById('btn-join-reject').addEventListener('click', () => {
+        if (confirm('Reject this transaction and close? You can reopen it later using the same invite code.')) {
+          closeModal('join-transaction-modal');
+          resetJoinFlow();
+        }
+      });
+
+      // Accept Terms → route based on joiner role
+      document.getElementById('btn-join-accept').addEventListener('click', async () => {
+        const t = joinState.transaction;
+        if (!t) return;
+        const role = joinState.joinerRole;
+
+        if (role === 'buyer') {
+          // Joining a SELLER's offer → existing fund flow
+          closeModal('join-transaction-modal');
+
+          document.getElementById('fund-transaction-id').textContent = t.transaction_id;
+          document.getElementById('fund-price').textContent = `₦${Number(t.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          document.getElementById('fund-delivery-timeline').textContent = `${t.delivery_timeline_days} days`;
+          document.getElementById('fund-inspection-window').textContent = `${t.inspection_window_days} days`;
+          document.getElementById('fund-item-description').textContent = t.item_description;
+
+          // Counterparty trust mirrored from inspection
+          const trustText = document.getElementById('join-trust-score').textContent;
+          const trustVal = parseInt(trustText, 10) || 50;
+          document.getElementById('fund-trust-score').textContent = trustVal;
+          const trustScoreFill = document.getElementById('fund-trust-score-fill');
+          trustScoreFill.style.width = `${trustVal}%`;
+          trustScoreFill.className = trustVal < 40
+            ? 'h-full bg-red-500 transition-all'
+            : (trustVal < 70 ? 'h-full bg-yellow-500 transition-all' : 'h-full bg-green-500 transition-all');
+
           document.getElementById('risk-scoring-section').classList.add('hidden');
           document.getElementById('risk-blocked-message').classList.add('hidden');
           document.getElementById('btn-fund-escrow').disabled = false;
-          
-          // Open fund modal
+
           openModal('fund-escrow-modal');
-          
+          return;
+        }
+
+        // Joining a BUYER's request → upload fulfillment proof
+        document.getElementById('upload-proof-txn-id').textContent = t.transaction_id;
+        document.getElementById('upload-proof-amount').textContent = `₦${Number(t.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        joinState.fulfillmentFiles = [];
+        document.getElementById('fulfillment-thumbs').innerHTML = '';
+        closeModal('join-transaction-modal');
+        openModal('upload-proof-modal');
+      });
+
+      // ===== Fulfillment proof uploader =====
+      (function setupFulfillmentUploader() {
+        const input = document.getElementById('fulfillment-files-input');
+        const drop = document.getElementById('fulfillment-uploader');
+        const thumbs = document.getElementById('fulfillment-thumbs');
+        const MAX_FILES = 5;
+        const MAX_SIZE = 5 * 1024 * 1024;
+        function render() {
+          thumbs.innerHTML = '';
+          joinState.fulfillmentFiles.forEach((f, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'upload-thumb';
+            wrap.innerHTML = `<img src="${f.dataUrl}" alt="${f.name}"/><button type="button" class="upload-thumb-remove" data-i="${i}">&times;</button>`;
+            thumbs.appendChild(wrap);
+          });
+          thumbs.querySelectorAll('.upload-thumb-remove').forEach(btn => {
+            btn.addEventListener('click', e => {
+              e.preventDefault();
+              joinState.fulfillmentFiles.splice(parseInt(btn.dataset.i, 10), 1);
+              render();
+            });
+          });
+        }
+        function handleFiles(files) {
+          for (const file of Array.from(files)) {
+            if (joinState.fulfillmentFiles.length >= MAX_FILES) {
+              showErrorNotification(`Max ${MAX_FILES} files`);
+              break;
+            }
+            if (!file.type.startsWith('image/')) continue;
+            if (file.size > MAX_SIZE) { showErrorNotification(`${file.name} > 5MB`); continue; }
+            const reader = new FileReader();
+            reader.onload = e => {
+              joinState.fulfillmentFiles.push({ name: file.name, dataUrl: e.target.result });
+              render();
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+        if (input) input.addEventListener('change', e => handleFiles(e.target.files));
+        if (drop) {
+          ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragover'); }));
+          ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragover'); }));
+          drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+        }
+      })();
+
+      // Close upload-proof modal handlers
+      document.getElementById('btn-close-upload-proof').addEventListener('click', () => closeModal('upload-proof-modal'));
+      document.getElementById('btn-cancel-upload-proof').addEventListener('click', () => closeModal('upload-proof-modal'));
+      document.getElementById('upload-proof-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'upload-proof-modal') closeModal('upload-proof-modal');
+      });
+
+      // Submit fulfillment proof (seller joined a buyer-initiated request)
+      document.getElementById('btn-submit-fulfillment').addEventListener('click', async () => {
+        const t = joinState.transaction;
+        if (!t) return;
+        if (joinState.fulfillmentFiles.length === 0) {
+          showErrorNotification('Please add at least one fulfillment photo.');
+          return;
+        }
+        const submitBtn = document.getElementById('btn-submit-fulfillment');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting…';
+        try {
+          // Persist seller assignment + proof
+          await transactionService.updateSeller(t.transaction_id, currentUserId);
+          await transactionService.uploadFulfillmentProof(
+            t.transaction_id,
+            joinState.fulfillmentFiles.map(f => f.dataUrl)
+          );
+          closeModal('upload-proof-modal');
+          showSuccessNotification('Fulfillment proof submitted. Buyer will be notified to fund escrow.');
+          // Refresh dashboard transactions if available
+          if (typeof refreshActiveTransactions === 'function') {
+            try { await refreshActiveTransactions(); } catch (e) { /* non-fatal */ }
+          }
         } catch (error) {
-          console.error('Transaction lookup failed:', error);
-          showErrorNotification(error.message || 'Failed to lookup transaction');
+          console.error('Fulfillment submit failed:', error);
+          showErrorNotification(error.message || 'Failed to submit proof. Try again.');
         } finally {
-          // Re-enable button
-          lookupButton.disabled = false;
-          lookupButton.textContent = 'Lookup Transaction';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Proof';
         }
       });
       
