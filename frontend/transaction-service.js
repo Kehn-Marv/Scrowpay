@@ -425,14 +425,25 @@ class TransactionService {
       const rows = executeResult.rows;
       const cols = executeResult.cols;
       
-      // Convert rows to objects
+      // Convert rows to objects. Turso typed cells look like { type, value? };
+      // for null cells there is no `value` key, so we must map them to real JS
+      // null. Without this the UI ends up rendering `[object Object]` for
+      // un-joined buyers / unset cancellation metadata.
       const transactions = rows.map(row => {
         const transaction = {};
         cols.forEach((col, index) => {
           const cellValue = row[index];
-          transaction[col.name] = typeof cellValue === 'object' && cellValue.value !== undefined 
-            ? cellValue.value 
-            : cellValue;
+          if (cellValue && typeof cellValue === 'object') {
+            if (cellValue.type === 'null') {
+              transaction[col.name] = null;
+            } else if (cellValue.value !== undefined) {
+              transaction[col.name] = cellValue.value;
+            } else {
+              transaction[col.name] = null;
+            }
+          } else {
+            transaction[col.name] = cellValue;
+          }
         });
         return transaction;
       });
@@ -729,6 +740,278 @@ class TransactionService {
     }
   }
   
+  // ==========================================================================
+  // CANCELLATION FLOW
+  //
+  // The cancellation semantics are state-driven so they compose safely with
+  // funding/shipping/disputes:
+  //
+  //   Created        -> initiator may CANCEL UNILATERALLY (no joiner committed)
+  //   Funded_Locked  -> requires MUTUAL consent: requester calls
+  //                     requestMutualCancellation(); the counterparty calls
+  //                     respondToCancellationRequest(accept=true|false). The
+  //                     requester can also withdrawCancellationRequest().
+  //   In_Transit+    -> cancellation NOT allowed. Use the dispute flow.
+  //
+  // All write paths re-validate state and permissions on the freshly-fetched
+  // row so a stale client cannot bypass the rules.
+  // ==========================================================================
+
+  /**
+   * @private
+   * Asserts the row is in one of the allowed states and the caller is allowed.
+   * Returns the loaded transaction or throws an Error with a user-readable msg.
+   */
+  async _loadAndAuthorize(transactionId, userId, allowedStates, allowedRoles) {
+    if (!transactionId) throw new Error('Transaction ID is required');
+    if (userId === undefined || userId === null) throw new Error('User ID is required');
+
+    const txn = await this.getTransaction(transactionId);
+    if (!txn) throw new Error('Transaction not found');
+
+    if (allowedStates && !allowedStates.includes(txn.state)) {
+      throw new Error(`Cannot perform this action while transaction is in state "${txn.state}"`);
+    }
+
+    const numericUserId = Number(userId);
+    const isInitiator = Number(txn.initiator_id) === numericUserId;
+    const isSeller = Number(txn.seller_id) === numericUserId;
+    const isBuyer = Number(txn.buyer_id) === numericUserId;
+
+    const roleChecks = {
+      initiator: isInitiator,
+      seller: isSeller,
+      buyer: isBuyer,
+      participant: isSeller || isBuyer
+    };
+
+    const ok = (allowedRoles || ['participant']).some(r => roleChecks[r]);
+    if (!ok) throw new Error('You are not authorized to perform this action');
+
+    return { txn, isInitiator, isSeller, isBuyer };
+  }
+
+  /**
+   * @private
+   * Records a state transition in transaction_state_history. Best-effort —
+   * a failure here is logged but does NOT roll back the primary update,
+   * matching the pattern used elsewhere in the codebase.
+   */
+  async _recordStateHistory(transactionId, fromState, toState, changedBy, notes) {
+    try {
+      await this.dbService._executeHttp(
+        `INSERT INTO transaction_state_history
+           (transaction_id, from_state, to_state, changed_by, notes)
+         VALUES (?, ?, ?, ?, ?)`,
+        [transactionId, fromState, toState, changedBy, notes || null]
+      );
+    } catch (err) {
+      console.warn('[TransactionService] state history insert failed (non-fatal):', err);
+    }
+  }
+
+  /**
+   * Unilateral cancellation by the initiator while still in `Created` state
+   * (i.e. the counterparty has not joined / funded yet). Safe because no
+   * party has committed money or goods.
+   *
+   * @param {string} transactionId
+   * @param {number} userId - Must equal transaction.initiator_id
+   * @param {string} [reason]
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  async cancelByInitiator(transactionId, userId, reason) {
+    console.log('[TransactionService] cancelByInitiator', { transactionId, userId });
+    await this.connect();
+
+    const { txn } = await this._loadAndAuthorize(
+      transactionId,
+      userId,
+      ['Created'],
+      ['initiator']
+    );
+
+    const trimmedReason = (reason || '').toString().trim().slice(0, 500) || null;
+
+    await this.dbService._executeHttp(
+      `UPDATE transactions
+         SET state = 'Cancelled',
+             cancellation_reason = ?,
+             cancellation_requested_by = ?,
+             cancellation_requested_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ? AND state = 'Created'`,
+      [trimmedReason, Number(userId), transactionId]
+    );
+
+    await this._recordStateHistory(
+      transactionId,
+      txn.state,
+      'Cancelled',
+      Number(userId),
+      trimmedReason ? `Cancelled by initiator. Reason: ${trimmedReason}` : 'Cancelled by initiator'
+    );
+
+    return { success: true, message: 'Transaction cancelled' };
+  }
+
+  /**
+   * Opens a mutual-cancellation request on a Funded_Locked transaction.
+   * The counterparty must accept for the cancellation to take effect.
+   *
+   * @param {string} transactionId
+   * @param {number} userId - Must be one of the participants (buyer or seller)
+   * @param {string} [reason]
+   */
+  async requestMutualCancellation(transactionId, userId, reason) {
+    console.log('[TransactionService] requestMutualCancellation', { transactionId, userId });
+    await this.connect();
+
+    const { txn } = await this._loadAndAuthorize(
+      transactionId,
+      userId,
+      ['Funded_Locked'],
+      ['participant']
+    );
+
+    if (txn.cancellation_requested_by !== null && txn.cancellation_requested_by !== undefined) {
+      throw new Error('A cancellation request is already pending on this transaction');
+    }
+
+    const trimmedReason = (reason || '').toString().trim().slice(0, 500) || null;
+
+    await this.dbService._executeHttp(
+      `UPDATE transactions
+         SET cancellation_requested_by = ?,
+             cancellation_requested_at = CURRENT_TIMESTAMP,
+             cancellation_reason = ?,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ?
+         AND state = 'Funded_Locked'
+         AND cancellation_requested_by IS NULL`,
+      [Number(userId), trimmedReason, transactionId]
+    );
+
+    return { success: true, message: 'Cancellation request sent. Awaiting other party.' };
+  }
+
+  /**
+   * Lets the requester rescind a pending cancellation request before the
+   * counterparty has responded.
+   */
+  async withdrawCancellationRequest(transactionId, userId) {
+    console.log('[TransactionService] withdrawCancellationRequest', { transactionId, userId });
+    await this.connect();
+
+    const { txn } = await this._loadAndAuthorize(
+      transactionId,
+      userId,
+      ['Funded_Locked'],
+      ['participant']
+    );
+
+    if (Number(txn.cancellation_requested_by) !== Number(userId)) {
+      throw new Error('Only the party who opened the request can withdraw it');
+    }
+
+    await this.dbService._executeHttp(
+      `UPDATE transactions
+         SET cancellation_requested_by = NULL,
+             cancellation_requested_at = NULL,
+             cancellation_reason = NULL,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ?
+         AND state = 'Funded_Locked'`,
+      [transactionId]
+    );
+
+    return { success: true, message: 'Cancellation request withdrawn' };
+  }
+
+  /**
+   * Counterparty's response to a pending cancellation request.
+   *
+   *  - accept === true  -> state becomes 'Cancelled' and the locked funds
+   *    are simulated-refunded to the buyer (same pattern as DisputeService;
+   *    in production this would invoke the actual Squad transfer).
+   *  - accept === false -> the request is cleared and the transaction
+   *    continues as before.
+   *
+   * @param {string} transactionId
+   * @param {number} userId - Must be a participant AND must NOT be the
+   *                          original requester (only the counterparty can
+   *                          accept/decline).
+   * @param {boolean} accept
+   * @param {string} [reason]
+   */
+  async respondToCancellationRequest(transactionId, userId, accept, reason) {
+    console.log('[TransactionService] respondToCancellationRequest', { transactionId, userId, accept });
+    await this.connect();
+
+    const { txn } = await this._loadAndAuthorize(
+      transactionId,
+      userId,
+      ['Funded_Locked'],
+      ['participant']
+    );
+
+    if (txn.cancellation_requested_by === null || txn.cancellation_requested_by === undefined) {
+      throw new Error('There is no pending cancellation request on this transaction');
+    }
+    if (Number(txn.cancellation_requested_by) === Number(userId)) {
+      throw new Error('You cannot respond to your own cancellation request — withdraw it instead');
+    }
+
+    const trimmedReason = (reason || '').toString().trim().slice(0, 500) || null;
+
+    if (accept) {
+      await this.dbService._executeHttp(
+        `UPDATE transactions
+           SET state = 'Cancelled',
+               cancellation_reason = COALESCE(?, cancellation_reason),
+               updated_at = CURRENT_TIMESTAMP
+         WHERE transaction_id = ?
+           AND state = 'Funded_Locked'`,
+        [trimmedReason, transactionId]
+      );
+
+      // Simulate refund of locked funds back to the buyer. This mirrors
+      // DisputeService's `transferFunds` pattern; swap in the real Squad
+      // transfer when wiring production payments.
+      console.log('[TransactionService] [SIMULATED] Refunding buyer for cancelled transaction', {
+        transactionId,
+        buyerId: txn.buyer_id,
+        amount: txn.price
+      });
+
+      await this._recordStateHistory(
+        transactionId,
+        'Funded_Locked',
+        'Cancelled',
+        Number(userId),
+        trimmedReason
+          ? `Mutual cancellation accepted. Reason: ${trimmedReason}`
+          : 'Mutual cancellation accepted. Funds refunded to buyer.'
+      );
+
+      return { success: true, message: 'Cancellation accepted. Buyer will be refunded.' };
+    }
+
+    // Declined: clear the request, state stays Funded_Locked.
+    await this.dbService._executeHttp(
+      `UPDATE transactions
+         SET cancellation_requested_by = NULL,
+             cancellation_requested_at = NULL,
+             cancellation_reason = NULL,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ?
+         AND state = 'Funded_Locked'`,
+      [transactionId]
+    );
+
+    return { success: true, message: 'Cancellation request declined' };
+  }
+
   /**
    * Disconnects from the database
    * @returns {Promise<void>}

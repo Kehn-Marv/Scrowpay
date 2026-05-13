@@ -396,7 +396,19 @@ class TursoDBService {
             { name: 'proof_urls', definition: 'TEXT' },
             { name: 'fulfillment_proof', definition: 'TEXT' },
             { name: 'risk_score', definition: 'INTEGER' },
-            { name: 'ai_verdict', definition: 'TEXT' }
+            { name: 'ai_verdict', definition: 'TEXT' },
+            // Cancellation flow:
+            //  - cancellation_requested_by: user_id of whoever opened the
+            //    cancellation request (only meaningful while state =
+            //    'Funded_Locked' and not yet accepted/declined).
+            //  - cancellation_requested_at: ISO timestamp of that request.
+            //  - cancellation_reason: optional reason captured at cancel time
+            //    (used for both unilateral 'Created' cancels and mutual
+            //    'Funded_Locked' accepts). Stored even on terminal Cancelled
+            //    rows so it shows up in the Details modal.
+            { name: 'cancellation_requested_by', definition: 'INTEGER' },
+            { name: 'cancellation_requested_at', definition: 'TEXT' },
+            { name: 'cancellation_reason', definition: 'TEXT' }
           ];
 
           for (const column of requiredTxnColumns) {
@@ -414,6 +426,97 @@ class TursoDBService {
                 );
               }
             }
+          }
+
+          // ------------------------------------------------------------------
+          // Relax the CHECK constraint on transactions.state to allow the new
+          // terminal states 'Cancelled' and 'Refunded'. SQLite doesn't support
+          // ALTER TABLE ... DROP/MODIFY CONSTRAINT, so we follow the standard
+          // 12-step pattern: build a new table with the wider constraint, copy
+          // rows over, drop the old table, rename, and recreate the indexes.
+          //
+          // Detection: read the existing CREATE TABLE statement from
+          // sqlite_master and check whether 'Cancelled' already appears in it.
+          // The rebuild only runs on legacy databases.
+          // ------------------------------------------------------------------
+          try {
+            const createSqlResult = await this._executeHttp(
+              "SELECT sql FROM sqlite_master WHERE type='table' AND name='transactions'"
+            );
+            const rawSqlCell =
+              createSqlResult.results[0] &&
+              createSqlResult.results[0].response &&
+              createSqlResult.results[0].response.result &&
+              createSqlResult.results[0].response.result.rows[0] &&
+              createSqlResult.results[0].response.result.rows[0][0];
+            const currentCreateSql =
+              rawSqlCell && typeof rawSqlCell === 'object'
+                ? (rawSqlCell.value !== undefined ? rawSqlCell.value : null)
+                : rawSqlCell;
+
+            if (typeof currentCreateSql === 'string' && !/'Cancelled'/.test(currentCreateSql)) {
+              console.log('[TursoDBService] Rebuilding transactions table to widen state CHECK constraint');
+
+              // 1) New CREATE TABLE targeting transactions_new, with the
+              //    state CHECK list extended. The regex is liberal about
+              //    quoting / whitespace because Turso may normalize the SQL.
+              const newCreateSql = currentCreateSql
+                .replace(/CREATE\s+TABLE\s+"?transactions"?/i, 'CREATE TABLE transactions_new')
+                .replace(
+                  /CHECK\s*\(\s*state\s+IN\s*\([^)]*\)\s*\)/i,
+                  "CHECK(state IN ('Created', 'Funded_Locked', 'In_Transit', 'Disputed', 'Completed', 'Cancelled', 'Refunded'))"
+                );
+
+              if (!/transactions_new/.test(newCreateSql) || !/'Cancelled'/.test(newCreateSql)) {
+                throw new Error('Could not safely rewrite CREATE TABLE statement');
+              }
+
+              // 2) Capture existing index DDLs so we can re-create them on
+              //    the renamed table. We skip auto-created indexes (those
+              //    have sql = NULL in sqlite_master).
+              const indexResult = await this._executeHttp(
+                "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='transactions' AND sql IS NOT NULL"
+              );
+              const idxRows =
+                (indexResult.results[0] &&
+                  indexResult.results[0].response &&
+                  indexResult.results[0].response.result &&
+                  indexResult.results[0].response.result.rows) ||
+                [];
+              const indexSqls = idxRows
+                .map(r => {
+                  const cell = r[1];
+                  return typeof cell === 'object' && cell.value !== undefined ? cell.value : cell;
+                })
+                .filter(s => typeof s === 'string' && s.length > 0);
+
+              // 3) Perform the rebuild. Each step is a separate request; if
+              //    any single step fails we abort so we don't leave the DB
+              //    in a half-migrated state with both transactions and
+              //    transactions_new existing.
+              try {
+                await this._executeHttp('DROP TABLE IF EXISTS transactions_new');
+              } catch (_) { /* best-effort cleanup */ }
+
+              await this._executeHttp(newCreateSql);
+              await this._executeHttp('INSERT INTO transactions_new SELECT * FROM transactions');
+              await this._executeHttp('DROP TABLE transactions');
+              await this._executeHttp('ALTER TABLE transactions_new RENAME TO transactions');
+
+              for (const idxSql of indexSqls) {
+                try {
+                  await this._executeHttp(idxSql);
+                } catch (idxErr) {
+                  console.warn('[TursoDBService] Index recreate failed (non-fatal):', idxErr.message);
+                }
+              }
+
+              console.log("[TursoDBService] ✅ transactions.state CHECK now allows 'Cancelled' and 'Refunded'");
+            }
+          } catch (constraintErr) {
+            console.error('[TursoDBService] state-CHECK widening migration failed:', constraintErr);
+            // Non-fatal: app continues; cancel operations will surface the
+            // CHECK error to the user until this migration succeeds.
           }
         } else {
           console.log('[TursoDBService] transactions table not found, skipping its migrations');
@@ -719,7 +822,7 @@ class TursoDBService {
           price REAL NOT NULL CHECK(price >= 100 AND price <= 10000000),
           delivery_timeline_days INTEGER NOT NULL CHECK(delivery_timeline_days BETWEEN 1 AND 90),
           inspection_window_days INTEGER NOT NULL CHECK(inspection_window_days BETWEEN 1 AND 14),
-          state TEXT NOT NULL CHECK(state IN ('Created', 'Funded_Locked', 'In_Transit', 'Disputed', 'Completed')),
+          state TEXT NOT NULL CHECK(state IN ('Created', 'Funded_Locked', 'In_Transit', 'Disputed', 'Completed', 'Cancelled', 'Refunded')),
           risk_score REAL,
           ai_verdict TEXT CHECK(ai_verdict IN ('pass', 'fail')),
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

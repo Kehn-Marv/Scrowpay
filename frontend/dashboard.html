@@ -770,6 +770,133 @@
       will-change: transform, opacity;
       transform: translateZ(0);
     }
+
+    /* ========== TOAST NOTIFICATIONS ==========
+       The ToastNotificationService just appends <div class="toast toast-<type>">
+       to <body>; this stylesheet is what turns those into a sleek floating
+       notification stack in the top-right of the viewport. Variants only
+       change the accent color + icon tint. */
+    .toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      min-width: 280px;
+      max-width: 420px;
+      padding: 14px 16px;
+      background: #ffffff;
+      color: var(--dark, #0b0c10);
+      border-radius: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow:
+        0 10px 30px rgba(15, 23, 42, 0.12),
+        0 2px 6px rgba(15, 23, 42, 0.06);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      z-index: 2000;
+      opacity: 0;
+      transform: translateX(420px);
+      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      pointer-events: auto;
+    }
+
+    /* Animate in on next paint after append. We trigger this by setting
+       opacity/transform back to default values; since the element is created
+       with the initial state above, simply having the rule cascade gives the
+       transition once these properties change. The service doesn't toggle a
+       class, so we use a CSS-only entrance via @keyframes instead. */
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(420px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .toast {
+      animation: toast-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* Stack multiple toasts vertically with a small gap. */
+    .toast + .toast {
+      margin-top: 12px;
+    }
+    /* Because .toast is position:fixed, stacking via margin doesn't work
+       directly; we use a CSS counter-like trick: each subsequent toast is
+       offset by 72px per sibling. This keeps things simple without needing
+       a container. */
+    .toast:nth-of-type(2) { top: calc(24px + 72px); }
+    .toast:nth-of-type(3) { top: calc(24px + 144px); }
+    .toast:nth-of-type(4) { top: calc(24px + 216px); }
+    .toast:nth-of-type(5) { top: calc(24px + 288px); }
+
+    .toast .toast-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toast .toast-icon {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .toast .toast-message {
+      flex: 1 1 auto;
+      color: var(--dark, #0b0c10);
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .toast .toast-close {
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .toast .toast-close:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    /* Color-coded left accent bar per variant (4px stripe). */
+    .toast {
+      border-left: 4px solid #e5e7eb;
+    }
+    .toast-success { border-left-color: #16a34a; }
+    .toast-error   { border-left-color: #dc2626; }
+    .toast-warning { border-left-color: #d97706; }
+    .toast-info    { border-left-color: #2563eb; }
+
+    .toast-success .toast-icon { background: #dcfce7; color: #15803d; }
+    .toast-error   .toast-icon { background: #fee2e2; color: #b91c1c; }
+    .toast-warning .toast-icon { background: #fef3c7; color: #b45309; }
+    .toast-info    .toast-icon { background: #dbeafe; color: #1d4ed8; }
+
+    @media (max-width: 480px) {
+      .toast {
+        top: 16px;
+        right: 16px;
+        left: 16px;
+        min-width: 0;
+        max-width: none;
+      }
+      .toast:nth-of-type(2) { top: calc(16px + 72px); }
+      .toast:nth-of-type(3) { top: calc(16px + 144px); }
+      .toast:nth-of-type(4) { top: calc(16px + 216px); }
+      .toast:nth-of-type(5) { top: calc(16px + 288px); }
+    }
     
     /* Prevent layout shift during loading */
     img, svg {
@@ -1647,6 +1774,68 @@
     </div>
   </div>
   
+  <!-- Cancel / Mutual-Cancellation Modal -->
+  <!--
+    This single modal serves three flows; the mode is set at open time:
+      data-mode="cancel"   -> unilateral cancel by initiator in Created state
+      data-mode="request"  -> open a mutual-cancellation request (Funded_Locked)
+      data-mode="respond"  -> counterparty accept/decline (Funded_Locked)
+  -->
+  <div id="cancel-transaction-modal" class="modal" data-mode="cancel">
+    <div class="modal-content">
+      <div class="p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h2 id="cancel-modal-title" class="text-2xl font-bold text-brand-dark">Cancel Transaction</h2>
+          <button id="btn-close-cancel-modal" class="text-brand-subtext hover:text-brand-dark transition-colors" aria-label="Close">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <p id="cancel-modal-body" class="text-brand-subtext mb-6">
+          Are you sure you want to cancel this transaction? This cannot be undone.
+        </p>
+
+        <div class="bg-brand-gray rounded-xl p-4 mb-6">
+          <p class="text-sm text-brand-subtext mb-1">Transaction ID</p>
+          <p id="cancel-transaction-id" class="font-mono font-semibold text-brand-dark break-all">-</p>
+        </div>
+
+        <div id="cancel-reason-wrapper" class="mb-6">
+          <label for="cancel-reason" class="block text-sm font-medium text-brand-dark mb-2">
+            Reason <span class="text-brand-subtext">(optional)</span>
+          </label>
+          <textarea
+            id="cancel-reason"
+            rows="3"
+            maxlength="500"
+            class="modal-input w-full"
+            placeholder="Add a short note for the other party"
+            style="resize: vertical; min-height: 70px;"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-4">
+          <button
+            id="btn-cancel-cancel"
+            type="button"
+            class="flex-1 px-6 py-3 border border-gray-300 text-brand-dark rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Go back
+          </button>
+          <button
+            id="btn-confirm-cancel"
+            type="button"
+            class="flex-1 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Cancel transaction
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Mark as Shipped Confirmation Modal -->
   <div id="ship-confirmation-modal" class="modal">
     <div class="modal-content">
@@ -3654,9 +3843,6 @@
           document.getElementById('transaction-id-display').textContent = sanitizedTxnId;
           openModal('transaction-success-modal');
           
-          // Show success notification
-          showSuccessNotification('Transaction created successfully!');
-          
         } catch (error) {
           console.error('Transaction creation failed:', error);
           // Sanitize error message before displaying
@@ -3704,7 +3890,6 @@
 
           const onSuccess = () => {
             flashCopyConfirmation();
-            showSuccessNotification('Transaction ID copied to clipboard!');
           };
           const onFailure = (error) => {
             console.error('Failed to copy:', error);
@@ -4689,6 +4874,32 @@
           .replace(/>/g, '&gt;');
       }
 
+      // Small reusable trash-icon button factory for the card-level cancel
+      // affordance. Kept deliberately quiet so it reads as a row-action
+      // rather than a feature button — clicking still opens the same
+      // confirmation modal, so the irreversible action is still gated.
+      function makeTrashIconButton(tooltip, onClick) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('aria-label', tooltip);
+        btn.title = tooltip;
+        btn.className = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-brand-subtext hover:text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 transition-colors';
+        btn.innerHTML = `
+          <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            <path d="M10 11v6"></path>
+            <path d="M14 11v6"></path>
+          </svg>
+        `;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onClick(e);
+        });
+        return btn;
+      }
+
       // Create transaction card HTML
       function createTransactionCard(txn, state) {
         const card = document.createElement('div');
@@ -4774,7 +4985,8 @@
             <!-- Action buttons will be inserted here -->
           </div>
 
-          <div class="mt-5 pt-4 border-t border-gray-200 flex justify-end">
+          <div class="mt-5 pt-4 border-t border-gray-200 flex items-center justify-between gap-3">
+            <div id="trash-slot-${txn.transaction_id}" class="flex items-center"></div>
             <button
               type="button"
               data-view-details="${txn.transaction_id}"
@@ -4835,7 +5047,95 @@
           };
           actionsContainer.appendChild(disputeButton);
         }
-        
+
+        // ------------------------------------------------------------------
+        // CANCELLATION CONTROLS
+        //
+        // Rules (mirrors the service-side logic in TransactionService):
+        //   Created       -> initiator only: red "Cancel transaction"
+        //   Funded_Locked -> participants:
+        //                     - no pending request: subtle "Request cancellation"
+        //                     - you requested:      banner + "Withdraw request"
+        //                     - other requested:    yellow banner + Accept / Decline
+        //   In_Transit+   -> nothing (must use dispute flow)
+        // ------------------------------------------------------------------
+        const isInitiator = Number(txn.initiator_id) === Number(currentUserId);
+        const cancelRequesterId = (txn.cancellation_requested_by === null
+          || txn.cancellation_requested_by === undefined)
+          ? null
+          : Number(txn.cancellation_requested_by);
+        const iRequestedCancel = cancelRequesterId !== null && cancelRequesterId === Number(currentUserId);
+        const otherRequestedCancel = cancelRequesterId !== null && cancelRequesterId !== Number(currentUserId);
+
+        // Find the trash slot in the bottom border-t row. We put quiet
+        // icon-only actions here (cancel / request cancellation) so they
+        // read as row-level affordances, not feature buttons. Loud
+        // text-button affordances stay in `actionsContainer` only when
+        // the situation genuinely demands the user's attention (e.g. an
+        // Accept/Decline response to someone else's cancel request).
+        const trashSlot = card.querySelector(`#trash-slot-${txn.transaction_id}`);
+
+        if (state === 'Created' && isInitiator && trashSlot) {
+          trashSlot.appendChild(
+            makeTrashIconButton('Cancel transaction', () => openCancelModal('cancel', txn))
+          );
+        }
+
+        if (state === 'Funded_Locked') {
+          if (otherRequestedCancel) {
+            // Loud path: the OTHER party wants to cancel. We surface the
+            // banner + Accept/Decline as full-width buttons because this
+            // genuinely needs the user's attention and a deliberate
+            // choice.
+            const banner = document.createElement('div');
+            banner.className = 'mb-3 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm text-yellow-900';
+            banner.textContent = 'The other party has requested to cancel this transaction. If you accept, the buyer will be refunded.';
+            actionsContainer.parentNode.insertBefore(banner, actionsContainer);
+
+            const declineBtn = document.createElement('button');
+            declineBtn.type = 'button';
+            declineBtn.className = 'flex-1 px-4 py-2 border border-gray-300 text-brand-dark hover:bg-gray-50 font-semibold rounded-lg transition-colors';
+            declineBtn.textContent = 'Decline';
+            declineBtn.onclick = (e) => {
+              e.stopPropagation();
+              openCancelModal('decline', txn);
+            };
+            actionsContainer.appendChild(declineBtn);
+
+            const acceptBtn = document.createElement('button');
+            acceptBtn.type = 'button';
+            acceptBtn.className = 'flex-1 px-4 py-2 bg-red-500 text-white hover:bg-red-600 font-semibold rounded-lg transition-colors';
+            acceptBtn.textContent = 'Accept cancellation';
+            acceptBtn.onclick = (e) => {
+              e.stopPropagation();
+              openCancelModal('accept', txn);
+            };
+            actionsContainer.appendChild(acceptBtn);
+          } else if (iRequestedCancel) {
+            // Quiet status banner — YOU already opened the request, so the
+            // page just needs to remind you it's pending and offer a
+            // discreet way to undo.
+            const banner = document.createElement('div');
+            banner.className = 'mb-3 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-brand-subtext';
+            banner.textContent = 'You requested to cancel this transaction. Awaiting the other party.';
+            actionsContainer.parentNode.insertBefore(banner, actionsContainer);
+
+            if (trashSlot) {
+              trashSlot.appendChild(
+                makeTrashIconButton('Withdraw cancellation request', () => openCancelModal('withdraw', txn))
+              );
+            }
+          } else {
+            // Funded but no request yet — make the cancel affordance a
+            // quiet trash icon, same psychological framing as Created.
+            if (trashSlot) {
+              trashSlot.appendChild(
+                makeTrashIconButton('Request cancellation', () => openCancelModal('request', txn))
+              );
+            }
+          }
+        }
+
         return card;
       }
       
@@ -4846,9 +5146,190 @@
           'Funded_Locked': 'Funded & Locked',
           'In_Transit': 'In Transit',
           'Disputed': 'Disputed',
-          'Completed': 'Completed'
+          'Completed': 'Completed',
+          'Cancelled': 'Cancelled',
+          'Refunded': 'Refunded'
         };
         return stateMap[state] || state;
+      }
+
+      // ========================================
+      // CANCELLATION MODAL (Created / Funded_Locked)
+      //
+      // Single modal, four UI modes — wired by setting the title/body/labels
+      // and stashing the mode + transaction id on the confirm button. The
+      // confirm handler dispatches to the right TransactionService call.
+      // ========================================
+      function openCancelModal(mode, txn) {
+        const modal = document.getElementById('cancel-transaction-modal');
+        const titleEl = document.getElementById('cancel-modal-title');
+        const bodyEl = document.getElementById('cancel-modal-body');
+        const idEl = document.getElementById('cancel-transaction-id');
+        const reasonWrap = document.getElementById('cancel-reason-wrapper');
+        const reasonEl = document.getElementById('cancel-reason');
+        const confirmBtn = document.getElementById('btn-confirm-cancel');
+        const goBackBtn = document.getElementById('btn-cancel-cancel');
+
+        if (!modal || !confirmBtn) return;
+
+        // Reset
+        reasonEl.value = '';
+        confirmBtn.disabled = false;
+        confirmBtn.className = 'flex-1 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
+        goBackBtn.textContent = 'Go back';
+        reasonWrap.style.display = '';
+
+        idEl.textContent = txn.transaction_id;
+        confirmBtn.dataset.txnId = txn.transaction_id;
+        confirmBtn.dataset.mode = mode;
+
+        switch (mode) {
+          case 'cancel': // unilateral, Created state
+            titleEl.textContent = 'Cancel transaction';
+            bodyEl.textContent = 'No one has joined or funded this transaction yet, so you can cancel it now. This action cannot be undone.';
+            confirmBtn.textContent = 'Cancel transaction';
+            break;
+          case 'request': // mutual request, Funded_Locked
+            titleEl.textContent = 'Request cancellation';
+            bodyEl.textContent = 'Funds are currently locked for this transaction. The other party must accept your request before the transaction is cancelled and the buyer is refunded.';
+            confirmBtn.textContent = 'Send request';
+            confirmBtn.className = 'flex-1 px-6 py-3 bg-brand-dark text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors';
+            break;
+          case 'withdraw':
+            titleEl.textContent = 'Withdraw cancellation request';
+            bodyEl.textContent = 'This will rescind your cancellation request. The transaction will continue as normal.';
+            confirmBtn.textContent = 'Withdraw request';
+            confirmBtn.className = 'flex-1 px-6 py-3 bg-brand-dark text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors';
+            reasonWrap.style.display = 'none';
+            break;
+          case 'accept':
+            titleEl.textContent = 'Accept cancellation';
+            bodyEl.textContent = 'Accepting cancels this transaction and refunds the locked funds to the buyer. This cannot be undone.';
+            confirmBtn.textContent = 'Accept & refund';
+            break;
+          case 'decline':
+            titleEl.textContent = 'Decline cancellation';
+            bodyEl.textContent = 'Declining will clear the other party\'s cancellation request. The transaction will continue as normal.';
+            confirmBtn.textContent = 'Decline request';
+            confirmBtn.className = 'flex-1 px-6 py-3 bg-brand-dark text-white font-semibold rounded-lg hover:bg-opacity-90 transition-colors';
+            reasonWrap.style.display = 'none';
+            break;
+          default:
+            console.warn('[Cancel] Unknown mode:', mode);
+            return;
+        }
+
+        openModal('cancel-transaction-modal');
+      }
+
+      async function handleCancelConfirm() {
+        console.log('[Cancel] confirm clicked');
+        const confirmBtn = document.getElementById('btn-confirm-cancel');
+        if (!confirmBtn) {
+          console.error('[Cancel] confirm button missing from DOM');
+          return;
+        }
+        const mode = confirmBtn.dataset.mode;
+        const txnId = confirmBtn.dataset.txnId;
+        const reason = (document.getElementById('cancel-reason').value || '').trim();
+        console.log('[Cancel] mode=', mode, 'txnId=', txnId, 'userId=', currentUserId);
+
+        if (!mode || !txnId) {
+          console.warn('[Cancel] missing mode or txnId on confirm button');
+          return;
+        }
+        if (!transactionService) {
+          showErrorNotification('Service is still initializing. Please try again.');
+          return;
+        }
+
+        const originalLabel = confirmBtn.textContent;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Working…';
+
+        try {
+          let result;
+          switch (mode) {
+            case 'cancel':
+              result = await transactionService.cancelByInitiator(txnId, currentUserId, reason);
+              break;
+            case 'request':
+              result = await transactionService.requestMutualCancellation(txnId, currentUserId, reason);
+              break;
+            case 'withdraw':
+              result = await transactionService.withdrawCancellationRequest(txnId, currentUserId);
+              break;
+            case 'accept':
+              result = await transactionService.respondToCancellationRequest(txnId, currentUserId, true, reason);
+              break;
+            case 'decline':
+              result = await transactionService.respondToCancellationRequest(txnId, currentUserId, false);
+              break;
+            default:
+              throw new Error('Unknown cancellation mode');
+          }
+
+          // Close the confirmation modal first, then surface the result via
+          // the centered "action-success-modal" — same component used by
+          // Mark-as-Shipped / Accept Item / Dispute, matching the success
+          // pattern from account creation that the user prefers over the
+          // corner toast.
+          closeModal('cancel-transaction-modal');
+
+          const successCopy = {
+            cancel:   { title: 'Transaction Cancelled',     message: 'Your transaction has been cancelled successfully.' },
+            request:  { title: 'Cancellation Requested',    message: 'Your cancellation request has been sent. The other party will be notified to accept or decline.' },
+            withdraw: { title: 'Request Withdrawn',         message: 'Your cancellation request has been withdrawn. The transaction will continue as normal.' },
+            accept:   { title: 'Cancellation Accepted',     message: 'The transaction has been cancelled and the buyer will be refunded.' },
+            decline:  { title: 'Cancellation Declined',     message: 'You declined the cancellation request. The transaction will continue as normal.' }
+          };
+          const copy = successCopy[mode] || { title: 'Done', message: (result && result.message) || 'Action completed successfully.' };
+          const titleEl = document.getElementById('action-success-title');
+          const msgEl = document.getElementById('action-success-message');
+          if (titleEl) titleEl.textContent = copy.title;
+          if (msgEl) msgEl.textContent = copy.message;
+          openModal('action-success-modal');
+
+          await loadActiveTransactions();
+        } catch (err) {
+          console.error('[Cancel] confirm failed:', err);
+          showErrorNotification(err && err.message ? err.message : 'Action failed');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = originalLabel;
+        }
+      }
+
+      // Wire the cancel modal via DOCUMENT-LEVEL DELEGATION so it works
+      // regardless of when listeners attach vs when the modal markup loads.
+      // Earlier we used direct addEventListener inside an IIFE; in practice
+      // the click never reached it (no log line), so we now bind once on
+      // document and route by element id. This is also tolerant if the
+      // modal is ever re-rendered.
+      if (!window.__cancelModalWired) {
+        window.__cancelModalWired = true;
+        console.log('[Cancel] wiring document-level delegation');
+        document.addEventListener('click', (e) => {
+          const t = e.target.closest && e.target.closest('button, div');
+          if (!t || !t.id) return;
+          switch (t.id) {
+            case 'btn-confirm-cancel':
+              e.preventDefault();
+              handleCancelConfirm();
+              break;
+            case 'btn-cancel-cancel':
+            case 'btn-close-cancel-modal':
+              e.preventDefault();
+              closeModal('cancel-transaction-modal');
+              break;
+            case 'cancel-transaction-modal':
+              // Backdrop click (only when the click target IS the modal root,
+              // not a descendant).
+              if (e.target.id === 'cancel-transaction-modal') {
+                closeModal('cancel-transaction-modal');
+              }
+              break;
+          }
+        });
       }
       
       // ========================================
