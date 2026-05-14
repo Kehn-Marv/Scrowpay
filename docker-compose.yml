@@ -11,6 +11,12 @@ services:
     container_name: scrowpay-ai-engine
     ports:
       - "5000:5000"
+    # Inject root .env into the container so RESEND_API_KEY,
+    # RESEND_FROM_ADDRESS, etc. are visible to app.py at startup.
+    # If you change .env you MUST `docker compose down && up -d`
+    # because env_file is only read at container creation time.
+    env_file:
+      - .env
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1

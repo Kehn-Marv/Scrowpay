@@ -108,6 +108,22 @@ class EmailOTPService {
     // gate this behind a debug flag — but logs aren't sent anywhere.
     console.log(`[EmailOTPService] OTP for ${normalized} (${purpose}): ${code} — expires ${expiresAt}`);
 
+    // Helper: burn the row we just inserted so the verify path returns
+    // `no_active_otp` and the caller's dev fallback (123456) takes over.
+    // We identify the row by (email, purpose, code_hash) since we don't
+    // get last_insert_rowid back from _executeHttp.
+    const burnInsertedOtp = async () => {
+      try {
+        await this.dbService._executeHttp(
+          `UPDATE email_otps SET used_at = CURRENT_TIMESTAMP
+            WHERE email = ? AND purpose = ? AND code_hash = ? AND used_at IS NULL`,
+          [normalized, purpose, codeHash]
+        );
+      } catch (e) {
+        console.warn('[EmailOTPService] could not invalidate fallback OTP:', e.message);
+      }
+    };
+
     // Forward to Python for delivery.
     try {
       const resp = await fetch(this.aiEngineUrl.replace(/\/$/, '') + '/api/v1/notify/otp', {
@@ -118,11 +134,12 @@ class EmailOTPService {
       if (resp.ok) {
         return { delivered: true, fallback: false, expiresAt };
       }
-      // 503 = Resend not configured on the AI engine. We treat that
-      // as "fall back to dev mode" rather than a hard error so the
-      // signup flow doesn't break in environments without an API key.
-      if (resp.status === 503) {
-        console.warn('[EmailOTPService] Resend not configured — caller should fall back.');
+      // Upstream / email-provider failures (502/503/504) and the case
+      // where Resend simply isn't configured all fall back to dev mode
+      // so the signup flow isn't blocked in dev/hackathon environments.
+      if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+        console.warn(`[EmailOTPService] Email service unavailable (HTTP ${resp.status}) — caller should fall back.`);
+        await burnInsertedOtp();
         return { delivered: false, fallback: true, expiresAt };
       }
       if (resp.status === 429) {
@@ -134,13 +151,18 @@ class EmailOTPService {
         };
       }
       const data = await resp.json().catch(() => ({}));
+      // Any other non-OK is also treated as fallback rather than a hard
+      // dead-end — better UX than locking the user out of signup.
+      console.warn(`[EmailOTPService] Email send failed (HTTP ${resp.status}) — falling back.`);
+      await burnInsertedOtp();
       return {
-        delivered: false, fallback: false, expiresAt,
+        delivered: false, fallback: true, expiresAt,
         error: data.message || `Email send failed (HTTP ${resp.status})`
       };
     } catch (err) {
       // Network error — AI engine unreachable. Fall back path.
       console.warn('[EmailOTPService] AI engine unreachable:', err.message);
+      await burnInsertedOtp();
       return {
         delivered: false, fallback: true, expiresAt,
         error: 'Email service unreachable'

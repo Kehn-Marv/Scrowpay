@@ -58,15 +58,18 @@ fi
 echo "[OK] .env file exists"
 echo ""
 
-# Stop any running containers
+# Stop any running containers and clean up stale ones
 echo "Stopping any running containers..."
-docker-compose down > /dev/null 2>&1 || true
+docker compose down --remove-orphans > /dev/null 2>&1 || true
+# Force-remove stale named containers from a previous interrupted run
+docker rm -f scrowpay-ai-engine > /dev/null 2>&1 || true
+docker rm -f scrowpay-frontend  > /dev/null 2>&1 || true
 
 # Start services
 echo "Starting ScrowPay services..."
-echo "This may take a few minutes on first run (downloading images, training AI model)"
+echo "This may take a few minutes on first run (downloading images, building AI engine)."
 echo ""
-docker-compose up -d
+docker compose up -d
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -80,12 +83,16 @@ echo "========================================"
 echo "ScrowPay is now running!"
 echo "========================================"
 echo ""
-echo "Frontend:     http://localhost:8080"
+echo "Landing:      http://localhost:8080/web.html"
+echo "Sign-in:      http://localhost:8080/sign-in.html"
+echo "Dashboard:    http://localhost:8080/dashboard.html"
+echo "Admin:        http://localhost:8080/admin.html"
 echo "AI Engine:    http://localhost:5000"
 echo "Health Check: http://localhost:5000/health"
 echo ""
-echo "View logs:    docker-compose logs -f"
-echo "Stop:         docker-compose down"
+echo "View logs:    docker compose logs -f"
+echo "Stop:         docker compose down"
+echo "Restart .env: docker compose down && docker compose up -d"
 echo ""
 
 # Try to open browser
@@ -93,17 +100,17 @@ if command -v open &> /dev/null; then
     # macOS
     echo "Opening frontend in browser..."
     sleep 3
-    open http://localhost:8080/website.html
+    open http://localhost:8080/web.html
 elif command -v xdg-open &> /dev/null; then
     # Linux
     echo "Opening frontend in browser..."
     sleep 3
-    xdg-open http://localhost:8080/website.html
+    xdg-open http://localhost:8080/web.html
 else
-    echo "Please open http://localhost:8080/website.html in your browser"
+    echo "Please open http://localhost:8080/web.html in your browser"
 fi
 
 echo ""
 echo "Press Enter to view logs (Ctrl+C to exit logs)..."
 read
-docker-compose logs -f
+docker compose logs -f

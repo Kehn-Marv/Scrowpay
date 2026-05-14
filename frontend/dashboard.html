@@ -847,45 +847,51 @@
     }
 
     /* ============================================================
-       PROFILE MODAL (Phase E)
+       PROFILE MODAL (Phase E) — redesigned
        ----------------------------------------------------------------
-       Reuses the .modal / .modal-content shell from the existing
-       modal system; everything below customises the body to look
-       like an account / profile screen rather than an action modal.
+       Sleek single-page profile card mirroring the account-creation
+       aesthetic: DM Sans/Syne, brand green (#caff04), soft greys,
+       pill buttons. Two-column body so everything fits on one
+       desktop viewport without scrolling. Collapses to one column
+       on mobile (≤640px) where vertical space is fine.
        ============================================================ */
+    #profile-modal .modal-content {
+      max-width: 720px;
+      width: 92%;
+      padding: 0;
+      border-radius: 24px;
+      max-height: none;
+      overflow: hidden;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.22);
+    }
+
+    /* Dark header band — name, phone, trust pill */
     .profile-header {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 24px 24px 22px;
+      gap: 18px;
+      padding: 22px 26px;
       background:
-        radial-gradient(120% 140% at 0% 0%, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 55%),
-        linear-gradient(135deg, #0b0f17 0%, #111827 100%);
+        radial-gradient(120% 160% at 100% 0%, rgba(202,255,4,0.12) 0%, rgba(202,255,4,0) 55%),
+        #111111;
       color: #fff;
-      border-radius: 14px 14px 0 0;
-      overflow: hidden;
-    }
-    .profile-header::after {
-      content: '';
-      position: absolute;
-      left: 24px; right: 24px; bottom: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
     }
     .profile-header-text { min-width: 0; flex: 1; }
     .profile-header-name {
-      font-size: 18px;
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
       font-weight: 700;
       letter-spacing: -0.01em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: 1.15;
     }
     .profile-header-sub {
-      font-size: 12.5px;
-      color: #cbd5e1;
-      margin-top: 2px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      margin-top: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -895,47 +901,64 @@
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      font-weight: 600;
-      padding: 4px 10px;
+      font-weight: 700;
+      padding: 6px 12px;
       border-radius: 999px;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      margin-top: 8px;
-      border: 1px solid rgba(16,185,129,0.25);
+      background: var(--green, #caff04);
+      color: #111111;
+      margin-top: 10px;
+      letter-spacing: 0.01em;
+    }
+    .profile-header-trust svg { stroke: #111111; }
+
+    /* Body: two-column grid on desktop, single column on mobile */
+    .profile-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      background: #ffffff;
+    }
+    .profile-body > .profile-section:nth-child(odd) {
+      border-right: 1px solid #f1f3f5;
+    }
+    /* Address section spans full width */
+    .profile-section.profile-section-wide {
+      grid-column: 1 / -1;
+      border-top: 1px solid #f1f3f5;
+      border-right: none;
+      padding: 14px 26px 16px;
     }
 
-    /* Section blocks inside the modal body. */
     .profile-section {
-      padding: 18px 24px;
-      border-bottom: 1px solid #f1f3f5;
+      padding: 18px 26px 16px;
     }
-    .profile-section:last-of-type { border-bottom: none; padding-bottom: 22px; }
     .profile-section-title {
-      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10.5px;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #6b7280;
-      margin-bottom: 12px;
+      color: #888888;
+      margin-bottom: 10px;
     }
     .profile-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 10px 0;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 0;
+      min-height: 30px;
     }
-    .profile-row + .profile-row { border-top: 1px solid rgba(15, 23, 42, 0.04); }
     .profile-row-label {
-      font-size: 13px;
-      color: #6b7280;
+      font-size: 12.5px;
+      color: #888888;
       flex-shrink: 0;
-      padding-top: 1px;
+      font-weight: 500;
     }
     .profile-row-value {
-      font-size: 14px;
-      color: #0f172a;
-      font-weight: 500;
+      font-size: 13.5px;
+      color: #111111;
+      font-weight: 600;
       text-align: right;
       word-break: break-word;
       display: inline-flex;
@@ -945,87 +968,110 @@
       justify-content: flex-end;
       max-width: 70%;
     }
+
+    /* Verification badges — brand green for verified, amber for not */
     .profile-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 9px 3px 8px;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 3px 8px;
       border-radius: 999px;
       line-height: 1;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
     }
     .profile-badge::before {
       content: '';
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: currentColor;
-      opacity: 0.7;
       flex-shrink: 0;
     }
     .profile-badge.verified {
-      background: rgba(16, 185, 129, 0.10);
-      color: #047857;
+      background: rgba(202, 255, 4, 0.18);
+      color: #4d6b00;
     }
     .profile-badge.unverified {
-      background: rgba(245, 158, 11, 0.10);
+      background: rgba(245, 158, 11, 0.12);
       color: #b45309;
     }
+
+    /* Small dark pill copy button */
     .profile-copy-btn {
-      background: #f1f5f9;
-      border: 1px solid transparent;
-      color: #047857;
+      background: #111111;
+      border: none;
+      color: var(--green, #caff04);
       cursor: pointer;
-      padding: 3px 9px;
+      padding: 4px 12px;
+      font-family: 'DM Sans', sans-serif;
       font-size: 11.5px;
       font-weight: 600;
       border-radius: 999px;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      transition: background 0.15s, transform 0.1s;
       line-height: 1.4;
     }
-    .profile-copy-btn:hover {
-      background: rgba(16,185,129,0.12);
-      border-color: rgba(16,185,129,0.25);
-    }
+    .profile-copy-btn:hover  { background: #222; }
     .profile-copy-btn:active { transform: translateY(0.5px); }
 
+    /* Footer action row — pill buttons, side-by-side on desktop */
     .profile-actions {
-      padding: 16px 24px 24px;
+      padding: 16px 26px 22px;
       display: flex;
-      flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      background: #ffffff;
+      border-top: 1px solid #f1f3f5;
     }
     .profile-action-btn {
-      width: 100%;
-      padding: 12px 16px;
-      border-radius: 10px;
+      flex: 0 0 auto;
+      padding: 11px 22px;
+      border-radius: 999px;
+      font-family: 'DM Sans', sans-serif;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13.5px;
       cursor: pointer;
       border: 1px solid transparent;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .profile-action-btn.danger {
-      background: #fff5f5;
-      color: #c53030;
-      border-color: #fed7d7;
-    }
-    .profile-action-btn.danger:hover {
-      background: #fed7d7;
-      border-color: #fc8181;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      text-decoration: none;
     }
     .profile-action-btn.secondary {
-      background: #f8f9fa;
-      color: #1c1c1c;
-      border-color: #e5e7eb;
+      background: #f0f0ee;
+      color: #111111;
+      border-color: transparent;
     }
     .profile-action-btn.secondary:hover {
-      background: #f1f3f5;
+      background: #e5e5e2;
+    }
+    .profile-action-btn.danger {
+      background: #111111;
+      color: #ff6b6b;
+      border-color: transparent;
+    }
+    .profile-action-btn.danger:hover {
+      background: #2a0d0d;
+      color: #ff8585;
+    }
+    .profile-action-btn:active { transform: translateY(0.5px); }
+
+    /* Mobile: single column, stacked actions */
+    @media (max-width: 640px) {
+      #profile-modal .modal-content { width: 95%; max-height: 92vh; overflow-y: auto; }
+      .profile-body { grid-template-columns: 1fr; }
+      .profile-body > .profile-section:nth-child(odd) { border-right: none; }
+      .profile-body > .profile-section + .profile-section { border-top: 1px solid #f1f3f5; }
+      .profile-header { padding: 18px 20px; gap: 14px; }
+      .profile-header-name { font-size: 17px; }
+      .profile-section, .profile-section.profile-section-wide { padding: 14px 20px; }
+      .profile-actions { flex-direction: column-reverse; padding: 14px 20px 18px; }
+      .profile-action-btn { width: 100%; }
     }
 
     /* ============================================================
@@ -1726,18 +1772,6 @@
 
       </div>
       
-      <!-- New User Notice (Hidden by default) -->
-      <div id="new-user-notice" class="hidden" style="margin-top: 16px; padding: 10px 14px; background: rgba(202,255,4,0.08); border: 1px solid rgba(202,255,4,0.15); border-radius: 10px; position: relative; z-index: 1;">
-        <div class="flex items-start gap-2">
-          <svg style="width: 14px; height: 14px; stroke: #caff04; flex-shrink: 0; margin-top: 1px;" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <div class="flex-1">
-            <p style="font-size: 11px; font-weight: 600; color: #caff04; margin-bottom: 2px;">New User</p>
-            <p style="font-size: 10px; color: rgba(202,255,4,0.6); line-height: 1.4;">Default trust score of 50. Complete transactions to improve.</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Hidden elements for balance tracking (keep existing functionality) -->
@@ -2768,17 +2802,17 @@
     The shell here just establishes the layout / class hooks.
   -->
   <div id="profile-modal" class="modal">
-    <div class="modal-content" style="max-width: 480px; padding: 0;">
-      <!-- Close button (absolutely positioned over the header) -->
+    <div class="modal-content">
+      <!-- Close button (absolutely positioned over the dark header) -->
       <button class="modal-close-btn" onclick="closeModal('profile-modal')"
               aria-label="Close"
-              style="position: absolute; top: 12px; right: 12px; z-index: 2; background: rgba(255,255,255,0.12); color: #fff;">
+              style="position: absolute; top: 14px; right: 14px; z-index: 2; background: rgba(255,255,255,0.10); color: #fff; border: 1px solid rgba(255,255,255,0.14);">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
 
-      <!-- Dark gradient header with avatar + name + trust pill. -->
+      <!-- Dark header — avatar, name, phone, trust pill -->
       <div class="profile-header">
         <span id="profile-modal-avatar" class="profile-avatar profile-avatar-lg">
           <span class="profile-avatar-initials">U</span>
@@ -2795,69 +2829,72 @@
         </div>
       </div>
 
-      <!-- Account section: email (verified?), virtual account, trust score -->
-      <div class="profile-section">
-        <div class="profile-section-title">Account</div>
-        <div class="profile-row">
-          <span class="profile-row-label">Email</span>
-          <span class="profile-row-value">
-            <span id="profile-row-email">—</span>
-            <span id="profile-row-email-badge" class="profile-badge unverified" style="display:none;">Unverified</span>
-          </span>
+      <!-- Two-column body: Account on left, KYC on right, Address full-width below -->
+      <div class="profile-body">
+        <!-- Account section -->
+        <div class="profile-section">
+          <div class="profile-section-title">Account</div>
+          <div class="profile-row">
+            <span class="profile-row-label">Email</span>
+            <span class="profile-row-value">
+              <span id="profile-row-email">—</span>
+              <span id="profile-row-email-badge" class="profile-badge unverified" style="display:none;">Unverified</span>
+            </span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Phone</span>
+            <span class="profile-row-value">
+              <span id="profile-row-phone">—</span>
+              <span class="profile-badge verified">Verified</span>
+            </span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Virtual account</span>
+            <span class="profile-row-value">
+              <span id="profile-row-vacc">—</span>
+              <button id="profile-copy-vacc" class="profile-copy-btn" type="button">Copy</button>
+            </span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Member since</span>
+            <span id="profile-row-since" class="profile-row-value">—</span>
+          </div>
         </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Phone</span>
-          <span class="profile-row-value">
-            <span id="profile-row-phone">—</span>
-            <span class="profile-badge verified">Verified</span>
-          </span>
+
+        <!-- KYC section -->
+        <div class="profile-section">
+          <div class="profile-section-title">KYC details</div>
+          <div class="profile-row">
+            <span class="profile-row-label" id="profile-row-id-label">BVN</span>
+            <span id="profile-row-id" class="profile-row-value">—</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Date of birth</span>
+            <span id="profile-row-dob" class="profile-row-value">—</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Gender</span>
+            <span id="profile-row-gender" class="profile-row-value">—</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-row-label">Face verification</span>
+            <span class="profile-row-value">
+              <span id="profile-row-face-badge" class="profile-badge unverified">Not captured</span>
+            </span>
+          </div>
         </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Virtual account</span>
-          <span class="profile-row-value">
-            <span id="profile-row-vacc">—</span>
-            <button id="profile-copy-vacc" class="profile-copy-btn" type="button">Copy</button>
-          </span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Member since</span>
-          <span id="profile-row-since" class="profile-row-value">—</span>
+
+        <!-- Address section spans full width -->
+        <div class="profile-section profile-section-wide">
+          <div class="profile-section-title">Address</div>
+          <div class="profile-row">
+            <span class="profile-row-label">Current</span>
+            <span id="profile-row-address" class="profile-row-value" style="text-align:right; max-width: 75%;">—</span>
+          </div>
         </div>
       </div>
 
-      <!-- KYC section: BVN (masked), DOB, gender. Read-only. -->
-      <div class="profile-section">
-        <div class="profile-section-title">KYC details</div>
-        <div class="profile-row">
-          <span class="profile-row-label" id="profile-row-id-label">BVN</span>
-          <span id="profile-row-id" class="profile-row-value">—</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Date of birth</span>
-          <span id="profile-row-dob" class="profile-row-value">—</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Gender</span>
-          <span id="profile-row-gender" class="profile-row-value">—</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Face verification</span>
-          <span class="profile-row-value">
-            <span id="profile-row-face-badge" class="profile-badge unverified">Not captured</span>
-          </span>
-        </div>
-      </div>
-
-      <!-- Address section -->
-      <div class="profile-section">
-        <div class="profile-section-title">Address</div>
-        <div class="profile-row">
-          <span class="profile-row-label">Current</span>
-          <span id="profile-row-address" class="profile-row-value" style="text-align:right; max-width: 60%;">—</span>
-        </div>
-      </div>
-
-      <!-- Actions -->
+      <!-- Footer actions -->
       <div class="profile-actions">
         <!--
           Admin Console link (Phase G).
@@ -2866,14 +2903,14 @@
           the link out of regular users' UI without needing a server
           round-trip to check permissions.
         -->
-        <a id="profile-link-admin" href="admin.html" class="profile-action-btn secondary" style="display:none; text-decoration:none;">
-          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <a id="profile-link-admin" href="admin.html" class="profile-action-btn secondary" style="display:none;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
           Admin Console
         </a>
         <button id="profile-btn-logout" type="button" class="profile-action-btn danger">
-          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
           Sign out
@@ -5261,11 +5298,34 @@
           loadingIndicator.classList.remove('hidden');
         }
         
-        // Get virtual account number (mock for now - in production, get from user data)
-        const virtualAccountNumber = '1234567890';  // Mock virtual account
-        
-        // Fetch balances from BalanceService (Requirement 1.3)
-        const result = await balanceService.getBalances(currentUserId, virtualAccountNumber);
+        // Pull the user's real Squad virtual account number from the
+        // session-cached user record. New users won't have one yet —
+        // in that case we skip the Squad API call entirely (it would
+        // 404 on every poll) and just show zero available balance.
+        const virtualAccountNumber =
+          (window.currentUserData && window.currentUserData.virtual_account_number) || null;
+
+        let result;
+        if (!virtualAccountNumber) {
+          // No provisioned account → no remote balance to fetch.
+          // Still compute locked balance from Turso so escrow
+          // amounts show up correctly.
+          const lockedResult = await balanceService.getLockedBalance(currentUserId);
+          const locked = lockedResult.success ? lockedResult.balance : 0;
+          result = {
+            success: true,
+            available: 0,
+            locked,
+            total: locked,
+            invariantValid: true,
+            cached: false,
+            stale: false,
+            noVirtualAccount: true
+          };
+        } else {
+          // Fetch balances from BalanceService (Requirement 1.3)
+          result = await balanceService.getBalances(currentUserId, virtualAccountNumber);
+        }
         
         // Hide loading indicator
         if (loadingIndicator) {
@@ -5296,15 +5356,20 @@
         
         // Update available balance status
         const availableBalanceStatus = document.getElementById('available-balance-status');
-        if (result.cached && !result.stale) {
-          availableBalanceStatus.textContent = 'Cached (updated recently)';
-          availableBalanceStatus.className = 'text-xs text-brand-subtext';
-        } else if (result.stale) {
-          availableBalanceStatus.textContent = result.message || 'Using cached data';
-          availableBalanceStatus.className = 'text-xs text-yellow-600';
-        } else {
-          availableBalanceStatus.textContent = 'Live from Squad API';
-          availableBalanceStatus.className = 'text-xs text-green-600';
+        if (availableBalanceStatus) {
+          if (result.noVirtualAccount) {
+            availableBalanceStatus.textContent = 'Virtual account not provisioned yet';
+            availableBalanceStatus.className = 'text-xs text-brand-subtext';
+          } else if (result.cached && !result.stale) {
+            availableBalanceStatus.textContent = 'Cached (updated recently)';
+            availableBalanceStatus.className = 'text-xs text-brand-subtext';
+          } else if (result.stale) {
+            availableBalanceStatus.textContent = result.message || 'Using cached data';
+            availableBalanceStatus.className = 'text-xs text-yellow-600';
+          } else {
+            availableBalanceStatus.textContent = 'Live from Squad API';
+            availableBalanceStatus.className = 'text-xs text-green-600';
+          }
         }
         
         // Show/hide staleness indicator (Requirement 1.6)
@@ -5489,16 +5554,22 @@
         label.textContent = indicator.label;
         label.style.color = 'rgba(255,255,255,0.85)';
         
-        // Update transaction counts
-        document.getElementById('trust-score-total-txns').textContent = result.totalTransactions || 0;
-        document.getElementById('trust-score-successful-txns').textContent = result.successfulTransactions || 0;
+        // Update transaction counts (these elements are optional —
+        // current dashboard layout doesn't render them, but older
+        // builds did; guard so we don't crash the whole refresh).
+        const totalTxnsEl = document.getElementById('trust-score-total-txns');
+        if (totalTxnsEl) totalTxnsEl.textContent = result.totalTransactions || 0;
+        const successTxnsEl = document.getElementById('trust-score-successful-txns');
+        if (successTxnsEl) successTxnsEl.textContent = result.successfulTransactions || 0;
         
         // Show/hide new user notice (Requirement 2.5)
         const newUserNotice = document.getElementById('new-user-notice');
-        if (result.totalTransactions === 0 || result.isDefault) {
-          newUserNotice.classList.remove('hidden');
-        } else {
-          newUserNotice.classList.add('hidden');
+        if (newUserNotice) {
+          if (result.totalTransactions === 0 || result.isDefault) {
+            newUserNotice.classList.remove('hidden');
+          } else {
+            newUserNotice.classList.add('hidden');
+          }
         }
         
         console.log('[Dashboard] ✅ Trust score display updated:', {

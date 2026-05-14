@@ -1,715 +1,396 @@
 # ScrowPay Deployment Guide
 
-Complete deployment instructions for ScrowPay escrow platform with AI-powered risk detection.
+How to run ScrowPay locally and how to deploy it to production. **Docker is the only supported way to run the stack** — everything below assumes you have Docker Desktop installed.
 
-## Table of Contents
+For first-time setup, follow [SETUP_CHECKLIST.md](SETUP_CHECKLIST.md) first; this file is the longer reference.
 
-1. [Quick Start](#quick-start)
-2. [Environment Setup](#environment-setup)
-3. [Local Development](#local-development)
-4. [Docker Deployment](#docker-deployment)
-5. [Production Deployment](#production-deployment)
-6. [Squad API Configuration](#squad-api-configuration)
-7. [Troubleshooting](#troubleshooting)
+## Table of contents
+
+1. [Quick start](#quick-start)
+2. [Environment variables](#environment-variables)
+3. [Local development with Docker](#local-development-with-docker)
+4. [Production deployment](#production-deployment)
+5. [Squad API: sandbox vs production](#squad-api-sandbox-vs-production)
+6. [Troubleshooting](#troubleshooting)
+7. [Security checklist](#security-checklist)
 
 ---
 
-## Quick Start
+## Quick start
 
 ### Prerequisites
 
-- **Node.js** (optional, for local development)
-- **Python 3.11+** (for AI engine)
-- **Docker & Docker Compose** (for containerized deployment)
-- **Git** (for version control)
+- **Docker Desktop** with Compose v2 — <https://www.docker.com/products/docker-desktop>
+- **Git**
 
-### 5-Minute Setup
+That's all. No Python, no Node.js, no nginx — Docker handles the entire stack.
 
-```bash
-# 1. Clone the repository
-git clone <repository-url>
+### 5-minute setup
+
+```powershell
+# 1. Clone
+git clone <repository-url> scrowpay
 cd scrowpay
 
-# 2. Set up environment variables
-cp .env.example .env
-# Edit .env with your credentials (see Environment Setup section)
+# 2. Create the three config files
+Copy-Item .env.example                       .env
+Copy-Item frontend\env.js.example            frontend\env.js
+Copy-Item frontend\gemini-config.example.js  frontend\gemini-config.js
+Copy-Item frontend\cloudinary-config.example.js frontend\cloudinary-config.js
 
-# 3. Start with Docker Compose
-docker-compose up -d
+# 3. Edit each one and paste in your real credentials
+#    (Turso, Squad, Gemini, Cloudinary, Resend — see SETUP_CHECKLIST.md)
 
-# 4. Access the application
-# Frontend: http://localhost:8080
-# AI Engine: http://localhost:5000
+# 4. Start everything
+docker compose up -d
+
+# 5. Tail the logs to confirm it booted
+docker compose logs -f
 ```
+
+Then open:
+
+| Page | URL |
+|---|---|
+| Landing | <http://localhost:8080/web.html> |
+| Sign-in | <http://localhost:8080/sign-in.html> |
+| Dashboard | <http://localhost:8080/dashboard.html> |
+| Admin | <http://localhost:8080/admin.html> |
+| AI engine | <http://localhost:5000> |
+| Health | <http://localhost:5000/health> |
 
 ---
 
-## Environment Setup
+## Environment variables
 
-### Required Environment Variables
+Three files hold credentials, none of them are committed:
 
-Create a `.env` file in the project root with the following variables:
+| File | Read by | What it holds |
+|---|---|---|
+| `.env` | The AI engine container (`ai-engine/app.py`) | Resend key, plus a copy of Turso/Squad keys for parity |
+| `frontend/env.js` | The browser | Turso, Squad, AI-engine URL, holding account |
+| `frontend/gemini-config.js` | The browser | Gemini API key |
+| `frontend/cloudinary-config.js` | The browser | Cloudinary cloud name + preset names |
 
-```bash
-# Turso Database
-TURSO_DATABASE_URL=libsql://your-database-name.turso.io
-TURSO_AUTH_TOKEN=your-turso-auth-token-here
+The Turso and Squad keys appear in **both** `.env` and `frontend/env.js`. That's intentional — the browser talks to Turso over HTTP and to Squad's API directly, while the Python service uses its copy for the email/OTP endpoint.
 
-# Squad API (Sandbox for testing)
-SQUAD_SECRET_KEY=sandbox_sk_your-secret-key-here
-SQUAD_PUBLIC_KEY=sandbox_pk_your-public-key-here
-SQUAD_ENVIRONMENT=sandbox
+Templates for each file live alongside them as `*.example`. Step-by-step credential acquisition is in [SETUP_CHECKLIST.md § Step 1](SETUP_CHECKLIST.md#step-1--create-the-external-accounts-free-tier-on-everything).
 
-# AI Risk Engine
-AI_ENGINE_URL=http://localhost:5000
-
-# Holding Account
-HOLDING_ACCOUNT=your-holding-account-number-here
-```
-
-### Getting Your Credentials
-
-#### 1. Turso Database
-
-1. Sign up at [https://turso.tech/](https://turso.tech/)
-2. Create a new database
-3. Copy the database URL (format: `libsql://your-db-name.turso.io`)
-4. Generate an auth token in database settings
-5. Run the schema setup:
-   ```bash
-   # Use Turso CLI or web interface to execute:
-   # frontend/escrow-schema.sql
-   ```
-
-#### 2. Squad API
-
-1. Sign up at [https://squadco.com/](https://squadco.com/)
-2. Go to **API Keys** section in dashboard
-3. Copy your **sandbox keys** for testing:
-   - Secret Key (starts with `sandbox_sk_`)
-   - Public Key (starts with `sandbox_pk_`)
-4. For production, request production keys from Squad support
-
-#### 3. Holding Account
-
-1. Create a virtual account in Squad dashboard
-2. Label it as **"Escrow Holding Account"**
-3. Copy the account number (NUBAN format)
-4. This account will temporarily hold funds during escrow transactions
+> **Heads up:** `.env` is read **once** when a container is created. After editing `.env` you must run `docker compose down && docker compose up -d` — a plain `restart` is not enough.
 
 ---
 
-## Local Development
+## Local development with Docker
 
-### Option 1: Without Docker (Manual Setup)
+### Daily commands
 
-#### Frontend
+```powershell
+# Start (or restart) the stack
+docker compose up -d
 
-```bash
-# Navigate to frontend directory
-cd frontend
+# Stop everything
+docker compose down
 
-# Start a simple HTTP server
-# Python 3:
-python -m http.server 8000
+# Restart after editing .env
+docker compose down ; docker compose up -d
 
-# Python 2:
-python -m SimpleHTTPServer 8000
+# Just restart one service
+docker compose restart frontend     # after editing env.js or any HTML/JS
+docker compose restart ai-engine    # after editing app.py
 
-# Node.js (if you have http-server installed):
-npx http-server -p 8000
+# Tail logs
+docker compose logs -f
+docker compose logs -f ai-engine
+docker compose logs -f frontend
 
-# Access at: http://localhost:8000/website.html
+# Rebuild (after changing requirements.txt or Dockerfile)
+docker compose up -d --build
 ```
 
-#### AI Risk Engine
+### What the stack contains
 
-```bash
-# Navigate to AI engine directory
-cd ai-engine
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Generate synthetic data (if not already done)
-python generate_synthetic_data.py
-
-# Train model (if not already done)
-python train_model.py
-
-# Start Flask API
-python app.py
-
-# Access at: http://localhost:5000
+```
+┌─────────────────────────────────────────┐
+│  scrowpay-frontend  (nginx:alpine)      │
+│  • serves frontend/ on port 8080        │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────┴──────────────────────────┐
+│  scrowpay-ai-engine  (Python 3.11)      │
+│  • Flask + scikit-learn                 │
+│  • port 5000                            │
+│  • reads /app from ai-engine/           │
+│  • env injected from root .env          │
+└─────────────────────────────────────────┘
 ```
 
-### Option 2: With Docker Compose (Recommended)
+The frontend container mounts `./frontend` read-only — any HTML/JS edit is live on browser refresh, no rebuild needed. The AI engine container is built from `ai-engine/Dockerfile` so changes to `app.py` need a `docker compose restart ai-engine`, and changes to `requirements.txt` need a `docker compose up -d --build ai-engine`.
 
-```bash
-# Start all services
-docker-compose up -d
+### Hot-reload tips
 
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
-```
-
-**Services:**
-- Frontend: http://localhost:8080
-- AI Engine: http://localhost:5000
-- Health Check: http://localhost:5000/health
+- **HTML / JS / CSS changes** — just refresh the browser (hard-refresh, Ctrl+Shift+R, after editing `env.js`).
+- **`app.py` changes** — `docker compose restart ai-engine`.
+- **`requirements.txt` changes** — `docker compose up -d --build ai-engine`.
+- **`.env` changes** — `docker compose down ; docker compose up -d`.
 
 ---
 
-## Docker Deployment
+## Production deployment
 
-### Building Images
+You have two natural deployment shapes:
 
-#### Build AI Engine Only
+### Shape A — Self-hosted on a single VPS (simplest)
 
-```bash
-cd ai-engine
-docker build -t scrowpay-ai-engine:latest .
-```
-
-#### Build All Services
+Run the same `docker compose up -d` you use locally on a VPS, behind a TLS-terminating reverse proxy.
 
 ```bash
-docker-compose build
-```
+# On a fresh Ubuntu/Debian VPS:
+ssh user@your-server
+sudo apt update && sudo apt install docker.io docker-compose-plugin git -y
 
-### Running Containers
-
-#### Start All Services
-
-```bash
-docker-compose up -d
-```
-
-#### Start Specific Service
-
-```bash
-# AI Engine only
-docker-compose up -d ai-engine
-
-# Frontend only
-docker-compose up -d frontend
-```
-
-### Managing Containers
-
-```bash
-# View running containers
-docker-compose ps
-
-# View logs
-docker-compose logs -f
-docker-compose logs -f ai-engine
-docker-compose logs -f frontend
-
-# Restart services
-docker-compose restart
-
-# Stop services
-docker-compose stop
-
-# Remove containers
-docker-compose down
-
-# Remove containers and volumes
-docker-compose down -v
-```
-
-### Updating After Code Changes
-
-```bash
-# Rebuild and restart
-docker-compose up -d --build
-
-# Or rebuild specific service
-docker-compose up -d --build ai-engine
-```
-
----
-
-## Production Deployment
-
-### Frontend Deployment
-
-#### Option 1: Vercel (Recommended for Static Sites)
-
-```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Deploy
-cd frontend
-vercel
-
-# Follow prompts to link project
-# Set environment variables in Vercel dashboard
-```
-
-**Environment Variables in Vercel:**
-1. Go to project settings
-2. Navigate to **Environment Variables**
-3. Add all variables from `.env.example`
-4. Redeploy
-
-#### Option 2: Netlify
-
-```bash
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Deploy
-cd frontend
-netlify deploy
-
-# For production
-netlify deploy --prod
-```
-
-**Environment Variables in Netlify:**
-1. Go to **Site settings** → **Build & deploy** → **Environment**
-2. Add all variables from `.env.example`
-3. Redeploy
-
-#### Option 3: GitHub Pages
-
-1. Push code to GitHub
-2. Go to repository **Settings** → **Pages**
-3. Select branch and `/frontend` folder
-4. Save and wait for deployment
-
-**Note:** GitHub Pages doesn't support environment variables. You'll need to hardcode values or use a build step.
-
-### AI Engine Deployment
-
-#### Option 1: Docker on VPS (DigitalOcean, AWS EC2, etc.)
-
-```bash
-# SSH into your server
-ssh user@your-server-ip
-
-# Clone repository
-git clone <repository-url>
+git clone <repository-url> scrowpay
 cd scrowpay
 
-# Set up environment variables
+# Set up the three config files with PRODUCTION credentials
 cp .env.example .env
-nano .env  # Edit with your credentials
+cp frontend/env.js.example frontend/env.js
+cp frontend/gemini-config.example.js frontend/gemini-config.js
+cp frontend/cloudinary-config.example.js frontend/cloudinary-config.js
+# Edit each file with `nano` / `vim`
 
-# Start AI engine with Docker
-cd ai-engine
-docker-compose up -d
-
-# Verify it's running
-curl http://localhost:5000/health
+docker compose up -d
+docker compose logs -f
 ```
 
-**Set up reverse proxy (nginx):**
+Now put nginx (or Caddy) in front for TLS:
 
 ```nginx
+# /etc/nginx/sites-available/scrowpay
 server {
-    listen 443 ssl;
-    server_name ai-engine.yourdomain.com;
+    listen 443 ssl http2;
+    server_name app.yourdomain.com;
+    ssl_certificate     /etc/letsencrypt/live/app.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.yourdomain.com/privkey.pem;
 
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:5000;
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        proxy_connect_timeout 10s;
-        proxy_send_timeout 10s;
-        proxy_read_timeout 10s;
     }
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name app.yourdomain.com;
+    return 301 https://$host$request_uri;
 }
 ```
 
-#### Option 2: Heroku
+Then update `AI_ENGINE_URL` in `frontend/env.js` to `https://app.yourdomain.com/api` so the browser hits your TLS endpoint, and `docker compose restart frontend`.
+
+### Shape B — Frontend on Vercel/Netlify, AI engine on a small VPS
+
+The frontend is pure static files. Any static-site host works.
+
+**Vercel:**
 
 ```bash
-# Install Heroku CLI
-# https://devcenter.heroku.com/articles/heroku-cli
-
-# Login
-heroku login
-
-# Create app
-cd ai-engine
-heroku create scrowpay-ai-engine
-
-# Set environment variables
-heroku config:set FLASK_ENV=production
-
-# Deploy
-git push heroku main
-
-# View logs
-heroku logs --tail
+npm install -g vercel
+cd frontend
+vercel --prod
 ```
 
-#### Option 3: Railway
-
-1. Go to [railway.app](https://railway.app)
-2. Create new project
-3. Connect GitHub repository
-4. Select `ai-engine` directory
-5. Add environment variables
-6. Deploy
-
-### Database Setup (Turso)
+**Netlify:**
 
 ```bash
-# Install Turso CLI
-curl -sSfL https://get.tur.so/install.sh | bash
-
-# Login
-turso auth login
-
-# Create database
-turso db create scrowpay-db
-
-# Get connection URL
-turso db show scrowpay-db
-
-# Create auth token
-turso db tokens create scrowpay-db
-
-# Execute schema
-turso db shell scrowpay-db < frontend/escrow-schema.sql
+npm install -g netlify-cli
+cd frontend
+netlify deploy --prod --dir .
 ```
+
+For both: open the project's **Environment Variables** panel and set anything you want injected into `frontend/env.js` at build time. Or simpler — generate `env.js` locally with production values and let the platform serve it as a static asset (gitignored, scp'd into a build step).
+
+For the AI engine, follow Shape A on a small VPS but **only run the `ai-engine` service**:
+
+```bash
+docker compose up -d ai-engine
+```
+
+Put nginx + Let's Encrypt in front of port 5000, expose at `https://api.yourdomain.com`, and put that URL into your frontend's `AI_ENGINE_URL`.
+
+### Database (Turso)
+
+Turso is fully managed — no deployment needed. For production:
+
+- Create a separate Turso database (don't share with dev).
+- Generate a long-lived auth token under that database's **Tokens** tab.
+- Add a daily backup task using the Turso CLI:
+  ```bash
+  turso db shell <prod-db-name> .dump > backup_$(date +%Y%m%d).sql
+  ```
+
+### Image storage (Cloudinary), email (Resend), Gemini
+
+All three are managed services — no deployment. Just point your production keys at production resources:
+
+- **Cloudinary**: optionally create a separate cloud for production, or just use folders to separate (`prod/disputes/...`).
+- **Resend**: verify your sending domain (`yourdomain.com`) under **Domains**, then set `RESEND_FROM_ADDRESS=ScrowPay <noreply@yourdomain.com>` in `.env`.
+- **Gemini**: rotate your AI Studio key periodically.
 
 ---
 
-## Squad API Configuration
+## Squad API: sandbox vs production
 
-### Sandbox vs Production
+| | Sandbox | Production |
+|---|---|---|
+| Secret-key prefix | `sandbox_sk_` | `sk_live_` |
+| Public-key prefix | `sandbox_pk_` | `pk_live_` |
+| Base URL | `sandbox-api-d.squadco.com` | `api-d.squadco.com` |
+| BVN/NIN | Test values only | Real values |
+| Money | None — fake | **Real** |
+| Use for | Local dev, demos, staging | Production only |
 
-#### Sandbox (Testing)
+### Switching environments
 
-- **Purpose:** Testing and development
-- **Credentials:** Start with `sandbox_`
-- **Limitations:** 
-  - Limited transaction volume
-  - Test data only
-  - May have rate limits
-- **Use for:** Local development, staging, demos
-
-**Example:**
-```bash
-SQUAD_SECRET_KEY=sandbox_sk_abc123...
-SQUAD_PUBLIC_KEY=sandbox_pk_xyz789...
-SQUAD_ENVIRONMENT=sandbox
-```
-
-#### Production (Live)
-
-- **Purpose:** Real transactions with real money
-- **Credentials:** Start with `sk_` and `pk_`
-- **Requirements:**
-  - Business verification
-  - KYC compliance
-  - Request from Squad support
-- **Use for:** Production deployment only
-
-**Example:**
-```bash
-SQUAD_SECRET_KEY=sk_live_abc123...
-SQUAD_PUBLIC_KEY=pk_live_xyz789...
-SQUAD_ENVIRONMENT=production
-```
-
-### Switching Environments
-
-1. Update `.env` file with appropriate credentials
-2. Restart services:
-   ```bash
-   docker-compose restart
-   ```
-3. Verify environment in logs:
-   ```bash
-   docker-compose logs -f frontend
-   ```
-
-### Squad API Endpoints
-
-| Environment | Base URL |
-|-------------|----------|
-| Sandbox | `https://sandbox-api-d.squadco.com` |
-| Production | `https://api-d.squadco.com` |
-
-### Testing Squad Integration
-
-```bash
-# Test virtual account creation
-curl -X POST https://sandbox-api-d.squadco.com/virtual-account/create \
-  -H "Authorization: Bearer YOUR_SECRET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_identifier": "test_user_123",
-    "first_name": "John",
-    "last_name": "Doe",
-    "mobile_num": "08012345678",
-    "email": "john@example.com",
-    "bvn": "12345678901"
-  }'
-```
+1. Update `SQUAD_SECRET_KEY`, `SQUAD_PUBLIC_KEY`, `SQUAD_ENVIRONMENT` in **both** `.env` and `frontend/env.js`.
+2. `docker compose down ; docker compose up -d`
+3. Hard-refresh the browser to bust cached `env.js`.
+4. Verify in the AI engine logs that the new key is detected.
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+The most common day-to-day issues are covered with copy-paste fixes in [SETUP_CHECKLIST.md § Troubleshooting & FAQ](SETUP_CHECKLIST.md#troubleshooting--faq). Below are the production-specific ones.
 
-#### 1. "Database connection failed"
-
-**Symptoms:** Frontend can't connect to Turso DB
-
-**Solutions:**
-- Verify `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in `.env`
-- Check internet connection
-- Verify database exists in Turso dashboard
-- Check if auth token is expired (regenerate if needed)
+### Container exits immediately on startup
 
 ```bash
-# Test connection
-curl -X POST "YOUR_TURSO_DATABASE_URL" \
-  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-  -d '{"statements": ["SELECT 1"]}'
+docker compose logs --tail 100 ai-engine
 ```
 
-#### 2. "Squad API error"
+Almost always a missing env var. Check the `.env` was copied to the server correctly (no Windows line endings — use `dos2unix .env` if scp'd from Windows).
 
-**Symptoms:** Payment operations fail
+### "Database connection failed" in production
 
-**Solutions:**
-- Verify Squad API credentials in `.env`
-- Check if using correct environment (sandbox vs production)
-- Verify Squad account is active
-- Check Squad API status: https://status.squadco.com
+- Free-tier Turso has a connection cap — if you're seeing intermittent failures under load, upgrade the plan.
+- Check the auth token hasn't expired. Production tokens should be long-lived (rotate quarterly via the Turso dashboard).
+- Verify the database URL is reachable from the VPS (egress isn't firewalled).
+
+### Squad API errors
+
+- Production Squad keys must be requested from Squad support after KYC. They will not work without business verification.
+- Status page: <https://status.squadco.com>
+- Check `SQUAD_ENVIRONMENT=production` is set — the SquadAPIService swaps base URLs based on this flag.
+
+### Slow AI engine response
+
+Expected: <3 seconds per `/api/v1/score` call.
 
 ```bash
-# Test Squad API
-curl -X GET https://sandbox-api-d.squadco.com/merchant/verify \
-  -H "Authorization: Bearer YOUR_SECRET_KEY"
+docker stats scrowpay-ai-engine
 ```
 
-#### 3. "AI Engine unavailable"
+If RAM is exhausted, bump limits in `docker-compose.yml`:
 
-**Symptoms:** Risk scoring fails, transactions blocked
-
-**Solutions:**
-- Check if AI engine container is running:
-  ```bash
-  docker-compose ps ai-engine
-  ```
-- View AI engine logs:
-  ```bash
-  docker-compose logs -f ai-engine
-  ```
-- Verify health endpoint:
-  ```bash
-  curl http://localhost:5000/health
-  ```
-- Restart AI engine:
-  ```bash
-  docker-compose restart ai-engine
-  ```
-
-#### 4. "Port already in use"
-
-**Symptoms:** Docker fails to start, port conflict
-
-**Solutions:**
-- Check what's using the port:
-  ```bash
-  # Windows
-  netstat -ano | findstr :5000
-  
-  # Mac/Linux
-  lsof -i :5000
-  ```
-- Change port in `docker-compose.yml`:
-  ```yaml
-  ports:
-    - "5001:5000"  # Use 5001 instead of 5000
-  ```
-- Stop conflicting service
-
-#### 5. "Models not found" in AI Engine
-
-**Symptoms:** AI engine fails to start, training errors
-
-**Solutions:**
-- Pre-train models before Docker build:
-  ```bash
-  cd ai-engine
-  python generate_synthetic_data.py
-  python train_model.py
-  docker-compose up -d --build
-  ```
-- Check if models directory exists:
-  ```bash
-  ls -la ai-engine/models/
-  ```
-- Let container auto-train (takes 30-60 seconds on first start)
-
-#### 6. "CORS errors" in browser
-
-**Symptoms:** Frontend can't call AI engine API
-
-**Solutions:**
-- Verify `AI_ENGINE_URL` in frontend config
-- Check nginx configuration for CORS headers
-- Use Docker Compose (handles networking automatically)
-- For local development without Docker:
-  ```javascript
-  // frontend/config.js
-  aiEngine: {
-    url: 'http://localhost:5000'
-  }
-  ```
-
-### Performance Issues
-
-#### Slow AI Engine Response
-
-**Expected:** <3 seconds per request
-**If slower:**
-
-1. Check container resources:
-   ```bash
-   docker stats scrowpay-ai-engine
-   ```
-
-2. Increase CPU/memory limits:
-   ```yaml
-   # docker-compose.yml
-   ai-engine:
-     deploy:
-       resources:
-         limits:
-           cpus: '2'
-           memory: 1G
-   ```
-
-3. Verify model is loaded (not training on each request)
-
-#### Slow Frontend Load Time
-
-**Expected:** <2 seconds on 4G
-
-**Solutions:**
-- Enable gzip compression (already in nginx.conf)
-- Optimize images
-- Use CDN for static assets
-- Enable browser caching
-
-### Logs and Debugging
-
-```bash
-# View all logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f ai-engine
-docker-compose logs -f frontend
-
-# View last 100 lines
-docker-compose logs --tail 100 ai-engine
-
-# View logs since 1 hour ago
-docker-compose logs --since 1h ai-engine
-
-# Export logs to file
-docker-compose logs > logs.txt
+```yaml
+ai-engine:
+  deploy:
+    resources:
+      limits:
+        cpus: '2'
+        memory: 1G
 ```
 
-### Health Checks
+### CORS errors in browser
+
+The Flask service has flask-cors configured for `r"/api/v1/*"` and `r"/health"`. If you still see CORS errors:
+
+- Make sure your reverse proxy isn't stripping the `Access-Control-Allow-Origin` header. Add `proxy_pass_header Access-Control-Allow-Origin;` if needed.
+- Verify the OPTIONS preflight returns 204 with CORS headers:
+  ```bash
+  curl -i -X OPTIONS https://api.yourdomain.com/api/v1/notify/otp \
+    -H "Origin: https://app.yourdomain.com" \
+    -H "Access-Control-Request-Method: POST"
+  ```
+
+### Logs and debugging
 
 ```bash
-# AI Engine health
-curl http://localhost:5000/health
+docker compose logs -f                   # all
+docker compose logs -f ai-engine
+docker compose logs --tail 100 ai-engine
+docker compose logs --since 1h ai-engine
+docker compose logs > scrowpay-logs.txt  # export
+```
 
-# Expected response:
-# {
-#   "status": "healthy",
-#   "model_loaded": true,
-#   "model_version": "1.0.0",
-#   "timestamp": "2024-01-15T14:30:00Z"
-# }
+### Health checks
 
-# Frontend health (nginx)
-curl http://localhost:8080
+```bash
+# AI engine
+curl https://api.yourdomain.com/health
+# {"status":"healthy","model_loaded":true,"model_version":"1.0.0",...}
 
-# Database health (Turso)
-curl -X POST "YOUR_TURSO_DATABASE_URL" \
-  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-  -d '{"statements": ["SELECT 1"]}'
+# Frontend
+curl -I https://app.yourdomain.com
+# HTTP/2 200
 ```
 
 ---
 
-## Security Checklist
+## Security checklist
 
-Before deploying to production:
+Before you point real users at this:
 
-- [ ] All environment variables set correctly
-- [ ] `.env` file NOT committed to git
-- [ ] Using production Squad API credentials
-- [ ] HTTPS enabled (SSL/TLS certificates)
-- [ ] Database auth tokens rotated
-- [ ] Firewall rules configured
-- [ ] Rate limiting enabled
-- [ ] CORS configured properly
-- [ ] Security headers enabled (in nginx.conf)
-- [ ] Logs monitored for suspicious activity
-- [ ] Backup strategy in place
+- [ ] All env files (`.env`, `frontend/env.js`, `frontend/gemini-config.js`, `frontend/cloudinary-config.js`) are NOT in git
+- [ ] You're using **production** Squad keys, not sandbox
+- [ ] HTTPS terminated at the reverse proxy (Let's Encrypt or paid cert)
+- [ ] Turso auth token has a sensible expiry and is rotated quarterly
+- [ ] Resend sending domain is verified — no longer using `onboarding@resend.dev`
+- [ ] Firewall: only ports 80, 443 (and 22 for SSH) exposed publicly. **5000 and 8080 should NOT be reachable from the internet.**
+- [ ] Rate limiting at nginx / Cloudflare (the in-app rate limiter is a backstop, not a primary defence)
+- [ ] Security headers (already in `nginx.conf` for the in-container nginx; replicate in your TLS-terminating proxy)
+- [ ] Logs forwarded somewhere durable (CloudWatch / Loki / Papertrail)
+- [ ] Backup strategy for the Turso database (daily `.dump` is fine for dev; weekly snapshots + daily incremental for prod)
+
+---
+
+## Updating in production
+
+```bash
+ssh user@your-server
+cd scrowpay
+
+# Pull new code
+git pull
+
+# Rebuild the AI engine if Python deps changed
+docker compose up -d --build
+
+# Otherwise just recreate
+docker compose down ; docker compose up -d
+
+# Verify
+docker compose logs -f
+curl https://api.yourdomain.com/health
+```
+
+For zero-downtime, run two VPSes behind a load balancer and rolling-restart them. For a hackathon project, a 30-second outage during deploy is fine.
 
 ---
 
 ## Support
 
-For issues or questions:
-
-1. Check this deployment guide
-2. Review logs: `docker-compose logs -f`
-3. Check health endpoints
-4. Review Squad API documentation: https://squadco.com/docs
-5. Review Turso documentation: https://docs.turso.tech
-
----
-
-## Next Steps
-
-After successful deployment:
-
-1. ✅ Test complete transaction flow
-2. ✅ Verify AI risk scoring works
-3. ✅ Test Squad API integration
-4. ✅ Set up monitoring and alerts
-5. ✅ Configure backup strategy
-6. ✅ Document any custom configurations
-7. ✅ Train team on deployment process
-
----
-
-**Built for ScrowPay Hackathon** 🚀
+1. Check this file
+2. Check [SETUP_CHECKLIST.md § Troubleshooting](SETUP_CHECKLIST.md#troubleshooting--faq)
+3. Tail logs: `docker compose logs -f`
+4. Check health endpoints
+5. Squad docs: <https://squadco.com/docs>
+6. Turso docs: <https://docs.turso.tech>

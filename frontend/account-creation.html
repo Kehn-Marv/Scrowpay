@@ -585,6 +585,12 @@
     // declaring the slot here keeps the rest of the file's render
     // closures able to reference it without re-declaring.
     let emailOTPService = null;
+    // Resolves (with the service) once EmailOTPService is ready,
+    // or resolves with null if init fails. Used by the Stage 1 Next
+    // handler to wait instead of silently skipping when the user
+    // clicks Next before initialization finishes.
+    let _emailOTPServiceReadyResolve;
+    const emailOTPServiceReady = new Promise(res => { _emailOTPServiceReadyResolve = res; });
 
     /**
      * Grab the current frame from a live <video> element, encode it as
@@ -689,14 +695,19 @@
             await emailOTPService.connect();
             window.emailOTPService = emailOTPService;
             console.log('[App] ✅ EmailOTPService ready');
+            _emailOTPServiceReadyResolve(emailOTPService);
+          } else {
+            _emailOTPServiceReadyResolve(null);
           }
         } catch (otpErr) {
           console.warn('[App] EmailOTPService init failed — signup will fall back to legacy 123456 OTP:', otpErr.message);
+          _emailOTPServiceReadyResolve(null);
         }
       })
       .catch(error => {
         console.error('[App] ❌ Database connection failed:', error);
         showToast('Database connection failed. Please check your internet connection.', 5000);
+        _emailOTPServiceReadyResolve(null);
       });
 
     // Modal functions
@@ -1100,32 +1111,47 @@
 
           // Fire the OTP request BEFORE navigating to Stage 2 so the
           // email is already on its way by the time the user is
-          // looking at the input box. Best-effort — Stage 2 also
-          // exposes a "Resend code" button that re-triggers this.
-          if (emailOTPService) {
-            nextBtn.textContent = 'Sending code...';
-            try {
-              const result = await emailOTPService.requestOTP(emailValue, {
+          // looking at the input box. If the service isn't ready yet
+          // (its TursoDB connection is still in flight) we wait for
+          // it instead of skipping. We show a spinner inside the
+          // button so the user knows something is happening.
+          nextBtn.disabled = true;
+          nextBtn.innerHTML = '<span class="spinner"></span><span>Sending code…</span>';
+          try {
+            // If emailOTPService is still null (init in flight), wait
+            // for the ready promise. 30s is intentionally generous —
+            // the OTP service spins up its own TursoDBService which
+            // can take several seconds on cold network.
+            let svc = emailOTPService;
+            if (!svc) {
+              svc = await Promise.race([
+                emailOTPServiceReady,
+                new Promise(res => setTimeout(() => res(null), 30000))
+              ]);
+            }
+            if (svc) {
+              const result = await svc.requestOTP(emailValue, {
                 purpose: 'signup',
-                name: '' // we don't have a first name yet at this stage
+                name: ''
               });
               if (result.delivered) {
                 showToast('Verification code sent to ' + emailValue);
               } else if (result.fallback) {
-                // Resend not configured / engine unreachable. Stage 2
-                // will detect this and show a dev-friendly hint.
                 console.warn('[Stage1] Email OTP fell back to dev mode.');
                 showToast('Email service unavailable — using test code in dev');
               } else if (result.error) {
                 showToast(result.error, 4000);
               }
-            } catch (otpErr) {
-              console.warn('[Stage1] OTP request failed:', otpErr);
-              showToast('Could not send verification email — please try again on the next screen', 4000);
+            } else {
+              console.warn('[Stage1] EmailOTPService unavailable — skipping send.');
+              showToast('Email service is taking longer than expected — try “Resend code” on the next screen', 5000);
             }
-            nextBtn.disabled = false;
-            nextBtn.textContent = 'Next';
+          } catch (otpErr) {
+            console.warn('[Stage1] OTP request failed:', otpErr);
+            showToast('Could not send verification email — please try again on the next screen', 4000);
           }
+          nextBtn.disabled = false;
+          nextBtn.textContent = 'Next';
 
           this.goToNextStage();
         });

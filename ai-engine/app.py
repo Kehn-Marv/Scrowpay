@@ -96,6 +96,21 @@ CORS(app, resources={
 # correlate decisions across services.
 ENGINE_API_VERSION = '2.0.0'
 
+
+# Manual CORS preflight short-circuit. Newer flask-cors (>=6.0) no longer
+# auto-registers OPTIONS handlers on POST-only routes in some setups, so
+# the browser's preflight returns 404 and the actual POST never fires.
+# Intercepting here guarantees a 204 with CORS headers attached by the
+# CORS extension's after_request hook regardless of route methods.
+@app.before_request
+def _short_circuit_cors_preflight():
+    if request.method == 'OPTIONS':
+        from flask import make_response
+        resp = make_response('', 204)
+        # flask-cors's after_request will add Access-Control-Allow-Origin
+        # etc.; we just need to make sure we return a 2xx, not a 404.
+        return resp
+
 # Global variables for model and scaler
 model = None
 scaler = None
