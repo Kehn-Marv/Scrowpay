@@ -199,23 +199,26 @@ class InputValidationService {
    */
   validateInspectionWindow(days) {
     const errors = [];
-    
-    // Convert to integer
-    const numDays = parseInt(days, 10);
-    
+
+    // Convert to integer. Default to 0 — the inspection-window concept
+    // has been retired from the UI; the field is kept on the schema for
+    // backward compatibility but is no longer collected from users.
+    const raw = (days === undefined || days === null || days === '') ? 0 : days;
+    const numDays = parseInt(raw, 10);
+
     if (isNaN(numDays) || !Number.isInteger(numDays)) {
       errors.push('Inspection window must be a whole number');
       return { valid: false, value: 0, errors };
     }
-    
-    if (numDays < 1) {
-      errors.push('Inspection window must be at least 1 day');
+
+    if (numDays < 0) {
+      errors.push('Inspection window cannot be negative');
     }
-    
+
     if (numDays > 14) {
       errors.push('Inspection window must not exceed 14 days');
     }
-    
+
     return {
       valid: errors.length === 0,
       value: numDays,

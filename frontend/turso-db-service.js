@@ -401,7 +401,10 @@ class TursoDBService {
         // a single free-text field for now (state + city + street).
         // We deliberately do NOT add a `nickname` column — the user
         // explicitly opted out of having a nickname field on profile.
-        { name: 'address',                         definition: 'TEXT' }
+        { name: 'address',                         definition: 'TEXT' },
+        // Hackathon demo balance — credited on account creation so
+        // judges can test the full escrow flow without real deposits.
+        { name: 'demo_balance',                    definition: 'REAL DEFAULT 0' }
       ];
       
       // Add missing columns
@@ -1063,6 +1066,13 @@ class TursoDBService {
         args.push(userData.emailVerified ? 1 : 0);
       }
 
+      // Hackathon demo: credit a random balance (₦150,000–₦500,000)
+      // so judges can test escrow funding, withdrawals, etc. without
+      // needing real bank deposits.
+      const demoBalance = Math.floor(Math.random() * 350001) + 150000;
+      columns.push('demo_balance');
+      args.push(demoBalance);
+
       const placeholders = columns.map(() => '?').join(', ');
       const sql = `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders})`;
       
@@ -1401,6 +1411,41 @@ class TursoDBService {
         }
       }
       console.log('[TursoDBService] ✅ AI risk log indexes created');
+      
+      // Create withdrawal_history table (Squad Transfer API payouts)
+      const createWithdrawalHistoryTableSql = `
+        CREATE TABLE IF NOT EXISTS withdrawal_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          amount REAL NOT NULL CHECK(amount >= 100),
+          bank_name TEXT NOT NULL,
+          bank_code TEXT NOT NULL,
+          account_number TEXT NOT NULL,
+          account_name TEXT NOT NULL,
+          transaction_reference TEXT UNIQUE NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'success', 'failed', 'reversed')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `;
+      
+      await this._executeHttp(createWithdrawalHistoryTableSql);
+      console.log('[TursoDBService] ✅ Withdrawal history table created');
+      
+      const withdrawalIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_withdrawal_user_id ON withdrawal_history(user_id)',
+        'CREATE INDEX IF NOT EXISTS idx_withdrawal_reference ON withdrawal_history(transaction_reference)',
+        'CREATE INDEX IF NOT EXISTS idx_withdrawal_created_at ON withdrawal_history(created_at)'
+      ];
+      
+      for (const indexSql of withdrawalIndexes) {
+        try {
+          await this._executeHttp(indexSql);
+        } catch (e) {
+          console.log('[TursoDBService] Index already exists:', e.message);
+        }
+      }
+      console.log('[TursoDBService] ✅ Withdrawal history indexes created');
       
       console.log('[TursoDBService] ✅ Escrow database schema setup complete');
       

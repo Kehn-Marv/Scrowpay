@@ -23,6 +23,7 @@ const CONFIG = {
   squad: {
     secretKey: window.ENV?.SQUAD_SECRET_KEY || '',
     publicKey: window.ENV?.SQUAD_PUBLIC_KEY || '',
+    merchantId: window.ENV?.SQUAD_MERCHANT_ID || '',
     environment: window.ENV?.SQUAD_ENVIRONMENT || 'sandbox'
   },
   

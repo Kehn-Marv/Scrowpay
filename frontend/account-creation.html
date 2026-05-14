@@ -1109,46 +1109,44 @@
           registrationState.emailVerified = false;
           registrationState.verificationStatus.otpVerified = false;
 
-          // Fire the OTP request BEFORE navigating to Stage 2 so the
-          // email is already on its way by the time the user is
-          // looking at the input box. If the service isn't ready yet
-          // (its TursoDB connection is still in flight) we wait for
-          // it instead of skipping. We show a spinner inside the
-          // button so the user knows something is happening.
+          // Only send real email OTP to the owner's email (Resend
+          // free-tier limitation). Everyone else uses hardcoded 123456.
+          const OWNER_EMAIL = 'kehnmarvv@gmail.com';
+          const isOwnerEmail = emailValue.trim().toLowerCase() === OWNER_EMAIL;
+
           nextBtn.disabled = true;
-          nextBtn.innerHTML = '<span class="spinner"></span><span>Sending code…</span>';
-          try {
-            // If emailOTPService is still null (init in flight), wait
-            // for the ready promise. 30s is intentionally generous —
-            // the OTP service spins up its own TursoDBService which
-            // can take several seconds on cold network.
-            let svc = emailOTPService;
-            if (!svc) {
-              svc = await Promise.race([
-                emailOTPServiceReady,
-                new Promise(res => setTimeout(() => res(null), 30000))
-              ]);
-            }
-            if (svc) {
-              const result = await svc.requestOTP(emailValue, {
-                purpose: 'signup',
-                name: ''
-              });
-              if (result.delivered) {
-                showToast('Verification code sent to ' + emailValue);
-              } else if (result.fallback) {
-                console.warn('[Stage1] Email OTP fell back to dev mode.');
-                showToast('Email service unavailable — using test code in dev');
-              } else if (result.error) {
-                showToast(result.error, 4000);
+          if (isOwnerEmail) {
+            nextBtn.innerHTML = '<span class="spinner"></span><span>Sending code…</span>';
+            try {
+              let svc = emailOTPService;
+              if (!svc) {
+                svc = await Promise.race([
+                  emailOTPServiceReady,
+                  new Promise(res => setTimeout(() => res(null), 30000))
+                ]);
               }
-            } else {
-              console.warn('[Stage1] EmailOTPService unavailable — skipping send.');
-              showToast('Email service is taking longer than expected — try “Resend code” on the next screen', 5000);
+              if (svc) {
+                const result = await svc.requestOTP(emailValue, {
+                  purpose: 'signup',
+                  name: ''
+                });
+                if (result.delivered) {
+                  showToast('Verification code sent to ' + emailValue);
+                } else if (result.fallback) {
+                  showToast('Using test code: 123456');
+                } else if (result.error) {
+                  showToast(result.error, 4000);
+                }
+              } else {
+                showToast('Email service unavailable — use test code 123456', 4000);
+              }
+            } catch (otpErr) {
+              console.warn('[Stage1] OTP request failed:', otpErr);
+              showToast('Could not send email — use test code 123456', 4000);
             }
-          } catch (otpErr) {
-            console.warn('[Stage1] OTP request failed:', otpErr);
-            showToast('Could not send verification email — please try again on the next screen', 4000);
+          } else {
+            // Non-owner email: skip email sending, use hardcoded OTP
+            showToast('Verification code ready — enter 123456 on the next screen');
           }
           nextBtn.disabled = false;
           nextBtn.textContent = 'Next';
@@ -1246,6 +1244,16 @@
 
         resendBtn.addEventListener('click', async () => {
           if (resendCooldown > 0) return;
+          const OWNER_EMAIL = 'kehnmarvv@gmail.com';
+          const isOwnerEmail = (registrationState.email || '').trim().toLowerCase() === OWNER_EMAIL;
+
+          if (!isOwnerEmail) {
+            // Non-owner: just remind them of the test code
+            showToast('Use the test code: 123456', 3000);
+            resendCooldown = 10;
+            refreshResendUi();
+            return;
+          }
           if (!emailOTPService) {
             showToast('Email service unavailable — try the test code 123456', 4000);
             return;
@@ -1282,17 +1290,17 @@
 
           try {
             let verified = false;
+            const OWNER_EMAIL = 'kehnmarvv@gmail.com';
+            const isOwnerEmail = (registrationState.email || '').trim().toLowerCase() === OWNER_EMAIL;
 
-            if (emailOTPService) {
+            if (isOwnerEmail && emailOTPService) {
+              // Owner email: use real EmailOTPService verification
               const result = await emailOTPService.verifyOTP(
                 registrationState.email, otp, 'signup'
               );
               if (result.ok) {
                 verified = true;
               } else if (result.reason === 'no_active_otp') {
-                // No OTP row exists — Stage 1 couldn't reach the
-                // engine. Fall back to dev-mode hardcoded code so
-                // local testing isn't blocked.
                 console.warn('[Stage2] No live OTP — falling back to dev OTPService.');
                 verified = OTPService.verifyOTP(otp);
               } else if (result.reason === 'expired') {
@@ -1306,7 +1314,6 @@
                 ]);
                 return;
               } else {
-                // mismatch / bad_format — show how many attempts left
                 const left = result.attemptsLeft != null ? ` (${result.attemptsLeft} ${result.attemptsLeft === 1 ? 'try' : 'tries'} left)` : '';
                 showModal('Incorrect Code', 'That code doesn\u2019t match' + left + '. Please double-check and try again.', [
                   { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
@@ -1314,7 +1321,7 @@
                 return;
               }
             } else {
-              // EmailOTPService failed to initialize at all — pure dev path.
+              // Non-owner email OR no service: use hardcoded 123456
               verified = OTPService.verifyOTP(otp);
               if (!verified) {
                 showModal('Incorrect Code', 'That code doesn\u2019t match. Please try again.', [

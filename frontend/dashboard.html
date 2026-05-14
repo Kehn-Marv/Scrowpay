@@ -2053,24 +2053,6 @@
             <p id="error-delivery-timeline" class="error-text hidden"></p>
           </div>
           
-          <!-- Inspection Window -->
-          <div class="modal-form-group">
-            <label for="inspection-window" class="modal-label">
-              Inspection Window (days) <span style="color: #ff6b6b;">*</span>
-            </label>
-            <input
-              type="number"
-              id="inspection-window"
-              name="inspectionWindowDays"
-              min="1"
-              max="14"
-              class="modal-input"
-              placeholder="Enter inspection period (1-14 days)"
-              required
-            />
-            <p id="error-inspection-window" class="error-text hidden"></p>
-          </div>
-
           <!-- Transaction Type: Product vs Service.
                Drives whether the proof-of-legitimacy uploader is required.
                For services (e.g. graphic design, consulting) physical
@@ -2299,10 +2281,6 @@
                 <div class="inspection-value" id="join-amount" style="font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;">—</div>
               </div>
               <div>
-                <div class="inspection-label">Inspection Window</div>
-                <div class="inspection-value" id="join-inspection-window">—</div>
-              </div>
-              <div>
                 <div class="inspection-label">Delivery Deadline</div>
                 <div class="inspection-value" id="join-delivery">—</div>
               </div>
@@ -2397,10 +2375,6 @@
             <div>
               <p class="text-sm text-brand-subtext mb-1">Delivery Timeline</p>
               <p id="fund-delivery-timeline" class="font-semibold text-brand-dark">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Inspection Window</p>
-              <p id="fund-inspection-window" class="font-semibold text-brand-dark">-</p>
             </div>
             <div class="col-span-2">
               <p class="text-sm text-brand-subtext mb-1">Item Description</p>
@@ -2903,6 +2877,10 @@
             <span class="profile-row-label">Member since</span>
             <span id="profile-row-since" class="profile-row-value">—</span>
           </div>
+          <div class="profile-row" style="border-top: 1px solid #f1f3f5; margin-top: 4px; padding-top: 10px;">
+            <span class="profile-row-label">Demo balance</span>
+            <span id="profile-row-balance" class="profile-row-value" style="color: #00a341; font-weight: 700;">—</span>
+          </div>
         </div>
 
         <!-- KYC section -->
@@ -3111,9 +3089,17 @@
               <p class="text-sm text-brand-subtext mb-1">Delivery Timeline</p>
               <p id="details-delivery-timeline" class="text-brand-dark">-</p>
             </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-4" id="details-trust-section" style="display:none;">
             <div>
-              <p class="text-sm text-brand-subtext mb-1">Inspection Window</p>
-              <p id="details-inspection-window" class="text-brand-dark">-</p>
+              <p class="text-sm text-brand-subtext mb-1" id="details-trust-label">Counterparty Trust Score</p>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="details-trust-fill" class="h-full bg-green-500 transition-all" style="width: 0%"></div>
+                </div>
+                <span id="details-trust-value" class="font-semibold text-brand-dark">-</span>
+              </div>
             </div>
           </div>
           
@@ -3265,27 +3251,27 @@
             <label for="withdraw-bank-name" class="modal-label">Bank</label>
             <select id="withdraw-bank-name" name="bankName" class="modal-input" required>
               <option value="">Select bank</option>
-              <option value="Access Bank">Access Bank</option>
-              <option value="Citibank">Citibank</option>
-              <option value="Ecobank">Ecobank</option>
-              <option value="Fidelity Bank">Fidelity Bank</option>
-              <option value="First Bank">First Bank</option>
-              <option value="FCMB">FCMB</option>
-              <option value="GTBank">GTBank</option>
-              <option value="Heritage Bank">Heritage Bank</option>
-              <option value="Keystone Bank">Keystone Bank</option>
-              <option value="Kuda">Kuda</option>
-              <option value="Opay">Opay</option>
-              <option value="Palmpay">Palmpay</option>
-              <option value="Polaris Bank">Polaris Bank</option>
-              <option value="Stanbic IBTC">Stanbic IBTC</option>
-              <option value="Standard Chartered">Standard Chartered</option>
-              <option value="Sterling Bank">Sterling Bank</option>
-              <option value="Union Bank">Union Bank</option>
-              <option value="UBA">UBA</option>
-              <option value="Unity Bank">Unity Bank</option>
-              <option value="Wema Bank">Wema Bank</option>
-              <option value="Zenith Bank">Zenith Bank</option>
+              <option value="Access Bank" data-code="000014">Access Bank</option>
+              <option value="Citibank" data-code="000009">Citibank</option>
+              <option value="Ecobank" data-code="000010">Ecobank</option>
+              <option value="Fidelity Bank" data-code="000007">Fidelity Bank</option>
+              <option value="First Bank" data-code="000016">First Bank</option>
+              <option value="FCMB" data-code="000003">FCMB</option>
+              <option value="GTBank" data-code="000013">GTBank</option>
+              <option value="Heritage Bank" data-code="000020">Heritage Bank</option>
+              <option value="Keystone Bank" data-code="000002">Keystone Bank</option>
+              <option value="Kuda" data-code="090267">Kuda</option>
+              <option value="Opay" data-code="100004">Opay</option>
+              <option value="Palmpay" data-code="100033">Palmpay</option>
+              <option value="Polaris Bank" data-code="000008">Polaris Bank</option>
+              <option value="Stanbic IBTC" data-code="000012">Stanbic IBTC</option>
+              <option value="Standard Chartered" data-code="000021">Standard Chartered</option>
+              <option value="Sterling Bank" data-code="000001">Sterling Bank</option>
+              <option value="Union Bank" data-code="000018">Union Bank</option>
+              <option value="UBA" data-code="000004">UBA</option>
+              <option value="Unity Bank" data-code="000011">Unity Bank</option>
+              <option value="Wema Bank" data-code="000017">Wema Bank</option>
+              <option value="Zenith Bank" data-code="000015">Zenith Bank</option>
             </select>
             <p id="error-withdraw-bank-name" class="error-text hidden"></p>
           </div>
@@ -3552,6 +3538,7 @@
   <script src="TrustEngineService.js"></script>
   <script src="AIRiskService.js"></script>
   <script src="squad-api-service.js"></script>
+  <script src="SquadTransferService.js"></script>
   <script src="StateMachineService.js"></script>
   <script src="BalanceService.js"></script>
 
@@ -3977,7 +3964,6 @@
       clearFieldError('item-description');
       clearFieldError('price');
       clearFieldError('delivery-timeline');
-      clearFieldError('inspection-window');
     }
     
     function validateForm() {
@@ -4006,14 +3992,6 @@
       const deliveryError = validateDeliveryTimeline(deliveryTimeline);
       if (deliveryError) {
         showFieldError('delivery-timeline', deliveryError);
-        isValid = false;
-      }
-      
-      // Validate inspection window
-      const inspectionWindow = document.getElementById('inspection-window').value;
-      const inspectionError = validateInspectionWindow(inspectionWindow);
-      if (inspectionError) {
-        showFieldError('inspection-window', inspectionError);
         isValid = false;
       }
       
@@ -4892,6 +4870,23 @@
         ].filter(Boolean).join(', ');
         $('profile-row-address').textContent = addr || '—';
 
+        // Demo balance — read from DB and display in profile
+        try {
+          const dbSvc = (typeof transactionService !== 'undefined' && transactionService) ? transactionService.dbService : null;
+          if (dbSvc && currentUserId) {
+            const balRes = await dbSvc._executeHttp(
+              'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
+              [currentUserId]
+            );
+            const bRows = balRes?.results?.[0]?.response?.result?.rows;
+            if (bRows && bRows.length > 0) {
+              const v = bRows[0][0];
+              const bal = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
+              $('profile-row-balance').textContent = isNaN(bal) ? '—' : `₦${bal.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+            }
+          }
+        } catch (e) { console.warn('[ProfilePanel] demo_balance fetch failed:', e); }
+
         // Trust score — best-effort. Failures here just hide the pill.
         const trustEl  = $('profile-modal-trust');
         const trustVal = $('profile-modal-trust-value');
@@ -5342,34 +5337,39 @@
           loadingIndicator.classList.remove('hidden');
         }
         
-        // Pull the user's real Squad virtual account number from the
-        // session-cached user record. New users won't have one yet —
-        // in that case we skip the Squad API call entirely (it would
-        // 404 on every poll) and just show zero available balance.
-        const virtualAccountNumber =
-          (window.currentUserData && window.currentUserData.virtual_account_number) || null;
-
-        let result;
-        if (!virtualAccountNumber) {
-          // No provisioned account → no remote balance to fetch.
-          // Still compute locked balance from Turso so escrow
-          // amounts show up correctly.
-          const lockedResult = await balanceService.getLockedBalance(currentUserId);
-          const locked = lockedResult.success ? lockedResult.balance : 0;
-          result = {
-            success: true,
-            available: 0,
-            locked,
-            total: locked,
-            invariantValid: true,
-            cached: false,
-            stale: false,
-            noVirtualAccount: true
-          };
-        } else {
-          // Fetch balances from BalanceService (Requirement 1.3)
-          result = await balanceService.getBalances(currentUserId, virtualAccountNumber);
+        // HACKATHON DEMO: Read demo_balance from users table instead
+        // of hitting the Squad API. This lets judges test the full
+        // escrow flow without real bank deposits.
+        let demoAvailable = 0;
+        try {
+          const dbSvc = balanceService.dbService || (transactionService && transactionService.dbService);
+          if (dbSvc) {
+            const demoRes = await dbSvc._executeHttp(
+              'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
+              [currentUserId]
+            );
+            const demoRows = demoRes?.results?.[0]?.response?.result?.rows;
+            if (demoRows && demoRows.length > 0) {
+              const val = demoRows[0][0];
+              demoAvailable = typeof val === 'object' ? parseFloat(val.value) : parseFloat(val);
+              if (isNaN(demoAvailable)) demoAvailable = 0;
+            }
+          }
+        } catch (e) {
+          console.warn('[Dashboard] demo_balance fetch failed:', e);
         }
+
+        const lockedResult = await balanceService.getLockedBalance(currentUserId);
+        const locked = lockedResult.success ? lockedResult.balance : 0;
+        const result = {
+          success: true,
+          available: demoAvailable,
+          locked,
+          total: demoAvailable + locked,
+          invariantValid: true,
+          cached: false,
+          stale: false
+        };
         
         // Hide loading indicator
         if (loadingIndicator) {
@@ -5836,6 +5836,31 @@
         console.error('[Dashboard] ⚠️ Schema initialization warning:', schemaError);
       }
       
+      // HACKATHON DEMO: Seed demo_balance for existing users who
+      // don't have one yet (accounts created before this feature).
+      try {
+        const seedDb = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
+        await seedDb.connect();
+        const checkBal = await seedDb._executeHttp(
+          'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
+          [currentUserId]
+        );
+        const bRows = checkBal?.results?.[0]?.response?.result?.rows;
+        if (bRows && bRows.length > 0) {
+          const v = bRows[0][0];
+          const bal = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
+          if (!bal || bal <= 0) {
+            const seedAmount = Math.floor(Math.random() * 350001) + 150000;
+            await seedDb._executeHttp(
+              'UPDATE users SET demo_balance = ? WHERE id = ?',
+              [seedAmount, currentUserId]
+            );
+            console.log('[Dashboard] Seeded demo_balance:', seedAmount);
+          }
+        }
+        await seedDb.disconnect();
+      } catch (e) { console.warn('[Dashboard] demo_balance seed skipped:', e); }
+
       // ========================================
       // INITIALIZE SERVICES
       // ========================================
@@ -6328,15 +6353,6 @@
         }
       });
       
-      document.getElementById('inspection-window').addEventListener('blur', (e) => {
-        const error = validateInspectionWindow(e.target.value);
-        if (error) {
-          showFieldError('inspection-window', error);
-        } else {
-          clearFieldError('inspection-window');
-        }
-      });
-      
       // Form Submission
       document.getElementById('create-escrow-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -6356,7 +6372,7 @@
           itemDescription: document.getElementById('item-description').value,
           price: document.getElementById('price').value,
           deliveryTimelineDays: document.getElementById('delivery-timeline').value,
-          inspectionWindowDays: document.getElementById('inspection-window').value,
+          inspectionWindowDays: '0',
           proofUrls: createEscrowState.proofFiles.map(f => f.dataUrl)
         };
         
@@ -6784,27 +6800,27 @@
         submitButton.textContent = 'Processing...';
         
         try {
-          // In a real implementation, this would call Squad API to initiate withdrawal
-          // For now, we'll simulate the process
-          console.log('Withdrawal request:', {
-            accountNumber,
-            bankName,
-            amount,
-            userId: currentUserId
-          });
-          
-          // Simulate API call delay
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
+          // HACKATHON DEMO: Deduct from demo_balance instead of
+          // calling the real Squad Transfer API.
+          submitButton.textContent = 'Processing...';
+
+          await transactionService.dbService._executeHttp(
+            'UPDATE users SET demo_balance = demo_balance - ? WHERE id = ?',
+            [amount, currentUserId]
+          );
+          console.log('[Withdraw] Deducted', amount, 'from demo_balance');
+
           // Close modal
           closeModal('withdraw-funds-modal');
-          
+
           // Show success notification
-          showSuccessNotification(`Withdrawal of ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} initiated successfully!`);
-          
+          showSuccessNotification(
+            `Withdrawal of ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to ${bankName} (${accountNumber}) processed successfully!`
+          );
+
           // Refresh balance display
           await optimisticBalanceUpdate();
-          
+
         } catch (error) {
           console.error('Withdrawal failed:', error);
           showErrorNotification(error.message || 'Failed to process withdrawal. Please try again.');
@@ -6830,10 +6846,9 @@
             }
           });
         }
-        // Lightweight account-name resolver: shows pill while user types/selects.
-        // Production should call Squad/NIBSS account lookup; we surface a placeholder
-        // resolved name from currentUserData when 10 digits + bank present, mimicking
-        // OPay's auto-resolve UX without breaking real backend integration.
+        // Real account-name resolver via Squad Account Lookup API.
+        // Debounced: waits 400ms after last keystroke before calling the API.
+        let _resolveTimer = null;
         function tryResolveName() {
           const acct = (document.getElementById('withdraw-account-number').value || '').trim();
           const bank = document.getElementById('withdraw-bank-name').value;
@@ -6846,18 +6861,46 @@
             pill.style.display = 'none';
             return;
           }
+          // Show spinner immediately
           pill.style.display = 'flex';
           spinner.style.display = 'inline-block';
           check.style.display = 'none';
           nameEl.textContent = 'Verifying account...';
-          // Simulate resolution latency
-          setTimeout(() => {
-            const u = window.currentUserData || {};
-            const fallback = `${(u.first_name||'').toUpperCase()} ${(u.last_name||'').toUpperCase()}`.trim() || 'ACCOUNT HOLDER';
-            spinner.style.display = 'none';
-            check.style.display = 'inline-block';
-            nameEl.textContent = fallback;
-          }, 700);
+
+          // Debounce the API call
+          if (_resolveTimer) clearTimeout(_resolveTimer);
+          _resolveTimer = setTimeout(async () => {
+            try {
+              const bankSelect = document.getElementById('withdraw-bank-name');
+              const selected = bankSelect.options[bankSelect.selectedIndex];
+              const bankCode = selected.getAttribute('data-code')
+                            || SquadTransferService.getBankCode(bank);
+              if (!bankCode) { pill.style.display = 'none'; return; }
+
+              const svc = new SquadTransferService(
+                CONFIG.squad.secretKey,
+                CONFIG.squad.merchantId,
+                CONFIG.squad.environment
+              );
+              const result = await svc.lookupAccount(bankCode, acct);
+
+              if (result.success && result.data.account_name) {
+                spinner.style.display = 'none';
+                check.style.display = 'inline-block';
+                nameEl.textContent = result.data.account_name;
+              } else {
+                spinner.style.display = 'none';
+                check.style.display = 'none';
+                nameEl.textContent = result.message || 'Could not verify account';
+                pill.style.borderColor = '#e74c3c';
+              }
+            } catch (err) {
+              console.warn('[Withdraw] Account lookup failed:', err);
+              spinner.style.display = 'none';
+              check.style.display = 'none';
+              nameEl.textContent = 'Verification unavailable';
+            }
+          }, 400);
         }
         const acctInput = document.getElementById('withdraw-account-number');
         const bankInput = document.getElementById('withdraw-bank-name');
@@ -7022,7 +7065,6 @@
           document.getElementById('join-item-label').textContent = isBuyerJoiner ? "Seller's Offer" : "Buyer's Requirements";
           document.getElementById('join-item-description').textContent = transaction.item_description || '—';
           document.getElementById('join-amount').textContent = `₦${Number(transaction.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          document.getElementById('join-inspection-window').textContent = `${transaction.inspection_window_days} day${transaction.inspection_window_days == 1 ? '' : 's'}`;
           document.getElementById('join-delivery').textContent = `${transaction.delivery_timeline_days} day${transaction.delivery_timeline_days == 1 ? '' : 's'}`;
           document.getElementById('join-status').textContent = transaction.state;
 
@@ -7082,7 +7124,6 @@
           document.getElementById('fund-transaction-id').textContent = t.transaction_id;
           document.getElementById('fund-price').textContent = `₦${Number(t.price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
           document.getElementById('fund-delivery-timeline').textContent = `${t.delivery_timeline_days} days`;
-          document.getElementById('fund-inspection-window').textContent = `${t.inspection_window_days} days`;
           document.getElementById('fund-item-description').textContent = t.item_description;
 
           // Counterparty trust mirrored from inspection
@@ -7264,217 +7305,67 @@
           showErrorNotification('No transaction selected');
           return;
         }
-        
+
         // Disable button
         const fundButton = document.getElementById('btn-fund-escrow');
         fundButton.disabled = true;
-        fundButton.textContent = 'Processing...';
-        
+        fundButton.textContent = 'Funding...';
+
         try {
-          // Show risk scoring section
-          document.getElementById('risk-scoring-section').classList.remove('hidden');
-          document.getElementById('risk-scoring-loading').classList.remove('hidden');
-          document.getElementById('risk-scoring-result').classList.add('hidden');
+          document.getElementById('risk-scoring-section').classList.add('hidden');
           document.getElementById('risk-blocked-message').classList.add('hidden');
-          
-          // Calculate transaction velocity
-          const transactionVelocity = await aiRiskService.calculateTransactionVelocity(currentUserId);
-          
-          // Get user account created date (mock for now)
-          const accountCreatedAt = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);  // 30 days ago
-          
-          // Get seller trust score
-          let sellerTrustScore = 50;
-          try {
-            const trustScoreResult = await trustScoreService.getTrustScoreWithIndicator(currentTransaction.seller_id);
-            if (trustScoreResult.success) {
-              sellerTrustScore = trustScoreResult.score;
-            }
-          } catch (error) {
-            console.error('Failed to get seller trust score:', error);
-          }
-          
-          // Prepare user context for AI scoring
-          const userContext = {
-            userId: currentUserId,
-            transactionVelocity: transactionVelocity,
-            accountCreatedAt: accountCreatedAt.toISOString(),
-            counterpartyTrustScore: sellerTrustScore
-          };
 
-          // ----- AI Anomaly Detection Engine (umbrella) -----
-          // Prefer the unified engine. It composes RULES + ML +
-          // BEHAVIORAL into one decision and persists the audit trail
-          // to anomaly_decisions. If engine init failed at startup we
-          // fall back to the bare ML call so the funding flow still
-          // works end-to-end.
-          let anomalyResult = null;
-          let riskResult;
-          if (anomalyEngine) {
-            try {
-              const counterparty = {
-                id: currentTransaction.seller_id,
-                trust_score: sellerTrustScore,
-                created_at: currentTransaction.seller_created_at || null,
-                disputes_lost: 0,
-                total_completed: 0
-              };
-              anomalyResult = await anomalyEngine.evaluate({
-                transaction: currentTransaction,
-                actor: { id: currentUserId },
-                counterparty,
-                userContext
-              });
-              // Translate the umbrella verdict into the legacy
-              // riskResult shape the rest of this handler already
-              // understands. `block` -> verdict: 'fail'; review and
-              // pass both proceed through the same UI path with a
-              // banner.
-              riskResult = {
-                risk_score: anomalyResult.compositeScore,
-                verdict: anomalyResult.decision === 'block' ? 'fail' : 'pass',
-                anomaly_indicators: (anomalyResult.flags || []).map(f => f.message),
-                anomaly_decision: anomalyResult.decision,
-                sub_scores: anomalyResult.subScores,
-                layers_active: anomalyResult.layersActive
-              };
-              console.log('[Funding] AnomalyEngine verdict:', anomalyResult.decision,
-                '(composite=' + anomalyResult.compositeScore + ', layers=' + anomalyResult.layersActive.join('+') + ')');
-            } catch (engineErr) {
-              console.warn('[Funding] AnomalyEngine evaluate failed, falling back to AIRiskService:', engineErr);
-              anomalyResult = null;
-            }
-          }
-          if (!riskResult) {
-            // Legacy path: bare ML call.
-            console.log('Calling AI Risk Service (legacy path)...');
-            riskResult = await aiRiskService.scoreTransaction(currentTransaction, userContext);
-          }
-          
-          // Hide loading, show result
-          document.getElementById('risk-scoring-loading').classList.add('hidden');
-          document.getElementById('risk-scoring-result').classList.remove('hidden');
-          
-          // Display risk results
-          document.getElementById('risk-score-value').textContent = riskResult.risk_score;
-          document.getElementById('risk-verdict-value').textContent =
-            (riskResult.anomaly_decision || riskResult.verdict).toUpperCase();
-          
-          // Display anomaly indicators if any
-          if (riskResult.anomaly_indicators && riskResult.anomaly_indicators.length > 0) {
-            document.getElementById('anomaly-indicators-container').classList.remove('hidden');
-            const indicatorsList = document.getElementById('anomaly-indicators-list');
-            indicatorsList.innerHTML = '';
-            riskResult.anomaly_indicators.forEach(indicator => {
-              const li = document.createElement('li');
-              li.textContent = indicator;
-              indicatorsList.appendChild(li);
-            });
-          } else {
-            document.getElementById('anomaly-indicators-container').classList.add('hidden');
-          }
-          
-          // Check verdict (Requirement 5.4)
-          // Block on either the legacy verdict='fail' OR the umbrella
-          // engine's decision='block'. 'review' is allowed through
-          // (with the warning banner) so the user can self-confirm.
-          const isBlocked = riskResult.verdict === 'fail' ||
-                            riskResult.anomaly_decision === 'block';
-          if (isBlocked) {
-            // Block transaction
-            console.log('Transaction blocked due to high risk');
-            
-            // Log blocked transaction to security logs (Requirement 19.7)
-            await logBlockedTransaction(
-              currentUserId,
-              currentTransaction.transaction_id,
-              'High risk score',
-              {
-                risk_score: riskResult.risk_score,
-                anomaly_indicators: riskResult.anomaly_indicators,
-                anomaly_decision: riskResult.anomaly_decision || null,
-                sub_scores: riskResult.sub_scores || null
-              }
+          // HACKATHON DEMO: Check demo_balance before funding
+          const escrowAmount = Number(currentTransaction.price);
+          let buyerDemoBalance = 0;
+          const dbSvc = transactionService.dbService;
+          try {
+            const balRes = await dbSvc._executeHttp(
+              'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
+              [currentUserId]
             );
-            
-            document.getElementById('risk-blocked-message').classList.remove('hidden');
-            document.getElementById('risk-blocked-text').textContent = 
-              riskResult.message || 'This transaction has been blocked due to high risk indicators.';
-            
-            fundButton.textContent = 'Transaction Blocked';
-            
-            showErrorNotification('Transaction blocked due to high risk');
-            return;
-          }
-          
-          // Verdict is "pass" - proceed to funding
-          console.log('AI risk check passed, proceeding to funding...');
-
-          // ----- Phase F: face re-verification gate -------------------
-          // Even on a "pass" verdict, certain conditions warrant a
-          // fresh face check (large amount, medium-anomaly + stale,
-          // etc.). FaceGate.requireVerification handles the decision
-          // internally — if shouldReverify() says no it returns
-          // {ok:true, skipped:...} without showing any UI, so this
-          // call is essentially free in low-risk paths.
-          //
-          // Score scale: AnomalyEngine returns 0–100; FaceGate
-          // expects 0–1, so we normalise.
-          try {
-            const rawScore = Number(riskResult.risk_score) || 0;
-            const normalisedScore = rawScore > 1 ? rawScore / 100 : rawScore;
-            const gate = await FaceGate.requireVerification({
-              trigger: 'fund_high_risk',
-              anomalyScore: normalisedScore,
-              amount: Number(currentTransaction.price) || 0,
-              transactionId: currentTransaction.transaction_id
-            });
-            if (!gate.ok) {
-              fundButton.disabled = false;
-              fundButton.textContent = 'Fund Escrow';
-              showErrorNotification(
-                gate.reason === 'verdict_fail'
-                  ? 'Funding blocked: face verification failed.'
-                  : gate.reason === 'verdict_manual'
-                  ? 'Could not verify your face. Funding cancelled — please try again with better lighting.'
-                  : 'Funding cancelled.'
-              );
-              return;
+            const bRows = balRes?.results?.[0]?.response?.result?.rows;
+            if (bRows && bRows.length > 0) {
+              const v = bRows[0][0];
+              buyerDemoBalance = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
+              if (isNaN(buyerDemoBalance)) buyerDemoBalance = 0;
             }
-            // gate.ok === true — either verified or skipped cleanly.
-          } catch (e) {
-            // FaceGate itself should never throw, but if it does we
-            // log and proceed (fail-open) rather than block on an
-            // internal error.
-            console.warn('[Dashboard] FaceGate threw, proceeding without face check:', e);
+          } catch (e) { console.warn('[Fund] demo_balance read failed:', e); }
+
+          if (buyerDemoBalance < escrowAmount) {
+            throw new Error(
+              `Insufficient balance. You have ₦${buyerDemoBalance.toLocaleString('en-NG', {minimumFractionDigits:2})} ` +
+              `but need ₦${escrowAmount.toLocaleString('en-NG', {minimumFractionDigits:2})}. ` +
+              `Please deposit funds first.`
+            );
           }
 
-          fundButton.textContent = 'Funding...';
-          
-          // Update transaction risk score in database
-          await transactionService.updateRiskScore(
-            currentTransaction.transaction_id,
-            riskResult.risk_score,
-            riskResult.verdict
+          // Deduct from buyer's demo_balance
+          await dbSvc._executeHttp(
+            'UPDATE users SET demo_balance = demo_balance - ? WHERE id = ?',
+            [escrowAmount, currentUserId]
           );
+          console.log('[Fund] Deducted', escrowAmount, 'from buyer demo_balance');
           
           // Update buyer ID
           await transactionService.updateBuyer(currentTransaction.transaction_id, currentUserId);
           
-          // Transition state to Funded_Locked via StateMachineService
-          // This will handle Squad API transfer internally
+          // Transition state to Funded_Locked
           const transitionResult = await stateMachineService.transitionState(
             currentTransaction.transaction_id,
             'Funded_Locked',
             currentUserId,
             {
-              buyerAccount: 'BUYER_VIRTUAL_ACCOUNT',  // In production, get from user data
-              riskScore: riskResult.risk_score,
-              aiVerdict: riskResult.verdict
+              buyerAccount: 'DEMO_BALANCE'
             }
           );
           
           if (!transitionResult.success) {
+            // Refund on failure
+            await dbSvc._executeHttp(
+              'UPDATE users SET demo_balance = demo_balance + ? WHERE id = ?',
+              [escrowAmount, currentUserId]
+            );
             throw new Error(transitionResult.message || 'Failed to fund transaction');
           }
           
@@ -7508,11 +7399,8 @@
           document.getElementById('risk-scoring-section').classList.add('hidden');
           
         } finally {
-          // Re-enable button if not blocked
-          if (fundButton.textContent !== 'Transaction Blocked') {
-            fundButton.disabled = false;
-            fundButton.textContent = 'Fund Escrow';
-          }
+          fundButton.disabled = false;
+          fundButton.textContent = 'Fund Escrow';
         }
       });
       
@@ -7826,19 +7714,31 @@
           actionsContainer.appendChild(sellerDisputeBtn);
         }
 
-        // (b) Buyer in Funded_Locked can raise a dispute once the seller
-        //     has missed the delivery deadline. We compute the deadline
+        // (b) Buyer in Funded_Locked can confirm receipt or raise a dispute
+        //     once the delivery deadline has elapsed. We compute the deadline
         //     from `funded_at + delivery_timeline_days`. If the timeline
-        //     fields are missing we conservatively show the button after
+        //     fields are missing we conservatively show buttons after
         //     the transaction has been funded for >7 days as a fallback.
         if (state === 'Funded_Locked' && isBuyerView) {
           const fundedAt = txn.funded_at ? new Date(txn.funded_at).getTime() : null;
           const days = Number(txn.delivery_timeline_days) > 0 ? Number(txn.delivery_timeline_days) : 7;
           const overdue = fundedAt && (Date.now() - fundedAt) > days * 24 * 60 * 60 * 1000;
           if (overdue) {
+            // Confirm receipt — buyer received the item, release funds
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'flex-1 px-4 py-2 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors';
+            confirmBtn.textContent = 'Confirm Receipt';
+            confirmBtn.title = 'Confirm you received the item and release funds to the seller';
+            confirmBtn.onclick = (e) => {
+              e.stopPropagation();
+              openAcceptConfirmation(txn.transaction_id);
+            };
+            actionsContainer.appendChild(confirmBtn);
+
+            // Dispute — seller missed delivery
             const overdueBtn = document.createElement('button');
             overdueBtn.className = 'flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors';
-            overdueBtn.textContent = 'Seller missed delivery';
+            overdueBtn.textContent = 'Dispute';
             overdueBtn.title = 'Open a dispute — the seller has not shipped within the agreed timeline';
             overdueBtn.onclick = (e) => {
               e.stopPropagation();
@@ -8097,11 +7997,22 @@
             console.warn('[Cancel] notify dispatch failed:', notifyErr);
           }
 
-          // Close the confirmation modal first, then surface the result via
-          // the centered "action-success-modal" — same component used by
-          // Mark-as-Shipped / Accept Item / Dispute, matching the success
-          // pattern from account creation that the user prefers over the
-          // corner toast.
+          // HACKATHON DEMO: Refund buyer's demo_balance on accepted cancellation
+          if (mode === 'accept' || mode === 'cancel') {
+            try {
+              const txn = await transactionService.getTransaction(txnId);
+              if (txn && txn.buyer_id && txn.price && txn.state !== 'Created') {
+                await transactionService.dbService._executeHttp(
+                  'UPDATE users SET demo_balance = demo_balance + ? WHERE id = ?',
+                  [Number(txn.price), txn.buyer_id]
+                );
+                console.log('[Cancel] Refunded', txn.price, 'to buyer', txn.buyer_id);
+              }
+            } catch (refundErr) {
+              console.warn('[Cancel] demo_balance refund failed (non-fatal):', refundErr);
+            }
+          }
+
           closeModal('cancel-transaction-modal');
 
           const successCopy = {
@@ -8299,6 +8210,20 @@
           }
           
           console.log('Item accepted successfully, funds released to seller');
+
+          // HACKATHON DEMO: Credit the escrow amount to seller's demo_balance
+          try {
+            const txn = await transactionService.getTransaction(currentAcceptTransactionId);
+            if (txn && txn.seller_id && txn.price) {
+              await transactionService.dbService._executeHttp(
+                'UPDATE users SET demo_balance = demo_balance + ? WHERE id = ?',
+                [Number(txn.price), txn.seller_id]
+              );
+              console.log('[Accept] Credited', txn.price, 'to seller', txn.seller_id, 'demo_balance');
+            }
+          } catch (creditErr) {
+            console.warn('[Accept] seller credit failed (non-fatal):', creditErr);
+          }
 
           // Notify the seller they've been paid. Buyer gets a quiet
           // in-app confirmation. Email goes to the seller only.
@@ -8913,6 +8838,55 @@
       setInterval(() => {
         loadActiveTransactions();
       }, 10000);
+
+      // ========================================
+      // DELIVERY DEADLINE CHECKER
+      // ========================================
+      // Checks In_Transit transactions where the delivery timeline
+      // has expired and notifies the buyer to confirm or dispute.
+      const _deadlineNotified = new Set();
+      async function checkDeliveryDeadlines() {
+        try {
+          if (!transactionService || !currentUserId) return;
+          const result = await transactionService.getActiveTransactions(currentUserId);
+          if (!result || !result.inTransit) return;
+
+          for (const txn of result.inTransit) {
+            if (txn.buyer_id != currentUserId) continue;
+            if (_deadlineNotified.has(txn.transaction_id)) continue;
+
+            const shippedAt = txn.shipped_at ? new Date(txn.shipped_at).getTime() : null;
+            const days = Number(txn.delivery_timeline_days) > 0 ? Number(txn.delivery_timeline_days) : 7;
+            if (!shippedAt) continue;
+
+            const deadlineMs = shippedAt + days * 24 * 60 * 60 * 1000;
+            if (Date.now() >= deadlineMs) {
+              _deadlineNotified.add(txn.transaction_id);
+              const item = txn.item_description || 'your order';
+              // Push in-app notification
+              try {
+                if (typeof notificationService !== 'undefined' && notificationService) {
+                  await notificationService.create({
+                    userId: currentUserId,
+                    type: 'delivery.deadline_expired',
+                    title: 'Delivery timeline expired',
+                    message: `The delivery window for "${item}" has ended. Please confirm receipt if you received the item, or open a dispute if there's an issue.`,
+                    category: 'transactions',
+                    severity: 'warning',
+                    transactionId: txn.transaction_id,
+                    sendEmail: false
+                  });
+                }
+              } catch (e) { console.warn('[Deadline] notify failed:', e); }
+              showSuccessNotification(`Reminder: "${item}" delivery window expired — please confirm or dispute.`);
+            }
+          }
+        } catch (e) { console.warn('[Deadline] check failed:', e); }
+      }
+      // Run every 30 seconds
+      setInterval(checkDeliveryDeadlines, 30000);
+      // Initial check after 5 seconds
+      setTimeout(checkDeliveryDeadlines, 5000);
       
       // ========================================
       // LAZY LOADING FOR TRANSACTION HISTORY (Requirement 18.5)
@@ -8993,7 +8967,6 @@
           document.getElementById('details-price').textContent = `₦${transaction.price.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
           document.getElementById('details-item-description').textContent = transaction.item_description;
           document.getElementById('details-delivery-timeline').textContent = `${transaction.delivery_timeline_days} days`;
-          document.getElementById('details-inspection-window').textContent = `${transaction.inspection_window_days} days`;
           
           // Format created date
           const createdDate = new Date(transaction.created_at);
@@ -9013,6 +8986,36 @@
           document.getElementById('details-buyer-name').textContent = transaction.buyer_id 
             ? (transaction.buyer_id === currentUserId ? 'You' : `Buyer (ID: ${transaction.buyer_id})`)
             : 'Pending';
+
+          // Counterparty trust score — show the other party's score
+          const trustSection = document.getElementById('details-trust-section');
+          const trustLabel = document.getElementById('details-trust-label');
+          const trustFill = document.getElementById('details-trust-fill');
+          const trustValue = document.getElementById('details-trust-value');
+          const counterpartyId = (transaction.seller_id === currentUserId)
+            ? transaction.buyer_id
+            : transaction.seller_id;
+          if (counterpartyId && typeof trustScoreService !== 'undefined') {
+            try {
+              const tsResult = await trustScoreService.getTrustScoreWithIndicator(counterpartyId);
+              if (tsResult.success) {
+                const isSeller = transaction.seller_id === currentUserId;
+                trustLabel.textContent = isSeller ? "Buyer's Trust Score" : "Seller's Trust Score";
+                trustValue.textContent = tsResult.score + '/100';
+                trustFill.style.width = tsResult.score + '%';
+                trustFill.className = 'h-full transition-all rounded-full ' +
+                  (tsResult.score >= 70 ? 'bg-green-500' : tsResult.score >= 40 ? 'bg-yellow-500' : 'bg-red-500');
+                trustSection.style.display = '';
+              } else {
+                trustSection.style.display = 'none';
+              }
+            } catch (e) {
+              console.warn('[Details] Failed to load counterparty trust score:', e);
+              trustSection.style.display = 'none';
+            }
+          } else {
+            trustSection.style.display = 'none';
+          }
           
           // Show risk score if available. Coerce defensively — Turso may hand us a
           // numeric string and older rows may carry the raw typed-cell object.

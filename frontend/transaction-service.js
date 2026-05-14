@@ -108,8 +108,8 @@ class TransactionService {
       errors.push('Inspection window is required');
     } else if (!Number.isInteger(data.inspectionWindowDays)) {
       errors.push('Inspection window must be a whole number');
-    } else if (data.inspectionWindowDays < 1) {
-      errors.push('Inspection window must be at least 1 day');
+    } else if (data.inspectionWindowDays < 0) {
+      errors.push('Inspection window cannot be negative');
     } else if (data.inspectionWindowDays > 14) {
       errors.push('Inspection window must not exceed 14 days');
     }

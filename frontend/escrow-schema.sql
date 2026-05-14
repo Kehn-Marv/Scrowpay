@@ -146,3 +146,27 @@ CREATE TABLE IF NOT EXISTS security_logs (
 CREATE INDEX IF NOT EXISTS idx_security_log_user_id ON security_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_security_log_event_type ON security_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_security_log_created_at ON security_logs(created_at);
+
+-- ============================================================================
+-- WITHDRAWAL HISTORY TABLE
+-- Records every outbound transfer via Squad Transfer API (seller cash-outs)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS withdrawal_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  amount REAL NOT NULL CHECK(amount >= 100),
+  bank_name TEXT NOT NULL,
+  bank_code TEXT NOT NULL,
+  account_number TEXT NOT NULL,
+  account_name TEXT NOT NULL,
+  transaction_reference TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'success', 'failed', 'reversed')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Indexes for withdrawal queries
+CREATE INDEX IF NOT EXISTS idx_withdrawal_user_id ON withdrawal_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_reference ON withdrawal_history(transaction_reference);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_created_at ON withdrawal_history(created_at);

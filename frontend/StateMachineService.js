@@ -39,7 +39,7 @@ class StateMachineService {
     // Define valid state transitions (Requirement 6.1)
     this.validTransitions = {
       'Created': ['Funded_Locked'],
-      'Funded_Locked': ['In_Transit'],
+      'Funded_Locked': ['In_Transit', 'Completed', 'Disputed'],
       'In_Transit': ['Completed', 'Disputed'],
       'Disputed': ['Completed'],
       'Completed': []
