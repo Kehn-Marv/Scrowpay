@@ -339,7 +339,109 @@ class DisputeService {
       };
     }
   }
-  
+
+  /**
+   * Admin-only manual resolution. Used by the admin dashboard
+   * (admin.html) when a human reviewer overrides — or steps in for —
+   * the AI agent. Unlike `applyResolution`, this method does NOT
+   * gate on the confidence threshold: the admin's decision is final.
+   *
+   * Side effects:
+   *   1. Executes the fund transfer via Squad (refund / release / split)
+   *   2. Transitions the transaction to `Completed`
+   *   3. Stamps `manual_resolution`, `resolution_type='manual'`,
+   *      `resolved_at`, and the reviewer's notes (stored as JSON in
+   *      `manual_resolution`) on the disputes row.
+   *   4. Fires the same Trust Engine attribution path as automated
+   *      resolution, so a manual ruling still updates buyer/seller
+   *      win/loss counters.
+   *
+   * The caller must already have established that the acting user
+   * is an admin. This method does NOT re-check `users.is_admin` —
+   * authentication is enforced at the page level.
+   *
+   * @param {string} transactionId
+   * @param {'refund_buyer'|'release_to_seller'|'split'} resolution
+   * @param {object} [opts]
+   * @param {number} [opts.adminUserId]   id of the resolving admin (audit)
+   * @param {string} [opts.notes]         free-text reasoning shown in admin history
+   * @returns {Promise<{success:boolean, resolutionType:string, message?:string}>}
+   */
+  async resolveManually(transactionId, resolution, opts = {}) {
+    const allowedResolutions = ['refund_buyer', 'release_to_seller', 'split'];
+    if (!allowedResolutions.includes(resolution)) {
+      return { success: false, message: `Invalid resolution: ${resolution}` };
+    }
+
+    try {
+      await this.connect();
+
+      const transaction = await this.getTransaction(transactionId);
+      if (!transaction) throw new Error('Transaction not found');
+
+      // Pack the admin's notes + audit info into manual_resolution as
+      // JSON so we don't need to add new columns. Older code that
+      // reads this column as plain text still works (it'll just see
+      // the JSON string verbatim).
+      const manualPayload = JSON.stringify({
+        resolution,
+        resolved_by_admin: opts.adminUserId || null,
+        notes: String(opts.notes || '').slice(0, 1000),
+        resolved_at: new Date().toISOString()
+      });
+
+      // 1. Stamp the dispute row first so an interruption between
+      //    fund transfer and DB write still leaves an audit trail.
+      await this.dbService._executeHttp(
+        `UPDATE disputes
+            SET manual_resolution = ?,
+                resolution_type   = 'manual',
+                resolved_at       = CURRENT_TIMESTAMP
+          WHERE transaction_id = ?`,
+        [manualPayload, transactionId]
+      );
+
+      // 2. Execute the fund transfer (Squad / mock).
+      await this.executeFundTransfer(transaction, resolution);
+
+      // 3. Move the transaction to its terminal state.
+      await this.updateTransactionState(transactionId, 'Completed');
+
+      // 4. Trust engine attribution. Same rules as the automated
+      //    path: 100/0 splits attribute a winner+loser, 50/50 split
+      //    attributes neither. Best-effort; never throws.
+      if (this.trustEngine) {
+        try {
+          const sellerId = transaction.seller_id != null ? Number(transaction.seller_id) : null;
+          const buyerId  = transaction.buyer_id  != null ? Number(transaction.buyer_id)  : null;
+          let winnerId = null, loserId = null;
+          if (resolution === 'refund_buyer')      { winnerId = buyerId;  loserId = sellerId; }
+          if (resolution === 'release_to_seller') { winnerId = sellerId; loserId = buyerId;  }
+          if (winnerId || loserId) {
+            await this.trustEngine.onDisputeResolved({
+              winnerId, loserId, transactionId, resolution
+            });
+          }
+        } catch (e) {
+          console.warn('[DisputeService] manual-trust hook failed:', e.message);
+        }
+      }
+
+      console.log('[DisputeService] ✅ Manual resolution applied:', { transactionId, resolution });
+      return {
+        success: true,
+        resolutionType: 'manual',
+        message: 'Dispute resolved manually by admin'
+      };
+    } catch (error) {
+      console.error('[DisputeService] resolveManually failed:', error);
+      return {
+        success: false,
+        message: 'Failed to apply manual resolution: ' + error.message
+      };
+    }
+  }
+
   /**
    * Executes fund transfer based on dispute resolution
    * @private
@@ -585,41 +687,80 @@ class DisputeService {
   }
   
   /**
-   * Uploads photos to storage (simplified for hackathon)
-   * @param {FileList} files - Files to upload
-   * @returns {Promise<Array<string>>} Array of photo URLs
+   * Uploads dispute evidence photos.
+   *
+   * STRATEGY (Phase B):
+   *   1. If a Cloudinary service is available on `window.cloudinaryService`
+   *      AND it reports `available === true`, upload each file via the
+   *      unsigned-upload preset `scrowpay_disputes` and return secure_urls.
+   *   2. Otherwise fall back to the legacy base64 data-URL path so the
+   *      dispute flow keeps working even if Cloudinary is misconfigured
+   *      or unreachable. The Gemini DisputeAgent accepts both URLs and
+   *      base64 data URLs as input, so verdict quality is unaffected.
+   *
+   * CALLER METADATA (optional, last argument):
+   *   { userId, disputeId, transactionId } — these become Cloudinary
+   *   tags / context. The Gemini agent doesn't need them but they're
+   *   invaluable for admin investigation of fraudulent disputes.
+   *
+   * @param {FileList|File[]} files
+   * @param {{userId?:number, disputeId?:string|number, transactionId?:string}} [meta]
+   * @returns {Promise<Array<string>>} Array of photo URLs (https://... or data:image/...)
    */
-  async uploadPhotos(files) {
+  async uploadPhotos(files, meta = {}) {
     try {
-      console.log('[DisputeService] Uploading photos:', files.length);
-      
-      // For hackathon: Convert to base64 data URLs
-      // In production, this would upload to cloud storage (S3, Cloudinary, etc.)
-      
-      const photoUrls = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          throw new Error(`File ${file.name} is not an image`);
+      const list = Array.isArray(files) ? files : Array.from(files || []);
+      console.log('[DisputeService] Uploading photos:', list.length);
+
+      // Pre-validate everything up front. We want a fast failure on a
+      // bad file rather than burning bandwidth on partial uploads.
+      for (const file of list) {
+        if (!file || !file.type || !file.type.startsWith('image/')) {
+          throw new Error(`File ${file && file.name} is not an image`);
         }
-        
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error(`File ${file.name} exceeds 5MB limit`);
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`File ${file.name} exceeds 10MB limit`);
         }
-        
-        // Convert to base64 data URL
-        const dataUrl = await this.fileToDataUrl(file);
-        photoUrls.push(dataUrl);
       }
-      
-      console.log('[DisputeService] ✅ Photos uploaded:', photoUrls.length);
-      
+
+      // Prefer Cloudinary if it's wired up and ready.
+      const cs = (typeof window !== 'undefined') ? window.cloudinaryService : null;
+      const useCloudinary = cs && cs.available;
+      if (useCloudinary) {
+        console.log('[DisputeService] Using Cloudinary upload path');
+      } else {
+        console.warn('[DisputeService] Cloudinary unavailable — falling back to base64 data URLs');
+      }
+
+      const photoUrls = [];
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        if (useCloudinary) {
+          try {
+            const result = await cs.uploadDisputePhoto(file, {
+              userId: meta.userId,
+              disputeId: meta.disputeId,
+              transactionId: meta.transactionId
+            });
+            photoUrls.push(result.secureUrl);
+          } catch (cloudErr) {
+            // Single-file Cloudinary failure → fall back to base64 for
+            // THIS file only. Partial-Cloudinary, partial-base64 mixes
+            // are fine for the dispute agent.
+            console.warn(`[DisputeService] Cloudinary upload failed for ${file.name}, using base64 fallback:`, cloudErr.message);
+            const dataUrl = await this.fileToDataUrl(file);
+            photoUrls.push(dataUrl);
+          }
+        } else {
+          const dataUrl = await this.fileToDataUrl(file);
+          photoUrls.push(dataUrl);
+        }
+      }
+
+      console.log('[DisputeService] ✅ Photos uploaded:', photoUrls.length,
+                  useCloudinary ? '(Cloudinary)' : '(base64 fallback)');
       return photoUrls;
-      
+
     } catch (error) {
       console.error('[DisputeService] Photo upload failed:', error);
       throw error;

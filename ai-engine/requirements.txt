@@ -17,5 +17,15 @@ flask>=3.0.0
 # service running on :5000 without browser-level blocking.
 flask-cors>=4.0.0
 
+# Resend SDK — transactional email proxy. The Python service holds the
+# API key so we never expose it to the browser. Endpoints exposed:
+#   POST /api/v1/notify/email   (generic transactional send)
+#   POST /api/v1/notify/otp     (signup / sensitive-action OTP)
+resend>=2.0.0
+
+# .env loader so RESEND_API_KEY etc. can live in ai-engine/.env without
+# being shell-exported manually each run.
+python-dotenv>=1.0.0
+
 # Optional: For better performance
 # numba==0.58.1

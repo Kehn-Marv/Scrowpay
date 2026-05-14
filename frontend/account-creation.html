@@ -493,8 +493,18 @@
   <script src="https://cdn.jsdelivr.net/npm/@libsql/client@0.3.5/dist/index.js"></script>
   <script src="env.js"></script>
   <script src="config.js"></script>
+  <!--
+    cloudinary-config.js MUST come before CloudinaryService.js — the
+    service constructor reads window.CLOUDINARY_CONFIG at startup.
+    Both files are gitignored / blank-safe: if cloud_name isn't set,
+    the service reports `available === false` and the face capture
+    step degrades to "skip" (legacy behavior, no reference stored).
+  -->
+  <script src="cloudinary-config.js"></script>
+  <script src="CloudinaryService.js"></script>
   <script src="turso-db-service.js"></script>
   <script src="otp-service.js"></script>
+  <script src="EmailOTPService.js"></script>
   <script src="id-validation-service.js"></script>
   <script src="squad-api-service.js"></script>
   <script src="mediapipe-service.js"></script>
@@ -530,6 +540,11 @@
     const registrationState = {
       currentStage: 1,
       phoneNumber: null,
+      // Email captured on Stage 1; verified via OTP on Stage 2.
+      // `emailVerified` only flips true after EmailOTPService.verifyOTP
+      // returns ok — used to set users.email_verified=1 at saveUser time.
+      email: null,
+      emailVerified: false,
       idType: null,
       idNumber: null,
       firstName: null,
@@ -542,8 +557,95 @@
       pin: null,
       virtualAccountNumber: null,
       bankCode: null,
+      // Face reference image captured during the blink-detection step.
+      // Stored as a Cloudinary secure_url on success; null if Cloudinary
+      // isn't configured or the upload failed (the signup still
+      // completes, but re-verification later won't have a baseline).
+      faceReferenceUrl: null,
+      faceReferenceUploadedAt: null,
       verificationStatus: { phoneVerified: false, otpVerified: false, idVerified: false, faceVerified: false }
     };
+
+    // Build the CloudinaryService instance ONCE here so the face
+    // capture flow (deep inside the renderStage7 closure) can find it
+    // even though it doesn't have a reference to the module scope.
+    let cloudinaryService = null;
+    try {
+      if (typeof CloudinaryService !== 'undefined') {
+        cloudinaryService = new CloudinaryService();
+        // Expose for any other script on this page that might want it.
+        window.cloudinaryService = cloudinaryService;
+      }
+    } catch (e) {
+      console.warn('[Signup] CloudinaryService init failed (face reference will be skipped):', e);
+    }
+
+    // EmailOTPService: same lazy pattern. We instantiate after the
+    // dbService is connected (further down in initialize()) — but
+    // declaring the slot here keeps the rest of the file's render
+    // closures able to reference it without re-declaring.
+    let emailOTPService = null;
+
+    /**
+     * Grab the current frame from a live <video> element, encode it as
+     * a JPEG blob, and upload it to Cloudinary's `scrowpay_face`
+     * preset. On success, write the secure_url onto registrationState
+     * so saveUser() picks it up at the PIN stage.
+     *
+     * Why JPEG @ 0.85? PNG would balloon the blob 4-5x (we don't need
+     * transparency) and Cloudinary will re-encode anyway. 0.85 is the
+     * standard sweet spot for face photos.
+     *
+     * Why no `await` at the call site? The user shouldn't see "still
+     * uploading…" between the blink and the next stage — the upload
+     * is a non-critical side-effect. Worst case (slow link), it
+     * completes BEFORE the user reaches the PIN screen because the
+     * file is small (~30-80 KB at 320x320).
+     */
+    async function captureAndUploadFaceReference(videoElement) {
+      if (!cloudinaryService || !cloudinaryService.available) {
+        console.warn('[Signup] Cloudinary not configured — skipping face reference upload.');
+        return null;
+      }
+      if (!videoElement || !videoElement.videoWidth) {
+        console.warn('[Signup] No video frame available to capture.');
+        return null;
+      }
+      // Downscale to a reasonable face-crop size. The actual face
+      // already occupies most of the frame; we don't need 1080p.
+      const targetW = 480;
+      const targetH = Math.round((videoElement.videoHeight / videoElement.videoWidth) * targetW);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      canvas.getContext('2d').drawImage(videoElement, 0, 0, targetW, targetH);
+
+      // Convert to blob (async). `toBlob` returns null in some weird
+      // edge cases (off-screen canvas etc.) so we guard.
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      if (!blob) {
+        console.warn('[Signup] canvas.toBlob returned null — skipping upload.');
+        return null;
+      }
+
+      // We don't know the user_id yet (account isn't created) so we
+      // tag the upload with the phone number (which is unique). The
+      // admin can correlate later via Cloudinary's tag search.
+      const phone = (registrationState.phoneNumber || 'unknown').replace(/\+/g, '');
+      try {
+        const result = await cloudinaryService.uploadFile(blob, 'face', {
+          tags: ['type:face', 'purpose:signup', 'phone:' + phone],
+          context: { phone, purpose: 'signup' }
+        });
+        registrationState.faceReferenceUrl = result.secureUrl;
+        registrationState.faceReferenceUploadedAt = new Date().toISOString();
+        console.log('[Signup] ✅ Face reference uploaded:', result.secureUrl);
+        return result.secureUrl;
+      } catch (uploadErr) {
+        console.warn('[Signup] Face reference upload failed:', uploadErr.message || uploadErr);
+        return null;
+      }
+    }
 
     // Initialize services
     const dbService = new TursoDBService(window.CONFIG.turso.databaseUrl, window.CONFIG.turso.authToken);
@@ -571,6 +673,25 @@
           console.log('[App] ✅ All database schemas ready');
         } catch (schemaError) {
           console.error('[App] ⚠️ Schema initialization warning:', schemaError);
+        }
+
+        // Stand up the EmailOTPService now that the schema is in
+        // place (it depends on the email_otps table created by
+        // initializeAllSchemas). It needs its OWN dbService — passing
+        // through CONFIG.turso here so the service builds an internal
+        // TursoDBService it can call _executeHttp on.
+        try {
+          if (typeof EmailOTPService !== 'undefined') {
+            emailOTPService = new EmailOTPService({
+              turso: window.CONFIG.turso,
+              aiEngine: window.CONFIG.aiEngine || { url: 'http://localhost:5000' }
+            });
+            await emailOTPService.connect();
+            window.emailOTPService = emailOTPService;
+            console.log('[App] ✅ EmailOTPService ready');
+          }
+        } catch (otpErr) {
+          console.warn('[App] EmailOTPService init failed — signup will fall back to legacy 123456 OTP:', otpErr.message);
         }
       })
       .catch(error => {
@@ -817,12 +938,19 @@
         }
       }
 
-      // Stage 1: Phone Number Entry
+      // Stage 1: Phone Number + Email Entry
+      //
+      // PHASE D: we now collect the user's email here too. Email is
+      // the channel for OTP verification on Stage 2 (real Resend
+      // delivery, replacing the legacy hardcoded "123456"). Both
+      // fields are validated client-side AND checked for duplicates
+      // against the users table — phone via checkPhoneDuplicate,
+      // email via checkEmailDuplicate (added on the dbService).
       renderStage1() {
         const stageContent = document.getElementById('stage-content');
         stageContent.innerHTML = `
           <h1 class="card-title">Get a ScrowPay Account</h1>
-          <p class="card-sub">Enter your phone number to get started</p>
+          <p class="card-sub">We'll use these to keep your account secure</p>
           
           <label class="field-label" for="phone-input">Phone Number</label>
           <div class="phone-row" id="phone-row">
@@ -830,6 +958,15 @@
             <input class="phone-input" id="phone-input" type="tel" placeholder="8135866028" maxlength="11" inputmode="numeric">
           </div>
           <span class="field-error" id="phone-error"></span>
+
+          <label class="field-label" for="email-input" style="margin-top: 16px;">Email Address</label>
+          <div class="phone-row" id="email-row" style="padding-left: 16px;">
+            <input class="phone-input" id="email-input" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email" style="padding-left: 0;">
+          </div>
+          <span class="field-error" id="email-error"></span>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 6px;">
+            We'll send a 6-digit verification code to this address.
+          </p>
           
           <button id="next-btn" class="btn-primary" style="margin-top: 20px;">Next</button>
           
@@ -840,12 +977,18 @@
         `;
         
         const phoneInput = document.getElementById('phone-input');
-        const nextBtn = document.getElementById('next-btn');
+        const emailInput = document.getElementById('email-input');
+        const nextBtn    = document.getElementById('next-btn');
         const phoneError = document.getElementById('phone-error');
-        const phoneRow = document.getElementById('phone-row');
+        const emailError = document.getElementById('email-error');
+        const phoneRow   = document.getElementById('phone-row');
+        const emailRow   = document.getElementById('email-row');
         
         if (registrationState.phoneNumber) {
           phoneInput.value = registrationState.phoneNumber.replace('+234', '');
+        }
+        if (registrationState.email) {
+          emailInput.value = registrationState.email;
         }
         
         phoneInput.addEventListener('input', (e) => {
@@ -862,19 +1005,46 @@
             }
           }
         });
+
+        // Email: lightweight format check only on input. The real
+        // RFC-ish validation (and duplicate check) happens on submit.
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        emailInput.addEventListener('input', (e) => {
+          const v = e.target.value.trim();
+          if (v.length > 0 && !EMAIL_RE.test(v)) {
+            emailRow.classList.add('error');
+            emailError.textContent = 'Please enter a valid email address';
+          } else {
+            emailRow.classList.remove('error');
+            emailError.textContent = '';
+          }
+        });
         
         nextBtn.addEventListener('click', async () => {
           const phoneValue = phoneInput.value.trim();
+          const emailValue = emailInput.value.trim().toLowerCase();
           
+          // Phone validation
           if (!phoneValue) {
             phoneRow.classList.add('error');
             phoneError.textContent = 'Phone number is required';
             return;
           }
-          
           if (!PhoneValidationService.validateFormat(phoneValue)) {
             phoneRow.classList.add('error');
             phoneError.textContent = 'Please enter a valid Nigerian phone number';
+            return;
+          }
+
+          // Email validation
+          if (!emailValue) {
+            emailRow.classList.add('error');
+            emailError.textContent = 'Email address is required';
+            return;
+          }
+          if (!EMAIL_RE.test(emailValue)) {
+            emailRow.classList.add('error');
+            emailError.textContent = 'Please enter a valid email address';
             return;
           }
           
@@ -884,10 +1054,16 @@
             try {
               nextBtn.disabled = true;
               nextBtn.textContent = 'Checking...';
-              
-              const isDuplicate = await dbService.checkPhoneDuplicate(normalizedPhone);
-              
-              if (isDuplicate) {
+
+              // Run the two duplicate checks in parallel — they're
+              // independent SELECTs and saving 100-200ms here matters
+              // since this is the first interactive step.
+              const [phoneDup, emailDup] = await Promise.all([
+                dbService.checkPhoneDuplicate(normalizedPhone),
+                dbService.checkEmailDuplicate(emailValue)
+              ]);
+
+              if (phoneDup) {
                 showModal('Phone Already Registered', 'This phone number is already registered with another account. Please use a different phone number or log in to your existing account.', [
                   { text: 'OK', primary: true, onClick: () => {} }
                 ]);
@@ -895,12 +1071,17 @@
                 nextBtn.textContent = 'Next';
                 return;
               }
-              
-              nextBtn.disabled = false;
-              nextBtn.textContent = 'Next';
+              if (emailDup) {
+                showModal('Email Already Registered', 'This email address is already registered with another account. Please use a different email or log in to your existing account.', [
+                  { text: 'OK', primary: true, onClick: () => {} }
+                ]);
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Next';
+                return;
+              }
             } catch (error) {
               console.error('Duplicate check failed:', error);
-              showModal('Error', 'Failed to verify phone number. Please try again.', [
+              showModal('Error', 'Failed to verify your details. Please try again.', [
                 { text: 'OK', primary: true, onClick: () => {} }
               ]);
               nextBtn.disabled = false;
@@ -908,23 +1089,71 @@
               return;
             }
           }
-          
+
+          // Persist on the registration state so Stage 2 can read it.
           registrationState.phoneNumber = normalizedPhone;
+          registrationState.email = emailValue;
           registrationState.verificationStatus.phoneVerified = true;
+          // emailVerified stays false until OTP succeeds on Stage 2.
+          registrationState.emailVerified = false;
+          registrationState.verificationStatus.otpVerified = false;
+
+          // Fire the OTP request BEFORE navigating to Stage 2 so the
+          // email is already on its way by the time the user is
+          // looking at the input box. Best-effort — Stage 2 also
+          // exposes a "Resend code" button that re-triggers this.
+          if (emailOTPService) {
+            nextBtn.textContent = 'Sending code...';
+            try {
+              const result = await emailOTPService.requestOTP(emailValue, {
+                purpose: 'signup',
+                name: '' // we don't have a first name yet at this stage
+              });
+              if (result.delivered) {
+                showToast('Verification code sent to ' + emailValue);
+              } else if (result.fallback) {
+                // Resend not configured / engine unreachable. Stage 2
+                // will detect this and show a dev-friendly hint.
+                console.warn('[Stage1] Email OTP fell back to dev mode.');
+                showToast('Email service unavailable — using test code in dev');
+              } else if (result.error) {
+                showToast(result.error, 4000);
+              }
+            } catch (otpErr) {
+              console.warn('[Stage1] OTP request failed:', otpErr);
+              showToast('Could not send verification email — please try again on the next screen', 4000);
+            }
+            nextBtn.disabled = false;
+            nextBtn.textContent = 'Next';
+          }
+
           this.goToNextStage();
         });
         
-        // Enter key support
-        phoneInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            nextBtn.click();
-          }
-        });
+        // Enter key support — pressing Enter in either field submits.
+        const handleEnter = (e) => { if (e.key === 'Enter') nextBtn.click(); };
+        phoneInput.addEventListener('keypress', handleEnter);
+        emailInput.addEventListener('keypress', handleEnter);
       }
 
-      // Stage 2: OTP Verification
+      // Stage 2: Email OTP Verification (Phase D)
+      //
+      // The OTP itself was already requested at the end of Stage 1
+      // (so the email is in flight while the user navigates here).
+      // We add a "Resend code" button on this screen for retries.
+      //
+      // Verification path:
+      //   1. EmailOTPService.verifyOTP(email, code, 'signup')
+      //      - hashes (email|purpose|code) and matches against the
+      //        most recent live row in `email_otps`
+      //      - increments attempts on mismatch; locks after 5
+      //   2. On 'no_active_otp' (no OTP was ever sent — engine was
+      //      unreachable at Stage 1) we fall back to legacy
+      //      OTPService.verifyOTP("123456") so dev environments
+      //      without Resend still work.
       renderStage2() {
         const stageContent = document.getElementById('stage-content');
+        const recipient = registrationState.email || 'your email';
         stageContent.innerHTML = `
           <button id="back-btn" class="back-btn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -933,25 +1162,28 @@
             <span>Back</span>
           </button>
           
-          <h1 class="card-title">Verify Your Phone Number</h1>
-          <p class="card-sub" style="margin-bottom: 20px;">Enter the 6-digit code sent to ${registrationState.phoneNumber || '+234XXXXXXXXXX'}</p>
+          <h1 class="card-title">Verify Your Email</h1>
+          <p class="card-sub" style="margin-bottom: 20px;">Enter the 6-digit code we sent to <strong>${recipient}</strong></p>
           
           <div class="info-tile">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
             </svg>
-            <p>A verification code has been sent to your phone number, please check your messages</p>
+            <p>A verification code has been sent to your email. It may take a moment to arrive — check your spam folder if you don't see it.</p>
           </div>
           
-          <label class="field-label">Enter 6-digit OTP</label>
+          <label class="field-label">Enter 6-digit code</label>
           <div id="otp-input-container" style="margin-bottom: 20px;"></div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 13px;">
+            <span style="color: var(--muted);">Didn't get it?</span>
+            <button id="resend-btn" type="button" style="background: none; border: none; color: var(--dark); font-weight: 600; cursor: pointer; padding: 0;">Resend code</button>
+          </div>
           
           <button id="verify-btn" class="btn-primary">Verify</button>
         `;
         
         document.getElementById('back-btn').addEventListener('click', () => this.goToPreviousStage());
-        
-        showToast('A verification code has been sent to your mobile phone');
         
         const otpInputBox = new DigitInputBox(6);
         const otpContainer = document.getElementById('otp-input-container');
@@ -959,36 +1191,138 @@
         otpInputBox.focus();
         
         const verifyBtn = document.getElementById('verify-btn');
-        verifyBtn.addEventListener('click', () => {
+        const resendBtn = document.getElementById('resend-btn');
+        const stage = this; // for use inside async handlers
+
+        // ---- Resend code -------------------------------------------------
+        // Cooldown: 30 seconds between resends so a user can't hammer
+        // the Resend free tier. The Python endpoint also rate-limits
+        // server-side, but local UX feedback feels better than waiting
+        // for a 429.
+        let resendCooldown = 0;
+        function refreshResendUi() {
+          if (resendCooldown > 0) {
+            resendBtn.disabled = true;
+            resendBtn.textContent = `Resend in ${resendCooldown}s`;
+            resendBtn.style.opacity = '0.6';
+          } else {
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend code';
+            resendBtn.style.opacity = '1';
+          }
+        }
+        const tickHandle = setInterval(() => {
+          if (resendCooldown > 0) {
+            resendCooldown--;
+            refreshResendUi();
+          }
+        }, 1000);
+
+        resendBtn.addEventListener('click', async () => {
+          if (resendCooldown > 0) return;
+          if (!emailOTPService) {
+            showToast('Email service unavailable — try the test code 123456', 4000);
+            return;
+          }
+          resendCooldown = 30;
+          refreshResendUi();
+          try {
+            const result = await emailOTPService.requestOTP(registrationState.email, {
+              purpose: 'signup'
+            });
+            if (result.delivered)        showToast('New code sent to ' + registrationState.email);
+            else if (result.fallback)    showToast('Email service unavailable — use the test code 123456 in dev', 5000);
+            else if (result.error)       showToast(result.error, 4000);
+          } catch (err) {
+            console.warn('[Stage2] resend failed:', err);
+            showToast('Could not send code — please try again', 4000);
+          }
+        });
+
+        // ---- Verify ------------------------------------------------------
+        verifyBtn.addEventListener('click', async () => {
           const otp = otpInputBox.getValue();
           
           if (otp.length !== 6) {
-            showModal('Error', 'Please enter the complete 6-digit OTP code', [
+            showModal('Error', 'Please enter the complete 6-digit code', [
               { text: 'OK', primary: true, onClick: () => {} }
             ]);
             return;
           }
-          
-          if (OTPService.verifyOTP(otp)) {
-            registrationState.verificationStatus.otpVerified = true;
-            showModal('Succeeded!', 'Your Phone Number has been verified successfully!', [
-              { text: 'Continue', primary: true, onClick: () => this.goToNextStage() }
+
+          verifyBtn.disabled = true;
+          const originalText = verifyBtn.textContent;
+          verifyBtn.textContent = 'Verifying...';
+
+          try {
+            let verified = false;
+
+            if (emailOTPService) {
+              const result = await emailOTPService.verifyOTP(
+                registrationState.email, otp, 'signup'
+              );
+              if (result.ok) {
+                verified = true;
+              } else if (result.reason === 'no_active_otp') {
+                // No OTP row exists — Stage 1 couldn't reach the
+                // engine. Fall back to dev-mode hardcoded code so
+                // local testing isn't blocked.
+                console.warn('[Stage2] No live OTP — falling back to dev OTPService.');
+                verified = OTPService.verifyOTP(otp);
+              } else if (result.reason === 'expired') {
+                showModal('Code Expired', 'That code has expired. Please tap "Resend code" to get a fresh one.', [
+                  { text: 'OK', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
+                ]);
+                return;
+              } else if (result.reason === 'locked') {
+                showModal('Too Many Attempts', 'You\u2019ve entered the wrong code too many times. Please tap "Resend code" to start over.', [
+                  { text: 'OK', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
+                ]);
+                return;
+              } else {
+                // mismatch / bad_format — show how many attempts left
+                const left = result.attemptsLeft != null ? ` (${result.attemptsLeft} ${result.attemptsLeft === 1 ? 'try' : 'tries'} left)` : '';
+                showModal('Incorrect Code', 'That code doesn\u2019t match' + left + '. Please double-check and try again.', [
+                  { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
+                ]);
+                return;
+              }
+            } else {
+              // EmailOTPService failed to initialize at all — pure dev path.
+              verified = OTPService.verifyOTP(otp);
+              if (!verified) {
+                showModal('Incorrect Code', 'That code doesn\u2019t match. Please try again.', [
+                  { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
+                ]);
+                return;
+              }
+            }
+
+            if (verified) {
+              clearInterval(tickHandle);
+              registrationState.verificationStatus.otpVerified = true;
+              registrationState.emailVerified = true;
+              showModal('Succeeded!', 'Your email has been verified successfully!', [
+                { text: 'Continue', primary: true, onClick: () => stage.goToNextStage() }
+              ]);
+            }
+          } catch (err) {
+            console.error('[Stage2] verify error:', err);
+            showModal('Error', 'Could not verify the code. Please try again.', [
+              { text: 'OK', primary: true, onClick: () => {} }
             ]);
-          } else {
-            showModal('Failed!', 'Verification code error', [
-              { text: 'Retry', primary: true, onClick: () => {
-                otpInputBox.clear();
-                otpInputBox.focus();
-              }}
-            ]);
+          } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = originalText;
           }
         });
         
-        // Enter key support
-        document.addEventListener('keypress', function enterHandler(e) {
-          if (e.key === 'Enter') {
-            verifyBtn.click();
-          }
+        // Enter key support — anchored to the OTP input so it doesn't
+        // leak across stages like the original `document`-level
+        // listener did. (That listener stayed bound forever and could
+        // re-trigger verify on later screens.)
+        otpContainer.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') verifyBtn.click();
         });
       }
 
@@ -1443,11 +1777,29 @@
           
           await mediaPipeService.startDetection(() => {
             statusMessage.textContent = 'Blink detected! Processing...';
-            
+
+            // Capture ONE frame from the live video as a JPEG blob and
+            // fire-and-forget the Cloudinary upload. We do NOT await
+            // the upload — face verification UX should feel instant.
+            // The URL is written to registrationState as soon as it
+            // resolves, and saveUser() at the PIN stage picks it up.
+            //
+            // If Cloudinary is unavailable or the upload fails, the
+            // signup still completes — registrationState.faceReferenceUrl
+            // just stays null. Face re-verification (Phase F) will be
+            // a no-op for accounts created in that state.
+            try {
+              captureAndUploadFaceReference(videoElement).catch(err =>
+                console.warn('[Signup] Face reference upload failed (non-fatal):', err.message || err)
+              );
+            } catch (captureErr) {
+              console.warn('[Signup] Face capture failed (non-fatal):', captureErr.message || captureErr);
+            }
+
             mediaPipeService.stopDetection();
-            
+
             registrationState.verificationStatus.faceVerified = true;
-            
+
             setTimeout(() => {
               this.renderProcessingScreen();
             }, 500);
@@ -1939,7 +2291,18 @@
               bankCode: registrationState.bankCode,
               currentAddress: registrationState.currentAddress,
               permanentAddress: registrationState.permanentAddress,
-              hashedPin: hashedPin
+              hashedPin: hashedPin,
+              // Face reference (Phase B). May be null if Cloudinary
+              // wasn't configured or the upload was still in-flight
+              // when the user reached this screen — in which case
+              // re-verification later won't have a baseline.
+              faceReferenceUrl: registrationState.faceReferenceUrl,
+              faceReferenceUploadedAt: registrationState.faceReferenceUploadedAt,
+              // Email + verification flag (Phase D). saveUser() will
+              // only include `email_verified=1` when the user actually
+              // passed the email-OTP step on Stage 2.
+              email: registrationState.email,
+              emailVerified: registrationState.emailVerified === true
             };
             
             const savedUser = await dbService.saveUser(userData);

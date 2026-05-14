@@ -700,24 +700,46 @@ class TransactionService {
   }
 
   /**
-   * Stores fulfillment proof (base64 image refs / URLs) uploaded by a seller
-   * after joining a buyer-initiated request.
-   * @param {string} transactionId - Transaction ID
-   * @param {Array<string>} proofUrls - Array of base64 data URIs or URLs
-   * @returns {Promise<boolean>} True if update successful
+   * Persists fulfillment proof URLs on a transaction. The caller is
+   * expected to have ALREADY uploaded the actual image bytes to an
+   * object store (Cloudinary) and to be passing the resulting
+   * https:// URLs here.
+   *
+   * As a defensive measure we FILTER OUT any `data:` URIs the caller
+   * may have accidentally passed — embedding base64 images directly
+   * in this column overflows Turso's /v2/pipeline statement size and
+   * surfaces as a CORS error in the browser. If every URL is base64,
+   * we persist NULL rather than break the UPDATE. The caller's UI
+   * decides whether that's worth a re-try with proper upload, but
+   * the transaction itself stays consistent.
+   *
+   * @param {string} transactionId
+   * @param {Array<string>} proofUrls   Should be remote (https://) URLs.
+   * @returns {Promise<boolean>}
    */
   async uploadFulfillmentProof(transactionId, proofUrls) {
     try {
       console.log('[TransactionService] Uploading fulfillment proof for:', transactionId);
       await this.connect();
-      const proofJson = Array.isArray(proofUrls) ? JSON.stringify(proofUrls) : null;
+
+      // Filter to remote URLs only — base64 data: URIs are dropped to
+      // avoid the Turso oversized-statement failure mode.
+      const remoteOnly = Array.isArray(proofUrls)
+        ? proofUrls.filter(u => typeof u === 'string' && /^https?:\/\//i.test(u))
+        : [];
+      if (Array.isArray(proofUrls) && proofUrls.length > remoteOnly.length) {
+        const dropped = proofUrls.length - remoteOnly.length;
+        console.warn(`[TransactionService] Dropped ${dropped} base64/non-URL fulfillment proof entr${dropped === 1 ? 'y' : 'ies'} — only https URLs are persisted.`);
+      }
+      const proofJson = remoteOnly.length > 0 ? JSON.stringify(remoteOnly) : null;
+
       const sql = `
         UPDATE transactions
         SET fulfillment_proof = ?, updated_at = CURRENT_TIMESTAMP
         WHERE transaction_id = ?
       `;
       await this.dbService._executeHttp(sql, [proofJson, transactionId]);
-      console.log('[TransactionService] ✅ Fulfillment proof saved');
+      console.log('[TransactionService] ✅ Fulfillment proof saved (' + remoteOnly.length + ' URL(s))');
       return true;
     } catch (error) {
       console.error('[TransactionService] Fulfillment proof upload failed:', error);

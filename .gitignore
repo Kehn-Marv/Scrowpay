@@ -9,6 +9,9 @@ frontend/env.js
 # Gemini API key (Trust Engine / Risk Profiling AI augmentation)
 frontend/gemini-config.js
 
+# Cloudinary cloud-name + upload preset config (real values)
+frontend/cloudinary-config.js
+
 # Test files with hardcoded credentials
 frontend/test-schema.js
 
@@ -24,12 +27,25 @@ build/
 .next/
 out/
 
-# IDE
+# IDE / editor / agent state
 .vscode/
 .idea/
+.kiro/
+.windsurf/
 *.swp
 *.swo
 *~
+
+# Python (AI engine)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Local progress notes / scratch files
+progress.txt
+TODO.local.md
 
 # OS
 .DS_Store

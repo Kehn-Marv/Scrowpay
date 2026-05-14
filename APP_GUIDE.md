@@ -430,8 +430,16 @@ Self-hosted Flask service in Docker. The model (`isolation_forest_model.pkl`) is
 
 ## 12. What's Built vs What's NOT (the honest list)
 
+> **2026 update.** Phases A through G are complete. Everything that
+> was previously in the "Partially implemented" or "Not implemented"
+> bucket — except OTP-via-SMS, push notifications, frontend test
+> suite, and edge rate-limiting — has now been built. The full
+> change log is in section 12.5 below.
+
 ### ✅ Fully implemented
 - 9-stage account creation with face liveness
+- **Face reference photo persisted to Cloudinary at signup** (Phase B). MediaPipe liveness now captures + uploads one frame; URL stored on `users.face_reference_url`.
+- **Email field at signup with verification OTP delivered via Resend** (Phase D).
 - Phone+PIN sign-in with SHA-256 hashed PINs
 - Session management (24h, localStorage)
 - Transaction creation, joining, funding, shipping, accepting
@@ -440,30 +448,75 @@ Self-hosted Flask service in Docker. The model (`isolation_forest_model.pkl`) is
 - Trust engine with counter-based scoring, history, tiers, Instant Release eligibility
 - Pre-fund risk pipeline (deterministic + Python ML + Gemini)
 - Dispute creation + AI confidence analysis + auto-resolution for high-confidence cases
+- **Dispute photos persisted to Cloudinary** (Phase B), not base64
+- **Fulfillment proof photos persisted to Cloudinary** (Phase B)
 - Squad virtual accounts + transfers
 - Toast notifications, error handling, input validation, rate-limit logging
+- **Per-user in-app notification feed with bell counter + transactional email** (Phase C). Every state transition fires a row into `notifications` and conditionally sends a Resend email.
+- **Profile panel** with avatar, virtual account display, trust score, address, sign-out (Phase E)
+- **Face re-verification via Gemini multimodal** (Phase F). High-risk funds (≥₦500k or anomaly score ≥0.85) and large/stale withdrawals open a re-verification modal that compares a fresh capture to the signup reference. Audit rows in `face_verifications`.
+- **Admin moderation console** (`admin.html`, Phase G) — pending dispute queue with one-click resolution, face verification audit, risky-transaction monitor, user directory. Gated by `users.is_admin`.
 - Docker Compose deployment for AI engine + frontend nginx
+- FingerprintJS-backed device IDs persisted to `device_fingerprints` for sock-puppet detection
 
 ### 🟡 Partially implemented / mocked
-- **OTP at signup** — hardcoded to `123456`, no SMS provider wired (would be Termii / Twilio).
-- **Dispute photo storage** — `DisputeService.uploadPhotos()` currently converts uploaded files to **base64 data URLs** and stores them inline (`@frontend/DisputeService.js:619-654`). The comment explicitly says this is for the hackathon and production should use S3 / Cloudinary.
-- **Fulfillment proof on transactions** — same problem (`@frontend/transaction-service.js:290-296`): base64 data URIs are kept in-memory only and not persisted because Turso's HTTP pipeline rejects oversized statements.
-- **Manual dispute review** — low-confidence disputes are flagged in the DB but there is **no admin/moderator UI** to actually resolve them. They sit in `Disputed` state until manually updated.
-- ~~**Device fingerprint** — currently a hash of `userAgent + screen + timezone`.~~ **DONE** in v2.0 — `DeviceFingerprintService` now uses **FingerprintJS open-source v4** (Apache 2.0) loaded from `openfpcdn.io`. Returns a stable `visitorId` plus confidence score, persisted to `device_fingerprints` for sock-puppet detection. Legacy hash retained only as a CDN-blocked fallback.
+- **OTP at signup (phone OTP)** — still hardcoded to `123456`. Email OTP is real (Phase D). Phone OTP is intentionally deferred because the SMS providers (Termii / Twilio) charge per message in test mode too.
+- **Push notifications** — only email + in-app feed today; no web-push or mobile push.
 
-### ❌ Not implemented yet — the things we said we'd add
-1. **Separate image / object store** — for face images (signup), dispute photos, fulfillment proof (shipping label, delivered package). The plan: stand up either **Cloudinary** or an **S3-compatible bucket** (Backblaze B2 / Cloudflare R2) and replace base64 with real upload URLs in:
-   - `DisputeService.uploadPhotos`
-   - `TransactionService.storeFulfillmentProof`
-   - The MediaPipe liveness step (capture + upload one frame as a face reference for re-verification later).
-2. **Face re-verification flow** — there's a Kiro spec for it (`.kiro/specs/face-verification-reverification/`) but no code yet. Idea: when a user does something high-risk (large withdrawal, password reset), we re-run liveness and compare to the stored face reference.
-3. **Real OTP provider** integration.
-4. **Admin dashboard** for manual dispute resolution, KYC review, watching `security_logs`.
-5. **Push notifications / email** when a transaction state changes (right now it's just toast within the open tab).
-6. **Mobile-first PWA polish** (service worker, offline fallback).
-7. **Production rate-limiting at the network edge** (currently it's app-level only — `rate-limiting-integration-example.js` is just a sketch).
-8. **Real transactional email/SMS receipts** for funding, shipping, completion.
-9. **Proper unit/integration test suite for the frontend services** (the AI engine has `test_api.py` and `test_model.py`; the frontend has none).
+### ❌ Not implemented yet
+1. **Real phone-OTP provider** (Termii / Twilio).
+2. **Mobile-first PWA polish** (service worker, offline fallback).
+3. **Production rate-limiting at the network edge** (currently app-level only).
+4. **Frontend unit/integration test suite** (AI engine has `test_api.py` + `test_model.py`; frontend has none).
+5. **`ai_reasoning` column on `disputes`** — the dispute agent's free-text reasoning isn't persisted; only the verdict + confidence are. The admin console shows a placeholder.
+
+---
+
+## 12.5 Phase-by-phase change log
+
+What changed and where, for anyone catching up after the original commit:
+
+### Phase A — Foundation (schema + uploads + email plumbing)
+- `users` table gained `email`, `email_verified`, `face_reference_url`, `last_face_verified_at`, `is_admin`
+- New tables: `notifications`, `email_otps`, `face_verifications`
+- New service: `CloudinaryService.js` (browser-side unsigned uploads)
+- New service: `NotificationService.js` (persistence + Resend email proxy)
+- New service: `EmailOTPService.js`
+- AI engine gained `/api/v1/notify/email` and `/api/v1/notify/otp` Resend proxy endpoints
+- `cloudinary-config.example.js` and `gemini-config.example.js` templates
+
+### Phase B — Real image storage
+- `DisputeService.uploadPhotos()` now uploads to Cloudinary, base64 fallback if config missing
+- `TransactionService.storeFulfillmentProof()` same pattern
+- Signup liveness now captures one frame and uploads to Cloudinary on success; URL written to `users.face_reference_url`
+
+### Phase C — Notifications + emails on state changes
+- Bell icon in dashboard topbar with unread counter, category filters, mark-all-read
+- Every `StateMachineService.transition()` fires `NotifyFlow.<event>()` to both participants
+- 8 email templates (funding confirmed, shipment created, delivery accepted, dispute opened/resolved, cancellation, security alerts)
+
+### Phase D — Email at signup
+- New stage in `account-creation.html` collects email
+- 6-digit OTP delivered via Resend, validated against `email_otps` table
+- `users.email_verified` flipped on successful match
+
+### Phase E — Profile panel
+- Profile icon in topbar replaces the legacy hamburger menu
+- Modal shows avatar (Cloudinary photo if available, else initial), full name, virtual account number with copy-to-clipboard, trust score badge, address, sign-out
+
+### Phase F — Face re-verification
+- New service: `FaceVerificationService.js` (Gemini 2.0 Flash multimodal: reference URL + fresh capture → same-person verdict)
+- `shouldReverify({ user, trigger, anomalyScore, amount })` pure decision function (large amount / high anomaly / sensitive setting / staleness)
+- `FaceGate` UI controller in `dashboard.html`: 4-state modal (intro → capture → checking → result)
+- Triggers wired: high-risk funding (after AI risk pass), large/stale withdrawals
+- All attempts (pass/fail/manual) persisted to `face_verifications`
+
+### Phase G — Admin console
+- New page: `admin.html`
+- Gated by `users.is_admin = 1`; 403 splash otherwise
+- 4 tabs: Pending disputes / Face verifications / Risky transactions / Users
+- `DisputeService.resolveManually()` added — bypasses confidence threshold, stamps `manual_resolution`, runs fund transfer + state transition + trust attribution
+- "Admin Console" link added to the dashboard profile panel, shown only when `is_admin = 1`
 
 ---
 
@@ -522,13 +575,15 @@ Or for frontend-only dev (no AI engine), `cd frontend` and run `python -m http.s
 ## 15. TL;DR for Your Teammate
 
 1. **It's a vanilla-JS frontend + Flask AI microservice + Turso DB + Squad payments.** No build step, no React.
-2. **The dashboard is one giant HTML file** that loads ~14 services in a strict order; each service is one class on `window`.
-3. **Money flow** is buyer → holding account → seller, gated by a state machine.
-4. **Trust score** starts at 50 ("Building") for everyone; goes up on successful deliveries, way down on lost disputes.
-5. **Two AI layers** decide if a transaction can be funded: rule-based + Isolation Forest (Python). Either one can block. Gemini isn't in this path — it now powers the **post-fund dispute resolution agent** (multimodal: reads complaint + photos, issues a binding verdict).
-6. **Images are currently base64-in-DB** (a known hack); we still need to wire up real object storage.
-7. **The "Building" badge is correct** — it's the default tier for any user with no completed transactions yet.
+2. **The dashboard is one giant HTML file** that loads ~30 services in a strict order; each service is one class on `window`.
+3. **There's a separate admin page** (`admin.html`) for moderators, gated by `users.is_admin = 1`.
+4. **Money flow** is buyer → holding account → seller, gated by a state machine.
+5. **Trust score** starts at 50 ("Building") for everyone; goes up on successful deliveries, way down on lost disputes.
+6. **Three AI layers** are in play: pre-fund risk (rules + Isolation Forest + optional Gemini sanity check), post-fund dispute resolution (Gemini multimodal — reads complaint + photos), and face re-verification (Gemini multimodal — compares signup reference photo to fresh capture on high-risk actions).
+7. **Images live in Cloudinary now** — dispute photos, fulfillment proof, and face references. Base64 fallback only kicks in if Cloudinary config is missing.
+8. **Notifications are real**: in-app bell + Resend transactional emails on every state change.
+9. **The "Building" badge is correct** — it's the default tier for any user with no completed transactions yet.
 
 ---
 
-*Last updated: based on codebase state in `c:\Users\chukw\Desktop\Scrowpay`. If you change service load order in `dashboard.html` or add a new state to the state machine, please update sections 6, 7, and 10.*
+*Last updated: post Phase G (admin console). If you change service load order in `dashboard.html`, add a new state to the state machine, or add a new admin tab, please update sections 6, 7, 10, and 12.5.*

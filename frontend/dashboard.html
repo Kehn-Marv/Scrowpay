@@ -98,11 +98,15 @@
     .balance-card {
       background: #111111;
       border-radius: 20px;
-      padding: 32px 28px;
+      padding: 28px 28px 30px;
       position: relative;
       overflow: hidden;
       animation: slideUp 0.5s ease both;
       margin-bottom: 24px;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .balance-card::before {
@@ -144,31 +148,30 @@
       display: flex;
       align-items: center;
       gap: 16px;
-      margin-bottom: 24px;
       position: relative;
       z-index: 1;
     }
 
     .balance-amount {
       font-family: 'Syne', sans-serif;
-      font-size: 44px;
+      font-size: 56px;
       font-weight: 700;
       color: #ffffff;
       line-height: 1;
-      letter-spacing: -1px;
+      letter-spacing: -1.5px;
     }
 
     .balance-amount.hidden-balance {
-      letter-spacing: 4px;
-      font-size: 32px;
+      letter-spacing: 5px;
+      font-size: 40px;
       color: rgba(255,255,255,0.4);
     }
 
     .eye-btn {
       background: rgba(255,255,255,0.08);
       border: none;
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
@@ -179,32 +182,6 @@
     }
     .eye-btn:hover { background: rgba(255,255,255,0.15); }
     .eye-btn svg { width: 18px; height: 18px; stroke: rgba(255,255,255,0.6); fill: none; }
-
-    .balance-meta {
-      display: flex;
-      gap: 24px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .balance-meta-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .balance-meta-label {
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .balance-meta-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: rgba(255,255,255,0.85);
-    }
 
     .verified-badge {
       display: inline-flex;
@@ -230,9 +207,8 @@
     }
 
     @media (max-width: 700px) {
-      .balance-card { padding: 24px 20px; }
-      .balance-amount { font-size: 36px; }
-      .balance-meta { gap: 16px; flex-wrap: wrap; }
+      .balance-card { padding: 24px 20px; min-height: 0; }
+      .balance-amount { font-size: 42px; }
       .verified-badge { font-size: 11px; padding: 3px 10px; top: 20px; right: 16px; }
       
       /* Mobile: Reposition trust score below balance content */
@@ -572,6 +548,591 @@
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+
+    /* ============================================================
+       Notifications — bell button, red badge, panel, tabs, cards.
+       The bell sits in the dark header so its base colors match
+       the existing topbar (white-on-black with subtle hover).
+       The panel itself reuses the white .modal-content shell so it
+       feels native to the rest of the app's modals.
+       ============================================================ */
+    .notif-bell {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+      cursor: pointer;
+      padding: 0;
+    }
+    .notif-bell:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+    .notif-bell:active {
+      transform: scale(0.96);
+    }
+    .notif-bell svg { width: 20px; height: 20px; }
+    .notif-bell.has-unread svg {
+      /* tiny ring-shake when a new notif arrives — see JS */
+      animation: notifRing 0.6s ease-out;
+    }
+    @keyframes notifRing {
+      0%   { transform: rotate(0deg); }
+      20%  { transform: rotate(-12deg); }
+      40%  { transform: rotate(10deg); }
+      60%  { transform: rotate(-6deg); }
+      80%  { transform: rotate(4deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .notif-badge {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: #ef4444;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 18px;
+      text-align: center;
+      box-shadow: 0 0 0 2px #000; /* match topbar bg */
+      pointer-events: none;
+    }
+    .notif-badge.hidden { display: none; }
+
+    /* Inline "Mark all read" link in the modal header. Same visual
+       weight as a secondary text button (no border, hover underline). */
+    .notif-mark-all {
+      background: transparent;
+      border: none;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green, #10b981);
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background-color 0.15s;
+    }
+    .notif-mark-all:hover { background: rgba(16, 185, 129, 0.08); }
+    .notif-mark-all:disabled { color: #9ca3af; cursor: default; background: transparent; }
+
+    /* Tab pill bar — mirrors the OPay screenshot (gray pill rests,
+       brand-dark pill on the active tab). */
+    .notif-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .notif-tab {
+      flex: 0 0 auto;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      background: #f1f3f4;
+      color: #4b5563;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+    }
+    .notif-tab:hover { background: #e5e7eb; }
+    .notif-tab.active {
+      background: var(--dark, #111111);
+      color: white;
+    }
+
+    /* List container — scrolls when many notifications stack up. */
+    .notif-list {
+      max-height: 60vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 2px;
+    }
+    .notif-list::-webkit-scrollbar { width: 6px; }
+    .notif-list::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+
+    /* Single notification row. Subtle left border tinted by severity. */
+    .notif-card {
+      display: flex;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #eef0f2;
+      border-left: 3px solid #9ca3af;
+      cursor: default;
+      transition: background-color 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .notif-card.clickable { cursor: pointer; }
+    .notif-card.clickable:hover {
+      background: #f3f4f6;
+      transform: translateY(-1px);
+    }
+    .notif-card.unread {
+      background: #ecfdf5; /* very light brand-green tint */
+      border-color: #d1fae5;
+    }
+    .notif-card.unread:hover { background: #d1fae5; }
+    .notif-card.severity-info    { border-left-color: #3b82f6; }
+    .notif-card.severity-success { border-left-color: #10b981; }
+    .notif-card.severity-warning { border-left-color: #f59e0b; }
+    .notif-card.severity-danger  { border-left-color: #ef4444; }
+
+    .notif-card-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+    }
+    .notif-card-icon svg { width: 18px; height: 18px; }
+    .severity-info    .notif-card-icon { color: #3b82f6; }
+    .severity-success .notif-card-icon { color: #10b981; }
+    .severity-warning .notif-card-icon { color: #f59e0b; }
+    .severity-danger  .notif-card-icon { color: #ef4444; }
+
+    .notif-card-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark, #111111);
+      line-height: 1.35;
+      margin-bottom: 2px;
+    }
+    .notif-card-msg {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.45;
+      word-wrap: break-word;
+    }
+    .notif-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+    .notif-card-meta .notif-action {
+      color: var(--green, #10b981);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .notif-card-meta .notif-action svg { width: 12px; height: 12px; }
+
+    /* Dot for unread cards — top-right pill. */
+    .notif-card.unread::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    /* Empty state. */
+    .notif-empty {
+      padding: 36px 20px;
+      text-align: center;
+      color: #9ca3af;
+    }
+    .notif-empty svg {
+      width: 44px; height: 44px;
+      margin: 0 auto 12px;
+      color: #d1d5db;
+    }
+    .notif-empty p {
+      font-size: 15px;
+      color: var(--dark, #111111);
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+    .notif-empty small {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* ============================================================
+       PROFILE PILL + AVATAR (Phase E)
+       ----------------------------------------------------------------
+       The avatar circle is reused in three places:
+         1. Topbar (desktop)  — inside .profile-pill
+         2. Mobile menu drawer — inside #btn-profile-mobile
+         3. Profile modal header — large variant
+       So .profile-avatar carries the shared circle styles and the
+       size variants are .profile-avatar-mobile / .profile-avatar-lg.
+
+       When CloudinaryService uploaded a face reference at signup,
+       JS sets `background-image` directly on the element and adds
+       the .has-photo class which hides the initials fallback.
+       ============================================================ */
+    .profile-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      background-size: cover;
+      background-position: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #0b0f17;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      overflow: hidden;
+    }
+    .profile-avatar.has-photo .profile-avatar-initials { display: none; }
+    .profile-avatar-mobile { width: 40px; height: 40px; font-size: 15px; }
+    .profile-avatar-lg     { width: 72px; height: 72px; font-size: 24px; border-width: 2px; }
+
+    /* The clickable pill in the desktop topbar. */
+    .profile-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px 4px 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      max-width: 220px;
+    }
+    .profile-pill:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.25);
+    }
+    .profile-pill-name {
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 130px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .profile-pill-chev {
+      width: 14px; height: 14px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       PROFILE MODAL (Phase E)
+       ----------------------------------------------------------------
+       Reuses the .modal / .modal-content shell from the existing
+       modal system; everything below customises the body to look
+       like an account / profile screen rather than an action modal.
+       ============================================================ */
+    .profile-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 24px 24px 22px;
+      background:
+        radial-gradient(120% 140% at 0% 0%, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 55%),
+        linear-gradient(135deg, #0b0f17 0%, #111827 100%);
+      color: #fff;
+      border-radius: 14px 14px 0 0;
+      overflow: hidden;
+    }
+    .profile-header::after {
+      content: '';
+      position: absolute;
+      left: 24px; right: 24px; bottom: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    }
+    .profile-header-text { min-width: 0; flex: 1; }
+    .profile-header-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .profile-header-sub {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .profile-header-trust {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      margin-top: 8px;
+      border: 1px solid rgba(16,185,129,0.25);
+    }
+
+    /* Section blocks inside the modal body. */
+    .profile-section {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f1f3f5;
+    }
+    .profile-section:last-of-type { border-bottom: none; padding-bottom: 22px; }
+    .profile-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+    .profile-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 10px 0;
+    }
+    .profile-row + .profile-row { border-top: 1px solid rgba(15, 23, 42, 0.04); }
+    .profile-row-label {
+      font-size: 13px;
+      color: #6b7280;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .profile-row-value {
+      font-size: 14px;
+      color: #0f172a;
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      justify-content: flex-end;
+      max-width: 70%;
+    }
+    .profile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px 3px 8px;
+      border-radius: 999px;
+      line-height: 1;
+    }
+    .profile-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+    .profile-badge.verified {
+      background: rgba(16, 185, 129, 0.10);
+      color: #047857;
+    }
+    .profile-badge.unverified {
+      background: rgba(245, 158, 11, 0.10);
+      color: #b45309;
+    }
+    .profile-copy-btn {
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      color: #047857;
+      cursor: pointer;
+      padding: 3px 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 999px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      line-height: 1.4;
+    }
+    .profile-copy-btn:hover {
+      background: rgba(16,185,129,0.12);
+      border-color: rgba(16,185,129,0.25);
+    }
+    .profile-copy-btn:active { transform: translateY(0.5px); }
+
+    .profile-actions {
+      padding: 16px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .profile-action-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .profile-action-btn.danger {
+      background: #fff5f5;
+      color: #c53030;
+      border-color: #fed7d7;
+    }
+    .profile-action-btn.danger:hover {
+      background: #fed7d7;
+      border-color: #fc8181;
+    }
+    .profile-action-btn.secondary {
+      background: #f8f9fa;
+      color: #1c1c1c;
+      border-color: #e5e7eb;
+    }
+    .profile-action-btn.secondary:hover {
+      background: #f1f3f5;
+    }
+
+    /* ============================================================
+       FACE RE-VERIFICATION MODAL (Phase F)
+       ----------------------------------------------------------------
+       The modal goes through 4 visual states driven by the
+       FaceGate controller setting `data-state` on the body:
+         "intro"     -> reason copy + "Start camera" button
+         "capture"   -> live video preview + capture button
+         "checking"  -> spinner + status text while Gemini decides
+         "result"    -> verdict card (pass/fail/manual)
+       Each state is a sibling div; only the matching one is shown.
+       ============================================================ */
+    #face-reverify-modal .modal-content { padding: 0; max-width: 460px; overflow: hidden; }
+    .face-reverify-body { padding: 24px; }
+    .face-reverify-state { display: none; }
+    #face-reverify-modal[data-state="intro"]    .face-reverify-state[data-state="intro"]    { display: block; }
+    #face-reverify-modal[data-state="capture"]  .face-reverify-state[data-state="capture"]  { display: block; }
+    #face-reverify-modal[data-state="checking"] .face-reverify-state[data-state="checking"] { display: block; }
+    #face-reverify-modal[data-state="result"]   .face-reverify-state[data-state="result"]   { display: block; }
+
+    .face-reverify-icon {
+      width: 56px; height: 56px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.12);
+      color: #047857;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .face-reverify-icon svg { width: 28px; height: 28px; }
+    .face-reverify-title {
+      font-size: 18px; font-weight: 700; text-align: center;
+      color: #111111; margin-bottom: 8px;
+    }
+    .face-reverify-desc {
+      font-size: 14px; color: #6b7280;
+      text-align: center; margin-bottom: 20px; line-height: 1.5;
+    }
+    .face-reverify-reason {
+      font-size: 13px; color: #b45309;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 8px; padding: 10px 12px;
+      margin-bottom: 18px; line-height: 1.45;
+    }
+
+    /* Live camera preview. The video element is square-cropped
+       client-side via object-fit so the user sees a centered frame
+       regardless of the device camera's actual aspect ratio. */
+    .face-reverify-stage {
+      position: relative;
+      width: 100%; aspect-ratio: 1 / 1;
+      background: #0b0f17;
+      border-radius: 12px; overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .face-reverify-stage video {
+      width: 100%; height: 100%; object-fit: cover;
+      transform: scaleX(-1); /* mirror so the user sees themselves like a mirror */
+    }
+    .face-reverify-stage .face-reverify-frame {
+      position: absolute; inset: 12% 18%;
+      border: 2px dashed rgba(255,255,255,0.55);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .face-reverify-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      margin: 24px auto 16px;
+      animation: face-spin 0.8s linear infinite;
+    }
+    @keyframes face-spin { to { transform: rotate(360deg); } }
+
+    .face-reverify-result-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .face-reverify-result-icon svg { width: 32px; height: 32px; }
+    .face-reverify-result-icon.pass { background: rgba(16, 185, 129, 0.15); color: #047857; }
+    .face-reverify-result-icon.fail { background: rgba(239, 68, 68, 0.15); color: #b91c1c; }
+    .face-reverify-result-icon.manual { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+
+    .face-reverify-actions {
+      display: flex; gap: 10px;
+      margin-top: 16px;
+    }
+    .face-reverify-actions button {
+      flex: 1; padding: 12px 16px; border-radius: 10px;
+      font-weight: 600; font-size: 14px; cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .face-reverify-actions .btn-primary {
+      background: #111111; color: #fff;
+    }
+    .face-reverify-actions .btn-primary:hover { background: #000; }
+    .face-reverify-actions .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .face-reverify-actions .btn-secondary {
+      background: #f8f9fa; color: #1c1c1c; border-color: #e5e7eb;
+    }
+    .face-reverify-actions .btn-secondary:hover { background: #f1f3f5; }
 
     /* ============================================================
        Dual-axis Create / Join shared design tokens
@@ -987,30 +1548,98 @@
         </div>
         
         <!-- Desktop User Info (hidden on mobile) -->
-        <div class="hidden md:flex items-center gap-4">
-          <span id="user-name" class="text-white font-medium">Welcome!</span>
+        <div class="hidden md:flex items-center gap-3">
+          <!--
+            Notification bell. Visible on both desktop AND mobile (we
+            override the `hidden md:flex` parent for this single button
+            via the wrapper below). The red badge mirrors OPay's
+            pattern: hidden when count==0, otherwise shows a small
+            number (capped at "9+"). Click opens #notifications-modal.
+          -->
+          <button id="btn-notifications" type="button"
+                  class="notif-bell"
+                  aria-label="Notifications"
+                  title="Notifications">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.7">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+            </svg>
+            <span id="notif-badge" class="notif-badge hidden">0</span>
+          </button>
+
+          <!--
+            Profile pill (Phase E). Replaces the static "Welcome, X!"
+            text with a clickable affordance that opens the My Profile
+            modal. The avatar circle shows the user's face reference
+            photo if Cloudinary uploaded one at signup, otherwise
+            falls back to first-initial. Name label is identical to
+            the legacy `#user-name` span so any existing code that
+            reads it (e.g. account-name resolver in the withdraw flow)
+            keeps working unchanged.
+          -->
+          <button id="btn-profile" type="button" class="profile-pill" aria-label="Open profile" title="My Profile">
+            <span id="profile-avatar" class="profile-avatar"><span class="profile-avatar-initials">U</span></span>
+            <span id="user-name" class="profile-pill-name">Welcome!</span>
+            <svg class="profile-pill-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
           <button id="btn-logout" class="px-4 py-2 text-white border border-white border-opacity-30 rounded-full transition-colors hover:bg-white hover:bg-opacity-10 hover:border-opacity-60">
             Logout
           </button>
         </div>
-        
-        <!-- Mobile Menu Button (visible on mobile only) - Requirement 18.4 -->
-        <button id="btn-mobile-menu" class="md:hidden p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg>
-        </button>
+
+        <!--
+          Mobile right-side cluster: bell + hamburger together so the
+          parent flex layout (justify-between with logo on left)
+          continues to work as 2 children. Both are hidden on md+
+          breakpoints where the desktop user-info group is shown.
+        -->
+        <div class="md:hidden flex items-center gap-1">
+          <button id="btn-notifications-mobile" type="button"
+                  class="notif-bell"
+                  aria-label="Notifications"
+                  title="Notifications">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.7">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+            </svg>
+            <span id="notif-badge-mobile" class="notif-badge hidden">0</span>
+          </button>
+
+          <!-- Mobile Menu Button (visible on mobile only) - Requirement 18.4 -->
+          <button id="btn-mobile-menu" class="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
     
     <!-- Mobile Navigation Menu (hidden by default) - Requirement 18.4 -->
     <div id="mobile-menu" class="hidden md:hidden bg-black border-t border-gray-700">
       <div class="max-w-7xl mx-auto px-4 py-4 space-y-3">
-        <!-- User Info -->
-        <div class="pb-3 border-b border-gray-700">
-          <p id="user-name-mobile" class="text-white font-medium mb-1">Welcome!</p>
-          <p id="user-phone-mobile" class="text-sm text-gray-400">+234XXXXXXXXXX</p>
-        </div>
+        <!--
+          User Info — Phase E makes this row clickable so it opens the
+          same My Profile modal as the desktop avatar pill. Visual
+          treatment is unchanged so users who don't tap it see exactly
+          what they used to.
+        -->
+        <button id="btn-profile-mobile" type="button"
+                class="w-full flex items-center justify-between gap-3 pb-3 mb-1 border-b border-gray-700 text-left">
+          <div class="flex items-center gap-3 min-w-0">
+            <span id="profile-avatar-mobile" class="profile-avatar profile-avatar-mobile">
+              <span class="profile-avatar-initials">U</span>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p id="user-name-mobile" class="text-white font-medium mb-1 truncate">Welcome!</p>
+              <p id="user-phone-mobile" class="text-sm text-gray-400 truncate">+234XXXXXXXXXX</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
         
         <!-- Quick Actions -->
         <button id="btn-create-escrow-mobile" class="w-full flex items-center gap-3 px-4 py-3 bg-white bg-opacity-10 hover:bg-brand-green hover:bg-opacity-100 rounded-lg transition-colors text-left">
@@ -1095,20 +1724,6 @@
           </div>
         </div>
 
-        <div class="balance-meta">
-          <div class="balance-meta-item">
-            <span class="balance-meta-label">Phone</span>
-            <span class="balance-meta-value" id="user-phone-balance">+234XXXXXXXXXX</span>
-          </div>
-          <div class="balance-meta-item">
-            <span class="balance-meta-label">Account Type</span>
-            <span class="balance-meta-value">Personal</span>
-          </div>
-          <div class="balance-meta-item">
-            <span class="balance-meta-label">Member Since</span>
-            <span class="balance-meta-value" id="join-date-balance">—</span>
-          </div>
-        </div>
       </div>
       
       <!-- New User Notice (Hidden by default) -->
@@ -2097,6 +2712,248 @@
     </div>
   </div>
   
+  <!--
+    Notifications Modal (Phase C).
+    OPay-style: pill tabs at the top (Transactions / Activities), then
+    a scrollable list of notification cards. Mark-all-read in the header.
+    All rendering is done by NotificationsPanel below at runtime — this
+    is just the shell.
+  -->
+  <div id="notifications-modal" class="modal">
+    <div class="modal-content" style="max-width: 560px;">
+      <div class="p-6 sm:p-7">
+        <div class="modal-header" style="margin-bottom: 16px;">
+          <h2 class="modal-title">Notifications</h2>
+          <div class="flex items-center gap-2">
+            <button id="btn-notif-mark-all-read" type="button"
+                    class="notif-mark-all"
+                    aria-label="Mark all as read"
+                    title="Mark all as read">
+              Mark all read
+            </button>
+            <button class="modal-close-btn" onclick="closeModal('notifications-modal')" aria-label="Close">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab pills -->
+        <div class="notif-tabs" role="tablist">
+          <button type="button" class="notif-tab active" data-tab="all"          role="tab" aria-selected="true">All</button>
+          <button type="button" class="notif-tab"        data-tab="transactions" role="tab" aria-selected="false">Transactions</button>
+          <button type="button" class="notif-tab"        data-tab="activities"   role="tab" aria-selected="false">Activities</button>
+        </div>
+
+        <!-- Scrollable list -->
+        <div id="notif-list" class="notif-list" role="list">
+          <!-- Filled by renderNotifications() -->
+          <div class="notif-empty">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+            </svg>
+            <p>You're all caught up</p>
+            <small>New activity will show up here.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Profile Modal (Phase E).
+    All values are filled by ProfilePanel.open() at runtime from
+    `window.currentUserData` + the trust engine + active session.
+    The shell here just establishes the layout / class hooks.
+  -->
+  <div id="profile-modal" class="modal">
+    <div class="modal-content" style="max-width: 480px; padding: 0;">
+      <!-- Close button (absolutely positioned over the header) -->
+      <button class="modal-close-btn" onclick="closeModal('profile-modal')"
+              aria-label="Close"
+              style="position: absolute; top: 12px; right: 12px; z-index: 2; background: rgba(255,255,255,0.12); color: #fff;">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+
+      <!-- Dark gradient header with avatar + name + trust pill. -->
+      <div class="profile-header">
+        <span id="profile-modal-avatar" class="profile-avatar profile-avatar-lg">
+          <span class="profile-avatar-initials">U</span>
+        </span>
+        <div class="profile-header-text">
+          <div id="profile-modal-name" class="profile-header-name">—</div>
+          <div id="profile-modal-phone" class="profile-header-sub">—</div>
+          <div id="profile-modal-trust" class="profile-header-trust" style="display: none;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span id="profile-modal-trust-value">Trust 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account section: email (verified?), virtual account, trust score -->
+      <div class="profile-section">
+        <div class="profile-section-title">Account</div>
+        <div class="profile-row">
+          <span class="profile-row-label">Email</span>
+          <span class="profile-row-value">
+            <span id="profile-row-email">—</span>
+            <span id="profile-row-email-badge" class="profile-badge unverified" style="display:none;">Unverified</span>
+          </span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Phone</span>
+          <span class="profile-row-value">
+            <span id="profile-row-phone">—</span>
+            <span class="profile-badge verified">Verified</span>
+          </span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Virtual account</span>
+          <span class="profile-row-value">
+            <span id="profile-row-vacc">—</span>
+            <button id="profile-copy-vacc" class="profile-copy-btn" type="button">Copy</button>
+          </span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Member since</span>
+          <span id="profile-row-since" class="profile-row-value">—</span>
+        </div>
+      </div>
+
+      <!-- KYC section: BVN (masked), DOB, gender. Read-only. -->
+      <div class="profile-section">
+        <div class="profile-section-title">KYC details</div>
+        <div class="profile-row">
+          <span class="profile-row-label" id="profile-row-id-label">BVN</span>
+          <span id="profile-row-id" class="profile-row-value">—</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Date of birth</span>
+          <span id="profile-row-dob" class="profile-row-value">—</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Gender</span>
+          <span id="profile-row-gender" class="profile-row-value">—</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Face verification</span>
+          <span class="profile-row-value">
+            <span id="profile-row-face-badge" class="profile-badge unverified">Not captured</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Address section -->
+      <div class="profile-section">
+        <div class="profile-section-title">Address</div>
+        <div class="profile-row">
+          <span class="profile-row-label">Current</span>
+          <span id="profile-row-address" class="profile-row-value" style="text-align:right; max-width: 60%;">—</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="profile-actions">
+        <!--
+          Admin Console link (Phase G).
+          Hidden by default; the profile panel's open() reveals it
+          only when window.currentUserData.is_admin === 1. This keeps
+          the link out of regular users' UI without needing a server
+          round-trip to check permissions.
+        -->
+        <a id="profile-link-admin" href="admin.html" class="profile-action-btn secondary" style="display:none; text-decoration:none;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Admin Console
+        </a>
+        <button id="profile-btn-logout" type="button" class="profile-action-btn danger">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Face Re-verification Modal (Phase F).
+    Single modal, four data-state views:
+      intro    -> reason + "Start camera"
+      capture  -> live preview + "Capture & verify"
+      checking -> spinner while Gemini decides
+      result   -> verdict (pass / fail / manual review)
+    All controlled by the FaceGate JS module.
+  -->
+  <div id="face-reverify-modal" class="modal" data-state="intro">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="FaceGate && FaceGate.cancel()" aria-label="Close" style="position:absolute; top:12px; right:12px; z-index:2;">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+
+      <!-- INTRO ─ explains why we're asking ─ -->
+      <div class="face-reverify-state face-reverify-body" data-state="intro">
+        <div class="face-reverify-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </div>
+        <h2 class="face-reverify-title">Quick face check</h2>
+        <p class="face-reverify-desc">For your security, we need to confirm it's really you before continuing this action.</p>
+        <div id="face-reverify-reason" class="face-reverify-reason">Reason will appear here.</div>
+        <div class="face-reverify-actions">
+          <button class="btn-secondary" onclick="FaceGate && FaceGate.cancel()">Cancel</button>
+          <button class="btn-primary" onclick="FaceGate && FaceGate.startCamera()">Start camera</button>
+        </div>
+      </div>
+
+      <!-- CAPTURE ─ live preview + capture button ─ -->
+      <div class="face-reverify-state face-reverify-body" data-state="capture">
+        <h2 class="face-reverify-title">Position your face in the circle</h2>
+        <p class="face-reverify-desc">Look straight at the camera. Make sure your face is well-lit.</p>
+        <div class="face-reverify-stage">
+          <video id="face-reverify-video" autoplay playsinline muted></video>
+          <div class="face-reverify-frame"></div>
+        </div>
+        <div class="face-reverify-actions">
+          <button class="btn-secondary" onclick="FaceGate && FaceGate.cancel()">Cancel</button>
+          <button class="btn-primary" onclick="FaceGate && FaceGate.captureAndVerify()">Capture &amp; verify</button>
+        </div>
+      </div>
+
+      <!-- CHECKING ─ spinner while Gemini answers ─ -->
+      <div class="face-reverify-state face-reverify-body" data-state="checking" style="text-align:center;">
+        <div class="face-reverify-spinner"></div>
+        <h2 class="face-reverify-title">Verifying...</h2>
+        <p class="face-reverify-desc">This usually takes a few seconds.</p>
+      </div>
+
+      <!-- RESULT ─ pass / fail / manual review ─ -->
+      <div class="face-reverify-state face-reverify-body" data-state="result" style="text-align:center;">
+        <div id="face-reverify-result-icon" class="face-reverify-result-icon pass">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2 id="face-reverify-result-title" class="face-reverify-title">Verified</h2>
+        <p id="face-reverify-result-desc" class="face-reverify-desc">You're good to go.</p>
+        <div class="face-reverify-actions">
+          <button id="face-reverify-result-retry" class="btn-secondary" style="display:none;" onclick="FaceGate && FaceGate.retry()">Try again</button>
+          <button id="face-reverify-result-done" class="btn-primary" onclick="FaceGate && FaceGate.finish()">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Action Success Modal (Generic) -->
   <div id="action-success-modal" class="modal">
     <div class="modal-content">
@@ -2547,6 +3404,16 @@
   <!-- Scripts -->
   <script src="env.js"></script>
   <script src="config.js"></script>
+  <!--
+    Third-party / external service configs. These define globals
+    (window.GEMINI_CONFIG, window.CLOUDINARY_CONFIG) that downstream
+    services read at construction time, so they MUST load before any
+    service script below. Both files are gitignored — if a teammate
+    hasn't filled them in, the relevant features degrade gracefully
+    (Gemini → rules-only; Cloudinary → base64 fallback).
+  -->
+  <script src="gemini-config.js"></script>
+  <script src="cloudinary-config.js"></script>
   
   <!-- Diagnostic Script -->
   <script>
@@ -2633,6 +3500,18 @@
   <script src="AnomalyDetectionEngine.js"></script>
 
   <!--
+    Cloudinary upload + in-app notification stack.
+    CloudinaryService is a thin wrapper around Cloudinary's unsigned
+    upload endpoint and degrades to base64 fallback if the config file
+    has a blank cloudName.
+    NotificationService persists rows to the `notifications` table and
+    optionally fires Resend emails via the Python AI engine's
+    /api/v1/notify/email proxy.
+  -->
+  <script src="CloudinaryService.js"></script>
+  <script src="NotificationService.js"></script>
+
+  <!--
     DisputeAgentService: Gemini-powered dispute resolution agent.
     Multimodal (reads dispute description + uploaded photos) and produces
     a binding verdict that DisputeService applies. Reads its API key from
@@ -2641,6 +3520,15 @@
   -->
   <script src="DisputeAgentService.js"></script>
   <script src="DisputeService.js"></script>
+
+  <!--
+    FaceVerificationService (Phase F): Gemini-powered same-person check.
+    Reads window.GEMINI_CONFIG (already loaded above) for the API key
+    and the Turso config from the global Turso client. If Gemini isn't
+    configured, .available returns false and shouldReverify() never
+    asks (so we never block a user behind a check we can't perform).
+  -->
+  <script src="FaceVerificationService.js"></script>
   
   <script>
     // Toast Notification Functions (Legacy - kept for backward compatibility)
@@ -3098,7 +3986,1244 @@
         _syncBodyScrollLock();
       }
     }
-    
+
+    /* ================================================================
+       NOTIFICATIONS PANEL (Phase C)
+       ----------------------------------------------------------------
+       The bell icon in the topbar opens #notifications-modal. This
+       module is responsible for:
+
+         • Loading notifications for the current user from
+           NotificationService (persists in Turso).
+         • Rendering them as severity-tinted cards.
+         • Tab filtering: all / transactions / activities.
+         • Mark-as-read on click; bulk mark-all-read.
+         • Live updates via the `scrowpay:notification` window event
+           emitted by NotificationService.create() — so the badge
+           bumps and the list refreshes WITHOUT polling.
+         • Safety-net poll every 60 s for the badge count in case
+           another tab/device created a notification.
+
+       Everything is namespaced under `NotifPanel` to avoid colliding
+       with the existing toast helpers (showSuccessNotification, etc.)
+       that the rest of the dashboard uses for ephemeral toasts.
+       ================================================================ */
+    const NotifPanel = (function () {
+      const STATE = {
+        currentTab: 'all',          // 'all' | 'transactions' | 'activities'
+        list: [],                    // last-loaded notifications
+        loading: false
+      };
+
+      // Cached DOM refs. Resolved lazily because the module is
+      // instantiated at script-eval time, before some elements are
+      // necessarily in the DOM tree (defensive — the modal is in the
+      // same HTML doc so by this script's time it IS present).
+      const $list      = () => document.getElementById('notif-list');
+      const $badge     = () => document.getElementById('notif-badge');
+      const $badgeMob  = () => document.getElementById('notif-badge-mobile');
+      const $markAll   = () => document.getElementById('btn-notif-mark-all-read');
+      const $tabs      = () => document.querySelectorAll('#notifications-modal .notif-tab');
+      const $bell      = () => document.getElementById('btn-notifications');
+      const $bellMob   = () => document.getElementById('btn-notifications-mobile');
+
+      // Map notification `type` -> inline SVG. Defined inline rather
+      // than as a sprite sheet because we only have ~10 distinct
+      // types and they're tiny.
+      function iconFor(type) {
+        const M = {
+          'funding.confirmed':  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2"/><circle cx="12" cy="12" r="9" stroke-width="1.8" fill="none"/>',
+          'shipment.created':   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7h11l3 4h4v6h-2a2 2 0 11-4 0H9a2 2 0 11-4 0H3V7z"/>',
+          'transaction.completed':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"/>',
+          'transaction.cancelled':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 18L18 6M6 6l12 12"/>',
+          'transaction.created':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v16m8-8H4"/>',
+          'dispute.opened':     '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z"/>',
+          'dispute.resolved':   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+          'transaction.cancellation_requested': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z"/>',
+          'transaction.cancellation_withdrawn': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10h10a4 4 0 014 4v0a4 4 0 01-4 4H7m0 0l3-3m-3 3l3 3"/>',
+          'transaction.cancellation_declined':  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+          'security.password_changed':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3v3M6 11h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2z"/>',
+          'security.face_reverify_failed':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707"/>',
+          'security.high_risk_blocked':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+          'kyc.face_reverify_required':'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM16 19h2a2 2 0 002-2v-1.342a4 4 0 00-1.172-2.828l-.829-.83A2 2 0 0118 10.586V5a2 2 0 00-2-2H8a2 2 0 00-2 2v5.586a2 2 0 01-.586 1.414l-.828.829A4 4 0 004 15.658V17a2 2 0 002 2h2"/>'
+        };
+        const path = M[type] || '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
+        return `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${path}</svg>`;
+      }
+
+      // Compact "5m ago" / "2h ago" / "Yesterday" / dd MMM relative
+      // formatter. Keeps the card meta row tight and OPay-like.
+      function relativeTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const sec = Math.max(1, Math.floor((Date.now() - d.getTime()) / 1000));
+        if (sec < 60)   return `${sec}s ago`;
+        if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+        if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+        const dayDiff = Math.floor(sec / 86400);
+        if (dayDiff === 1) return 'Yesterday';
+        if (dayDiff < 7)   return `${dayDiff}d ago`;
+        return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+      }
+
+      // Render the badge (both desktop + mobile in sync). The bell
+      // gets a `.has-unread` class that triggers the ring-shake CSS
+      // animation once when the count goes 0 → >0.
+      function renderBadge(count) {
+        const text = count > 9 ? '9+' : String(count || 0);
+        const badges = [$badge(), $badgeMob()];
+        const bells  = [$bell(),  $bellMob()];
+        badges.forEach(b => {
+          if (!b) return;
+          if (count > 0) { b.textContent = text; b.classList.remove('hidden'); }
+          else           { b.classList.add('hidden'); }
+        });
+        bells.forEach(bell => {
+          if (!bell) return;
+          if (count > 0 && !bell.classList.contains('has-unread')) {
+            bell.classList.add('has-unread');
+            // Re-trigger the ring-shake animation each time the bell
+            // transitions 0 → >0. We just toggle the class.
+            setTimeout(() => bell.classList.remove('has-unread'), 800);
+          }
+        });
+      }
+
+      async function refreshBadge() {
+        if (!notificationService || !currentUserId) return;
+        try {
+          const n = await notificationService.unreadCount(currentUserId);
+          renderBadge(n);
+        } catch (e) {
+          console.warn('[NotifPanel] unreadCount failed:', e.message);
+        }
+      }
+
+      // Render the list for the current tab. `STATE.list` is the
+      // ALL-tab dataset; filtering is local so tab switches feel
+      // instant.
+      function render() {
+        const el = $list();
+        if (!el) return;
+        const filtered = STATE.list.filter(n => {
+          if (STATE.currentTab === 'all') return true;
+          return n.category === STATE.currentTab;
+        });
+        if (filtered.length === 0) {
+          el.innerHTML = `
+            <div class="notif-empty">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+              </svg>
+              <p>${STATE.loading ? 'Loading…' : 'You\u2019re all caught up'}</p>
+              <small>${STATE.loading ? '' : 'New activity will show up here.'}</small>
+            </div>`;
+          return;
+        }
+        const escape = s => String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const html = filtered.map(n => {
+          const sev = ['info','success','warning','danger'].includes(n.severity) ? n.severity : 'info';
+          const clickable = n.actionUrl || n.transactionId;
+          const meta = `
+            <div class="notif-card-meta">
+              <span>${escape(relativeTime(n.createdAt))}</span>
+              ${clickable
+                ? `<span class="notif-action">View<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>`
+                : ''}
+            </div>`;
+          return `
+            <div class="notif-card severity-${sev} ${n.isRead ? '' : 'unread'} ${clickable ? 'clickable' : ''}"
+                 role="listitem" data-id="${n.id}" data-txn="${escape(n.transactionId || '')}"
+                 data-url="${escape(n.actionUrl || '')}">
+              <div class="notif-card-icon">${iconFor(n.type)}</div>
+              <div class="notif-card-body">
+                <div class="notif-card-title">${escape(n.title)}</div>
+                <div class="notif-card-msg">${escape(n.message)}</div>
+                ${meta}
+              </div>
+            </div>`;
+        }).join('');
+        el.innerHTML = html;
+
+        // Wire click handlers for each card. We do it once per render
+        // (small list, not worth event delegation complexity).
+        el.querySelectorAll('.notif-card').forEach(card => {
+          card.addEventListener('click', () => onCardClick(card));
+        });
+      }
+
+      async function load() {
+        if (!notificationService || !currentUserId) return;
+        STATE.loading = true;
+        render();
+        try {
+          STATE.list = await notificationService.list(currentUserId, {
+            unreadOnly: false,
+            category: 'all',
+            limit: 100
+          });
+        } catch (e) {
+          console.warn('[NotifPanel] list failed:', e.message);
+          STATE.list = [];
+        }
+        STATE.loading = false;
+        render();
+        refreshBadge();
+      }
+
+      async function onCardClick(cardEl) {
+        const id = Number(cardEl.dataset.id);
+        const txnId = cardEl.dataset.txn;
+        const url = cardEl.dataset.url;
+
+        // Mark this row read (optimistic UI).
+        cardEl.classList.remove('unread');
+        try {
+          if (notificationService && id) {
+            await notificationService.markRead(id);
+            const row = STATE.list.find(n => n.id === id);
+            if (row) row.isRead = true;
+            refreshBadge();
+          }
+        } catch (_) {}
+
+        // Best-effort deep link. If the notification carries a
+        // transactionId, try to open that transaction's details modal
+        // via the dashboard's existing showTransactionDetails(). An
+        // external `actionUrl` opens in a new tab instead.
+        if (txnId && typeof showTransactionDetails === 'function') {
+          closeModal('notifications-modal');
+          try { showTransactionDetails(txnId); } catch (e) { console.warn(e); }
+          return;
+        }
+        if (url && /^https?:\/\//i.test(url)) {
+          window.open(url, '_blank', 'noopener');
+        }
+      }
+
+      function bind() {
+        // Bell buttons → open modal + refresh list.
+        const onBell = async () => {
+          openModal('notifications-modal');
+          await load();
+        };
+        const b1 = $bell();    if (b1) b1.addEventListener('click', onBell);
+        const b2 = $bellMob(); if (b2) b2.addEventListener('click', onBell);
+
+        // Tab switching — local filter; no re-fetch.
+        $tabs().forEach(tab => {
+          tab.addEventListener('click', () => {
+            $tabs().forEach(t => {
+              t.classList.toggle('active', t === tab);
+              t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+            });
+            STATE.currentTab = tab.dataset.tab || 'all';
+            render();
+          });
+        });
+
+        // Mark all read.
+        const ma = $markAll();
+        if (ma) ma.addEventListener('click', async () => {
+          if (!notificationService || !currentUserId) return;
+          ma.disabled = true;
+          try {
+            await notificationService.markAllRead(currentUserId);
+            STATE.list.forEach(n => { n.isRead = true; });
+            render();
+            renderBadge(0);
+          } catch (e) {
+            console.warn('[NotifPanel] markAllRead failed:', e.message);
+          } finally {
+            ma.disabled = false;
+          }
+        });
+
+        // Live updates from anywhere in the app calling
+        // notificationService.create(). We refresh the badge always
+        // and re-render the list if the modal is open.
+        window.addEventListener('scrowpay:notification', (e) => {
+          const detail = e.detail || {};
+          // Only react to events for the current user. The detail
+          // includes userId; if it doesn't match we ignore.
+          if (currentUserId && detail.userId && Number(detail.userId) !== Number(currentUserId)) return;
+          refreshBadge();
+          const modal = document.getElementById('notifications-modal');
+          if (modal && modal.classList.contains('active')) {
+            load();
+          }
+        });
+
+        // Safety-net poll every 60 s for the badge count. Catches
+        // notifications created in another tab / on another device.
+        setInterval(refreshBadge, 60000);
+      }
+
+      return { bind, refreshBadge, load };
+    })();
+
+    /* ================================================================
+       NOTIFY-ON-TRANSITION helpers (Phase C step 2)
+       ----------------------------------------------------------------
+       Thin wrappers that resolve the counterparty + amount for a
+       transaction and call notificationService.create(). Each helper
+       is `try/catch`-walled so notification failures never break the
+       underlying transaction flow they were called from.
+
+       Money formatting is centralised here — every notification's
+       currency string should match what the UI shows elsewhere.
+       ================================================================ */
+    const NotifyFlow = (function () {
+      function fmtNgn(amount) {
+        const n = Number(amount);
+        if (!Number.isFinite(n)) return '₦0.00';
+        return '₦' + n.toLocaleString('en-NG', {
+          minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+      }
+
+      // Look up the row freshly from the DB before notifying. This
+      // matters because the in-memory `currentTransaction` may be
+      // stale (e.g. seller_id / buyer_id may have just been written
+      // moments before by updateBuyer/updateSeller). One small read
+      // is cheap.
+      async function _fetchTxn(transactionId) {
+        if (!transactionService || !transactionId) return null;
+        try {
+          // transaction-service.getTransaction(id) returns the
+          // transaction row directly as a flat object (or null when
+          // not found). NOT wrapped in `{transaction: ...}`.
+          if (typeof transactionService.getTransaction === 'function') {
+            return await transactionService.getTransaction(transactionId);
+          }
+        } catch (e) {
+          console.warn('[NotifyFlow] could not fetch txn', transactionId, e.message);
+        }
+        return null;
+      }
+
+      // Helper that picks the OTHER party from the perspective of the
+      // user who just acted. Returns null if the txn doesn't have a
+      // counterparty assigned yet.
+      function _counterpartyOf(txn, actorUserId) {
+        if (!txn) return null;
+        const actor = Number(actorUserId);
+        if (Number(txn.seller_id) === actor) return txn.buyer_id || null;
+        if (Number(txn.buyer_id)  === actor) return txn.seller_id || null;
+        return null;
+      }
+
+      // Generic safe-create wrapper.
+      async function _push({ userId, type, title, message, category, severity, transactionId, metadata, sendEmail }) {
+        if (!userId) return;
+        if (typeof notificationService === 'undefined' || !notificationService) return;
+        try {
+          await notificationService.create({
+            userId, type, title, message, category, severity,
+            transactionId, metadata, sendEmail
+          });
+        } catch (e) {
+          console.warn('[NotifyFlow] create failed (non-fatal):', type, e.message);
+        }
+      }
+
+      // ----- Public surface — one fn per state transition -----
+
+      async function fundingConfirmed(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const sellerId = txn.seller_id;
+        const buyerId  = txn.buyer_id;
+        const amount   = fmtNgn(txn.price);
+        const item     = txn.item_description || 'your item';
+
+        // Seller: someone just locked funds for them — primary signal.
+        await _push({
+          userId: sellerId,
+          type: 'funding.confirmed',
+          title: 'Escrow funded',
+          message: `${amount} is now locked in escrow for "${item}". You can ship the item now.`,
+          category: 'transactions',
+          severity: 'success',
+          transactionId
+        });
+        // Buyer: confirmation receipt. In-app only (no email — they
+        // just did the action and saw the success modal).
+        if (Number(buyerId) === Number(actorUserId)) {
+          await _push({
+            userId: buyerId,
+            type: 'funding.confirmed',
+            title: 'Funds locked in escrow',
+            message: `Your ${amount} payment for "${item}" is now safely held in escrow until you confirm delivery.`,
+            category: 'transactions',
+            severity: 'info',
+            transactionId,
+            sendEmail: false
+          });
+        }
+      }
+
+      async function shipmentCreated(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const buyerId = txn.buyer_id;
+        const item = txn.item_description || 'your order';
+        const days = Number(txn.inspection_window_days) > 0 ? Number(txn.inspection_window_days) : 7;
+
+        await _push({
+          userId: buyerId,
+          type: 'shipment.created',
+          title: 'Item shipped',
+          message: `The seller marked "${item}" as shipped. You have ${days} day${days === 1 ? '' : 's'} from delivery to inspect and accept.`,
+          category: 'transactions',
+          severity: 'info',
+          transactionId
+        });
+      }
+
+      async function transactionCompleted(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const sellerId = txn.seller_id;
+        const buyerId  = txn.buyer_id;
+        const amount   = fmtNgn(txn.price);
+        const item     = txn.item_description || 'the item';
+
+        // Seller — they're being paid. Top-priority email.
+        await _push({
+          userId: sellerId,
+          type: 'transaction.completed',
+          title: 'Funds released',
+          message: `${amount} has been released to your account for "${item}". Thank you for delivering!`,
+          category: 'transactions',
+          severity: 'success',
+          transactionId
+        });
+        // Buyer — confirmation. In-app only.
+        if (Number(buyerId) === Number(actorUserId)) {
+          await _push({
+            userId: buyerId,
+            type: 'transaction.completed',
+            title: 'Transaction completed',
+            message: `You accepted "${item}". Funds have been released to the seller.`,
+            category: 'transactions',
+            severity: 'success',
+            transactionId,
+            sendEmail: false
+          });
+        }
+      }
+
+      async function disputeOpened(transactionId, actorUserId, reason = '') {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const counterpartyId = _counterpartyOf(txn, actorUserId);
+        const item = txn.item_description || 'the transaction';
+
+        // Counterparty — they need to defend / respond.
+        await _push({
+          userId: counterpartyId,
+          type: 'dispute.opened',
+          title: 'Dispute opened',
+          message: `A dispute has been opened on "${item}". ${reason ? 'Reason: ' + reason : ''} Funds will stay in escrow while our AI agent reviews the case.`.trim(),
+          category: 'transactions',
+          severity: 'warning',
+          transactionId
+        });
+        // Filer — acknowledgement (in-app only).
+        await _push({
+          userId: actorUserId,
+          type: 'dispute.opened',
+          title: 'Your dispute was submitted',
+          message: `We've received your dispute on "${item}". You'll get an update as soon as the AI agent issues a verdict.`,
+          category: 'transactions',
+          severity: 'info',
+          transactionId,
+          sendEmail: false
+        });
+      }
+
+      // ----- Phase C+ deferred hooks -----------------------------------
+      //
+      // These four cover the dispute-verdict and the four cancellation
+      // sub-events. Same shape as the four above: best-effort, async,
+      // walled in try/catch at every call site so they can never break
+      // a transaction flow.
+
+      async function disputeResolved(transactionId, verdict, resolutionResult) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const buyerId  = txn.buyer_id;
+        const sellerId = txn.seller_id;
+        const item     = txn.item_description || 'the transaction';
+        const amount   = fmtNgn(txn.price);
+
+        // Auto-resolved disputes have a definitive winner; manual ones
+        // are queued for human review and we shouldn't claim a verdict.
+        const isAutomated = !!(resolutionResult && resolutionResult.success
+                                && resolutionResult.resolutionType === 'automated');
+        if (!isAutomated) {
+          // For manual escalations, both parties just need to know the
+          // case is open and pending review. (The dispute-opened
+          // notification already says this — but the *responder* who
+          // didn't open the modal otherwise wouldn't see anything
+          // until reload, so we still ping them.)
+          const msg = `Your dispute on "${item}" has been escalated for human review. We'll update you within 24-48 hours.`;
+          await Promise.all([
+            _push({ userId: buyerId,  type: 'dispute.resolved', title: 'Dispute under review', message: msg, category: 'transactions', severity: 'info', transactionId }),
+            _push({ userId: sellerId, type: 'dispute.resolved', title: 'Dispute under review', message: msg, category: 'transactions', severity: 'info', transactionId })
+          ]);
+          return;
+        }
+
+        // Auto-resolved: figure out the winner and craft tailored copy.
+        const favored = (verdict && verdict.favoredParty) || 'split';
+        const buyerWon  = favored === 'buyer';
+        const sellerWon = favored === 'seller';
+        const split     = !buyerWon && !sellerWon;
+
+        const buyerCopy = buyerWon
+          ? { title: 'Dispute resolved in your favor', sev: 'success',
+              msg: `${amount} has been refunded to you for "${item}". The dispute is closed.` }
+          : sellerWon
+          ? { title: 'Dispute resolved', sev: 'info',
+              msg: `The dispute on "${item}" was resolved in the seller's favor. Funds were released to them.` }
+          : { title: 'Dispute resolved (split)', sev: 'info',
+              msg: `The dispute on "${item}" was resolved with a partial refund.` };
+
+        const sellerCopy = sellerWon
+          ? { title: 'Dispute resolved in your favor', sev: 'success',
+              msg: `${amount} has been released to you for "${item}". The dispute is closed.` }
+          : buyerWon
+          ? { title: 'Dispute resolved', sev: 'warning',
+              msg: `The dispute on "${item}" was resolved in the buyer's favor. ${amount} was refunded to them.` }
+          : { title: 'Dispute resolved (split)', sev: 'info',
+              msg: `The dispute on "${item}" was resolved with a partial refund to the buyer.` };
+
+        await Promise.all([
+          _push({ userId: buyerId,  type: 'dispute.resolved', title: buyerCopy.title,
+                  message: buyerCopy.msg, category: 'transactions', severity: buyerCopy.sev, transactionId }),
+          _push({ userId: sellerId, type: 'dispute.resolved', title: sellerCopy.title,
+                  message: sellerCopy.msg, category: 'transactions', severity: sellerCopy.sev, transactionId })
+        ]);
+      }
+
+      async function cancellationRequested(transactionId, actorUserId, reason = '') {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const counterpartyId = _counterpartyOf(txn, actorUserId);
+        const item = txn.item_description || 'a transaction';
+        await _push({
+          userId: counterpartyId,
+          type: 'transaction.cancellation_requested',
+          title: 'Cancellation requested',
+          message: `The other party has requested to cancel "${item}". ${reason ? 'Reason: ' + reason + '. ' : ''}Open the transaction to accept or decline.`.trim(),
+          category: 'transactions',
+          severity: 'warning',
+          transactionId
+        });
+      }
+
+      async function cancellationWithdrawn(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const counterpartyId = _counterpartyOf(txn, actorUserId);
+        const item = txn.item_description || 'a transaction';
+        // In-app only — this is a low-stakes "false alarm cleared" event.
+        await _push({
+          userId: counterpartyId,
+          type: 'transaction.cancellation_withdrawn',
+          title: 'Cancellation request withdrawn',
+          message: `The other party has withdrawn their cancellation request on "${item}". The transaction will continue as normal.`,
+          category: 'transactions',
+          severity: 'info',
+          transactionId,
+          sendEmail: false
+        });
+      }
+
+      async function cancellationAccepted(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const buyerId = txn.buyer_id;
+        const item    = txn.item_description || 'the transaction';
+        const amount  = fmtNgn(txn.price);
+
+        // The original requester is the counterparty of the actor (the
+        // actor is the one who just *accepted* — i.e. they didn't
+        // request cancellation, they responded to a request).
+        const requesterId = _counterpartyOf(txn, actorUserId);
+
+        // Loud + email for the requester — their cancel went through.
+        await _push({
+          userId: requesterId,
+          type: 'transaction.cancelled',
+          title: 'Cancellation accepted',
+          message: `Your cancellation request on "${item}" was accepted. ${amount} has been refunded to the buyer.`,
+          category: 'transactions',
+          severity: 'success',
+          transactionId
+        });
+        // Confirmation for the actor (acceptor). In-app only.
+        await _push({
+          userId: actorUserId,
+          type: 'transaction.cancelled',
+          title: 'Transaction cancelled',
+          message: `You accepted the cancellation on "${item}". ${amount} has been refunded to the buyer.`,
+          category: 'transactions',
+          severity: 'info',
+          transactionId,
+          sendEmail: false
+        });
+        // Make sure the buyer specifically also gets a "you were
+        // refunded" notification, in case neither of the above hit
+        // the buyer (e.g. the seller was both requester and the buyer
+        // happens to also be the actor — paranoia, but cheap).
+        if (buyerId && Number(buyerId) !== Number(requesterId) && Number(buyerId) !== Number(actorUserId)) {
+          await _push({
+            userId: buyerId,
+            type: 'transaction.cancelled',
+            title: 'Refund issued',
+            message: `"${item}" has been cancelled and ${amount} refunded to your account.`,
+            category: 'transactions',
+            severity: 'success',
+            transactionId
+          });
+        }
+      }
+
+      async function cancellationDeclined(transactionId, actorUserId) {
+        const txn = await _fetchTxn(transactionId);
+        if (!txn) return;
+        const requesterId = _counterpartyOf(txn, actorUserId);
+        const item = txn.item_description || 'the transaction';
+        // Requester needs to know their cancel was rejected. Email so
+        // they don't keep waiting on it.
+        await _push({
+          userId: requesterId,
+          type: 'transaction.cancellation_declined',
+          title: 'Cancellation declined',
+          message: `Your cancellation request on "${item}" was declined by the other party. The transaction will continue as normal.`,
+          category: 'transactions',
+          severity: 'warning',
+          transactionId
+        });
+      }
+
+      return {
+        fundingConfirmed,
+        shipmentCreated,
+        transactionCompleted,
+        disputeOpened,
+        disputeResolved,
+        cancellationRequested,
+        cancellationWithdrawn,
+        cancellationAccepted,
+        cancellationDeclined
+      };
+    })();
+    // Expose for any future caller that needs to fire a notification
+    // from outside this script (e.g. console debugging, future modules).
+    if (typeof window !== 'undefined') window.NotifyFlow = NotifyFlow;
+
+    /* ================================================================
+       PROFILE PANEL (Phase E)
+       ----------------------------------------------------------------
+       Renders the My Profile modal. Pulls everything it needs from
+       three sources:
+
+         1. window.currentUserData — the row we already loaded from
+            `users` at dashboard init. This is canonical for KYC
+            fields (BVN, DOB, gender, address, email, face URL).
+         2. trustEngine.getScore(userId) — fresh trust score so the
+            user sees the latest number every time they open the
+            modal (cheap one-shot read, ~50ms).
+         3. sessionService — for the logout action only.
+
+       The avatar circles in the topbar + mobile drawer + modal header
+       are all kept in sync via paintAvatars(): when a face reference
+       URL exists we set background-image on each, otherwise we paint
+       the user's first-name initial.
+
+       Nothing here mutates user data. This is read + display only.
+       ================================================================ */
+    const ProfilePanel = (function () {
+      // Cached refs — most of these are inside the modal body so they
+      // exist for the whole life of the page; we still resolve lazily
+      // to be defensive.
+      const $ = (id) => document.getElementById(id);
+
+      // Mask a BVN to "*******1234" — keeps it scannable while not
+      // putting the full number on screen if someone screenshots
+      // the modal.
+      function maskId(s) {
+        const v = String(s || '').replace(/\D/g, '');
+        if (v.length < 4) return '••••';
+        return '•'.repeat(Math.max(0, v.length - 4)) + v.slice(-4);
+      }
+
+      function fmtDate(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return String(s);
+        return d.toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+
+      // Some columns can come back wrapped as a typed cell object
+      // (`{type:'text', value:'...'}`) when the row wasn't unwrapped
+      // upstream. Normalise to a plain primitive for display.
+      function cellText(v) {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'object') {
+          if ('value' in v)   return String(v.value || '');
+          if ('address' in v) return String(v.address || ''); // future-proof
+          return '';
+        }
+        return String(v);
+      }
+
+      // users.gender is stored as the string '1' (male) or '2' (female)
+      // per the signup form's value codes. Map back to a human label.
+      function fmtGender(v) {
+        const s = cellText(v).trim().toLowerCase();
+        if (s === '1' || s === 'm' || s === 'male')   return 'Male';
+        if (s === '2' || s === 'f' || s === 'female') return 'Female';
+        if (!s) return '—';
+        // Fallback: title-case whatever was stored
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      }
+
+      function initialFor(user) {
+        const first = (user && (user.first_name || user.firstName)) || '';
+        const ch = first.trim().charAt(0).toUpperCase();
+        return ch || 'U';
+      }
+
+      // Paint the three avatar locations consistently. When a face
+      // reference URL exists we use it as the circle's background
+      // image; otherwise the initial fallback shows through.
+      function paintAvatars(user) {
+        const initial = initialFor(user);
+        const photoUrl = cellText(user && (user.face_reference_url || user.faceReferenceUrl));
+        const targets = [
+          $('profile-avatar'),         // desktop pill
+          $('profile-avatar-mobile'),  // mobile drawer
+          $('profile-modal-avatar')    // modal header
+        ];
+
+        // Always paint the initial fallback first - this is what users
+        // see until / unless the photo successfully loads. Previously
+        // we set `has-photo` synchronously which hid the initial even
+        // when the URL was broken, leaving an empty circle.
+        targets.forEach(el => {
+          if (!el) return;
+          const initialEl = el.querySelector('.profile-avatar-initials');
+          if (initialEl) initialEl.textContent = initial;
+          el.style.backgroundImage = '';
+          el.classList.remove('has-photo');
+        });
+
+        if (!photoUrl) return;
+
+        // Preload the photo; only apply it to the avatars once we know
+        // it actually decoded. Broken / 404 URLs silently fall through
+        // and the initials stay visible.
+        const probe = new Image();
+        probe.onload = () => {
+          targets.forEach(el => {
+            if (!el) return;
+            el.style.backgroundImage = `url('${photoUrl}')`;
+            el.classList.add('has-photo');
+          });
+        };
+        probe.onerror = () => {
+          console.warn('[ProfilePanel] face_reference_url failed to load, keeping initial:', photoUrl);
+        };
+        probe.src = photoUrl;
+      }
+
+      // Populate the modal body. Called every time the modal opens
+      // so the displayed values stay fresh (trust score in particular
+      // changes after every transaction).
+      async function fillModal() {
+        const user = window.currentUserData || {};
+        const fullName = [user.first_name, user.middle_name, user.last_name]
+          .filter(Boolean).join(' ').trim() || 'Unnamed user';
+
+        // Header
+        $('profile-modal-name').textContent  = fullName;
+        $('profile-modal-phone').textContent = user.phone_number || '—';
+
+        // Email row + verified badge.
+        // user.email can sometimes arrive as a Turso typed cell
+        // ({type:'text', value:'...'}) when the row wasn't unwrapped
+        // upstream, which renders as "[object Object]". cellText
+        // collapses either shape to a plain string.
+        const emailStr = cellText(user.email);
+        $('profile-row-email').textContent = emailStr || 'Not added';
+        const emailBadge = $('profile-row-email-badge');
+        if (emailStr) {
+          emailBadge.style.display = '';
+          if (Number(user.email_verified) === 1) {
+            emailBadge.textContent = 'Verified';
+            emailBadge.classList.add('verified');
+            emailBadge.classList.remove('unverified');
+          } else {
+            emailBadge.textContent = 'Unverified';
+            emailBadge.classList.add('unverified');
+            emailBadge.classList.remove('verified');
+          }
+        } else {
+          emailBadge.style.display = 'none';
+        }
+
+        $('profile-row-phone').textContent = user.phone_number || '—';
+        $('profile-row-vacc').textContent  = user.virtual_account_number || 'Not assigned';
+        $('profile-row-since').textContent = fmtDate(user.created_at);
+
+        // KYC
+        const idType = (user.id_type || 'BVN').toUpperCase();
+        $('profile-row-id-label').textContent = idType;
+        $('profile-row-id').textContent       = maskId(user.id_number);
+        $('profile-row-dob').textContent      = fmtDate(user.dob);
+        $('profile-row-gender').textContent   = fmtGender(user.gender);
+
+        const faceBadge = $('profile-row-face-badge');
+        if (user.face_reference_url) {
+          faceBadge.textContent = 'Captured';
+          faceBadge.classList.add('verified');
+          faceBadge.classList.remove('unverified');
+        } else {
+          faceBadge.textContent = 'Not captured';
+          faceBadge.classList.add('unverified');
+          faceBadge.classList.remove('verified');
+        }
+
+        // Address
+        const addr = [
+          user.current_address_text,
+          user.current_address_area,
+          user.current_address_lga,
+          user.current_address_state
+        ].filter(Boolean).join(', ');
+        $('profile-row-address').textContent = addr || '—';
+
+        // Trust score — best-effort. Failures here just hide the pill.
+        const trustEl  = $('profile-modal-trust');
+        const trustVal = $('profile-modal-trust-value');
+        try {
+          if (typeof trustEngine !== 'undefined' && trustEngine && currentUserId) {
+            const result = await trustEngine.getScore(currentUserId);
+            const score = Math.round(Number(result && result.score) || 0);
+            const tier  = (result && result.tier && result.tier.label) || '';
+            trustVal.textContent = tier ? `Trust ${score} · ${tier}` : `Trust ${score}`;
+            trustEl.style.display = '';
+          } else {
+            trustEl.style.display = 'none';
+          }
+        } catch (e) {
+          console.warn('[ProfilePanel] trust score lookup failed:', e.message);
+          trustEl.style.display = 'none';
+        }
+
+        // Repaint avatars in case the user data hot-changed (e.g. a
+        // future "edit profile" flow updates first_name).
+        paintAvatars(user);
+
+        // Phase G: surface the Admin Console link only for users
+        // with the `is_admin` flag set in Turso. Coerced to Number
+        // because Turso may return integer columns as strings.
+        const adminLink = $('profile-link-admin');
+        if (adminLink) {
+          adminLink.style.display = (Number(user.is_admin) === 1) ? '' : 'none';
+        }
+      }
+
+      // Open the modal. Async so we can `await fillModal()` and have
+      // the data already on screen by the time the open animation
+      // completes.
+      async function open() {
+        await fillModal();
+        openModal('profile-modal');
+      }
+
+      // Wire all click handlers + the initial avatar paint. Called
+      // exactly once after currentUserData becomes available.
+      function bind() {
+        const desktopBtn = $('btn-profile');
+        const mobileBtn  = $('btn-profile-mobile');
+        const logoutBtn  = $('profile-btn-logout');
+        const copyVacc   = $('profile-copy-vacc');
+
+        if (desktopBtn) desktopBtn.addEventListener('click', open);
+        if (mobileBtn)  mobileBtn.addEventListener('click', () => {
+          // Close the mobile drawer first so the modal isn't covered.
+          const drawer = $('mobile-menu');
+          if (drawer) drawer.classList.add('hidden');
+          open();
+        });
+
+        // Sign out — reuse the same confirm dialog as the topbar
+        // logout button so behaviour is identical regardless of which
+        // surface the user clicked.
+        if (logoutBtn) logoutBtn.addEventListener('click', () => {
+          if (confirm('Are you sure you want to logout?')) {
+            try {
+              if (typeof sessionService !== 'undefined' && sessionService && sessionService.logout) {
+                sessionService.logout();
+              } else {
+                window.location.href = 'sign-in.html';
+              }
+            } catch (e) {
+              console.error('[ProfilePanel] logout failed:', e);
+              window.location.href = 'sign-in.html';
+            }
+          }
+        });
+
+        // Copy virtual account number to clipboard. Falls back to a
+        // hidden textarea selectAndCopy on browsers without the
+        // async clipboard API.
+        if (copyVacc) copyVacc.addEventListener('click', async () => {
+          const value = ($('profile-row-vacc').textContent || '').trim();
+          if (!value || value === 'Not assigned' || value === '—') return;
+          try {
+            await navigator.clipboard.writeText(value);
+          } catch (_) {
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (__) {}
+            document.body.removeChild(ta);
+          }
+          const original = copyVacc.textContent;
+          copyVacc.textContent = 'Copied!';
+          setTimeout(() => { copyVacc.textContent = original; }, 1400);
+        });
+
+        // Backdrop click closes the modal. Mirrors the pattern used by
+        // every other modal in this file. Only fires when the click
+        // target is the backdrop itself (i.e. not bubbling up from
+        // .modal-content), so clicking inside the panel still works.
+        const modalRoot = $('profile-modal');
+        if (modalRoot) {
+          modalRoot.addEventListener('click', (e) => {
+            if (e.target.id === 'profile-modal') {
+              closeModal('profile-modal');
+            }
+          });
+        }
+
+        // ESC key closes the modal when it's the topmost active one.
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape') return;
+          const m = $('profile-modal');
+          if (m && m.classList.contains('active')) {
+            closeModal('profile-modal');
+          }
+        });
+
+        // Initial avatar paint so the topbar shows the right initial
+        // (and photo, if any) on first render.
+        paintAvatars(window.currentUserData);
+      }
+
+      return { bind, open, paintAvatars };
+    })();
+    if (typeof window !== 'undefined') window.ProfilePanel = ProfilePanel;
+
+    /* ================================================================
+       FACE GATE (Phase F)
+       ----------------------------------------------------------------
+       UI controller for the face re-verification modal. Public API:
+
+         FaceGate.requireVerification({ trigger, reason, anomalyScore, amount, transactionId })
+           -> Promise<{ ok: boolean, verdict?: object, skipped?: string }>
+
+       The promise resolves to ok:true ONLY when the user passes the
+       check (or the gate is skipped because the service is
+       unavailable / user has no reference photo). The caller should
+       NOT proceed with the gated action when ok is false.
+
+       Skipped reasons (ok:true, skipped set):
+         "service_unavailable" - Gemini key missing
+         "no_reference"        - user signed up before face capture
+         "fresh_or_low_risk"   - shouldReverify() said no
+
+       Failure reasons (ok:false):
+         "user_cancelled"      - they hit Cancel or closed the modal
+         "verdict_fail"        - Gemini said different person
+         "verdict_manual"      - low confidence or service error
+         "camera_error"        - couldn't start camera
+       ================================================================ */
+    const FaceGate = (function () {
+      const $ = (id) => document.getElementById(id);
+      const modal     = () => $('face-reverify-modal');
+      const videoEl   = () => $('face-reverify-video');
+      const reasonEl  = () => $('face-reverify-reason');
+      const iconEl    = () => $('face-reverify-result-icon');
+      const titleEl   = () => $('face-reverify-result-title');
+      const descEl    = () => $('face-reverify-result-desc');
+      const retryBtn  = () => $('face-reverify-result-retry');
+      const doneBtn   = () => $('face-reverify-result-done');
+
+      // Reason copy by trigger reason code from shouldReverify().
+      // Plain English, no fraud-baiting language.
+      const REASON_COPY = {
+        large_amount:           'This is a large transaction. We want to make sure your account isn\'t being used by someone else.',
+        high_anomaly:           'We detected unusual activity on this transaction. A quick face check helps us confirm it\'s really you.',
+        medium_anomaly_stale:   'This transaction looks slightly unusual and your last face check was a while ago.',
+        fund_high_risk_stale:   'Funding a higher-risk transaction — we re-verify periodically to keep your account safe.',
+        withdrawal_stale:       'You\'re moving money out and your last face check was a while ago.',
+        sensitive_settings:     'Sensitive account settings always require a fresh face check.',
+        manual:                 'Routine security check.'
+      };
+
+      // State held only during an active gate flow.
+      let pendingResolve = null;
+      let mediaStream    = null;
+      let currentCtx     = null;
+
+      function setState(s) { modal().setAttribute('data-state', s); }
+
+      function stopCamera() {
+        if (mediaStream) {
+          try { mediaStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+          mediaStream = null;
+        }
+        const v = videoEl();
+        if (v) v.srcObject = null;
+      }
+
+      function settle(payload) {
+        const r = pendingResolve;
+        pendingResolve = null;
+        currentCtx     = null;
+        stopCamera();
+        try { closeModal('face-reverify-modal'); } catch (_) {}
+        if (r) r(payload);
+      }
+
+      // Public: cancel from any state.
+      function cancel() {
+        settle({ ok: false, reason: 'user_cancelled' });
+      }
+
+      // Public: start the live camera. Called from the intro state's
+      // primary button.
+      async function startCamera() {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
+            audio: false
+          });
+          videoEl().srcObject = mediaStream;
+          setState('capture');
+        } catch (err) {
+          console.warn('[FaceGate] camera failed:', err);
+          showResult({
+            kind: 'fail',
+            title: 'Camera unavailable',
+            desc: 'We couldn\'t access your camera. Please grant permission and try again.',
+            allowRetry: true,
+            terminalReason: null
+          });
+        }
+      }
+
+      // Public: snap the current frame and run it through Gemini.
+      async function captureAndVerify() {
+        const v = videoEl();
+        if (!v || !mediaStream) {
+          return showResult({ kind: 'fail', title: 'No camera', desc: 'Camera isn\'t running. Try again.', allowRetry: true });
+        }
+
+        // Square crop centered on the video. We mirror the canvas to
+        // match the mirrored preview the user is looking at — Gemini
+        // doesn't care about orientation, but it makes the saved
+        // image look like what the user just saw if we ever upload it.
+        const w = v.videoWidth || 720;
+        const h = v.videoHeight || 720;
+        const side = Math.min(w, h);
+        const sx = Math.floor((w - side) / 2);
+        const sy = Math.floor((h - side) / 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 512; // downscale for payload size
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(v, sx, sy, side, side, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        if (!blob) {
+          return showResult({ kind: 'fail', title: 'Capture failed', desc: 'We couldn\'t encode the photo. Try again.', allowRetry: true });
+        }
+
+        // Stop the camera once we have the frame — no need to keep
+        // the stream open while Gemini decides.
+        stopCamera();
+        setState('checking');
+
+        let verdict;
+        try {
+          verdict = await faceVerificationService.verify({
+            userId: currentUserId,
+            trigger: currentCtx.trigger,
+            referenceUrl: (window.currentUserData || {}).face_reference_url,
+            capture: blob,
+            transactionId: currentCtx.transactionId || null
+          });
+        } catch (e) {
+          console.error('[FaceGate] verify threw:', e);
+          verdict = { match: null, confidence: 0, verdict: 'manual_review', reasoning: e.message };
+        }
+
+        // Best-effort security notification when the check failed
+        // outright. Caller can also fire its own (e.g. block a fund).
+        if (verdict && verdict.verdict === 'fail' && typeof NotifyFlow !== 'undefined') {
+          try {
+            // Use the persistent notification service directly — the
+            // current user is the recipient; no NotifyFlow helper for
+            // self-notifying so we go through the underlying push.
+            if (notificationService && currentUserId) {
+              notificationService.create({
+                userId: currentUserId,
+                type: 'security.face_reverify_failed',
+                title: 'Face check failed',
+                message: 'A face verification attempt on your account didn\'t match. If this wasn\'t you, please review your activity.',
+                category: 'activities',
+                severity: 'warning',
+                transactionId: currentCtx.transactionId || null,
+                sendEmail: true
+              }).catch(()=>{});
+            }
+          } catch (_) {}
+        }
+
+        // Render the verdict.
+        if (verdict.verdict === 'pass') {
+          showResult({
+            kind: 'pass',
+            title: 'Verified',
+            desc: 'Looks like you. You can continue with your action.',
+            allowRetry: false,
+            terminalReason: null,
+            verdict
+          });
+        } else if (verdict.verdict === 'fail') {
+          showResult({
+            kind: 'fail',
+            title: 'That doesn\'t look like you',
+            desc: 'For your security we can\'t complete this action. If this is really you, try again with better lighting.',
+            allowRetry: true,
+            terminalReason: 'verdict_fail',
+            verdict
+          });
+        } else if (verdict.verdict === 'unavailable') {
+          // Service couldn't even run — don't penalise the user.
+          settle({ ok: true, skipped: 'service_unavailable', verdict });
+        } else {
+          // manual_review — borderline. We don't auto-pass these,
+          // but we let the user retry once before giving up.
+          showResult({
+            kind: 'manual',
+            title: 'Couldn\'t verify confidently',
+            desc: 'The image quality wasn\'t good enough for us to be sure. Please try again with better lighting.',
+            allowRetry: true,
+            terminalReason: 'verdict_manual',
+            verdict
+          });
+        }
+      }
+
+      // Public: retry from the result state. Resets back to capture
+      // (re-acquiring the camera).
+      async function retry() {
+        setState('intro');
+        // Tiny delay so the state transition is visible if the user
+        // clicked retry on a blink.
+        await new Promise(r => setTimeout(r, 80));
+        startCamera();
+      }
+
+      // Public: finish from the result state. If the underlying
+      // verdict was a pass, resolve ok:true; otherwise ok:false.
+      function finish() {
+        const v = currentVerdict;
+        if (v && v.verdict === 'pass') {
+          settle({ ok: true, verdict: v });
+        } else if (v) {
+          settle({ ok: false, reason: v.verdict === 'fail' ? 'verdict_fail' : 'verdict_manual', verdict: v });
+        } else {
+          settle({ ok: false, reason: 'user_cancelled' });
+        }
+      }
+
+      // Internal — render the result state.
+      let currentVerdict = null;
+      function showResult({ kind, title, desc, allowRetry, terminalReason, verdict }) {
+        currentVerdict = verdict || null;
+        const ic = iconEl();
+        ic.classList.remove('pass', 'fail', 'manual');
+        ic.classList.add(kind);
+        // Swap the icon SVG path so it matches the kind. Cheaper
+        // than juggling three icon elements.
+        ic.innerHTML = kind === 'pass'
+          ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
+          : kind === 'fail'
+          ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
+          : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z"/></svg>';
+        titleEl().textContent = title;
+        descEl().textContent  = desc;
+        retryBtn().style.display = allowRetry ? '' : 'none';
+        doneBtn().textContent = (kind === 'pass') ? 'Continue' : 'Close';
+        setState('result');
+      }
+
+      // Public entry point. Runs the decision check, opens the modal
+      // if needed, and returns a promise that resolves with the
+      // outcome.
+      async function requireVerification(ctx = {}) {
+        const trigger = ctx.trigger || 'manual';
+        const transactionId = ctx.transactionId || null;
+        const user = window.currentUserData || {};
+
+        // No service? Skip the gate cleanly so flows that opt in
+        // never break in dev environments without a Gemini key.
+        if (typeof faceVerificationService === 'undefined' || !faceVerificationService) {
+          return { ok: true, skipped: 'service_unavailable' };
+        }
+
+        const decision = faceVerificationService.shouldReverify({
+          user,
+          trigger,
+          anomalyScore: ctx.anomalyScore,
+          amount: ctx.amount
+        });
+        if (!decision.required) {
+          return { ok: true, skipped: decision.reason };
+        }
+
+        // Build the reason copy. ctx.reason can override the default.
+        const copy = ctx.reason || REASON_COPY[decision.reason] || REASON_COPY.manual;
+        reasonEl().textContent = copy;
+
+        currentCtx = { trigger, transactionId };
+        setState('intro');
+        openModal('face-reverify-modal');
+
+        return new Promise((resolve) => { pendingResolve = resolve; });
+      }
+
+      return { requireVerification, startCamera, captureAndVerify, retry, finish, cancel };
+    })();
+    if (typeof window !== 'undefined') window.FaceGate = FaceGate;
+
     // Initialize Services
     let transactionService;
     let trustScoreService;
@@ -3109,8 +5234,12 @@
     let behavioralSignals;       // Session-scoped behavioral collector
     let anomalyEngine;           // Umbrella AI Anomaly Detection Engine
     let stateMachineService;
+    let faceVerificationService;   // Phase F: Gemini same-person check
     let balanceService;
     let disputeService;
+    // Phase A v3: storage + notifications
+    let cloudinaryService;       // Cloudinary unsigned-upload helper (degrades to base64 if not configured)
+    let notificationService;     // Persisted in-app notifications + Resend email proxy
     let currentUserId;
     let currentTransaction = null;  // Store current transaction for funding
     
@@ -3458,9 +5587,25 @@
       
       // Set current user ID from session
       currentUserId = session.userId;
-      
+
+      // Now that we have a user, the notification panel can do its
+      // first real badge fetch. (The earlier refreshBadge() call
+      // during service init was a no-op because currentUserId
+      // wasn't set yet.)
+      try { NotifPanel && NotifPanel.refreshBadge(); } catch (_) {}
+
       // Store user data globally for modal access
       window.currentUserData = userData;
+
+      // Wire the profile pill + modal now that user data is available
+      // — needed before bind() because the avatar-paint step reads
+      // window.currentUserData. The dashboard init only runs once per
+      // page load, so we don't need to guard against double-binding.
+      try {
+        ProfilePanel.bind();
+      } catch (e) {
+        console.warn('[Dashboard] ProfilePanel bind failed:', e);
+      }
       
       // Update UI with user data (Requirement 13.5, 20.4)
       const firstName = userData.first_name || 'User';
@@ -3469,21 +5614,12 @@
       const virtualAccountNumber = userData.virtual_account_number || 'Not Available';
       const bankCode = userData.bank_code || '058';
       
-      document.getElementById('user-name').textContent = `Welcome, ${firstName}!`;
+      // The desktop pill shows just "Hi <FirstName>" — short, clean,
+      // matches OPay's style. The legacy "Welcome, X!" greeting moves
+      // to the mobile drawer where the wider layout fits it.
+      document.getElementById('user-name').textContent = `Hi ${firstName}`;
       document.getElementById('user-phone').textContent = phoneNumber;
       document.getElementById('user-account-number').textContent = virtualAccountNumber;
-      
-      // Update new balance card design
-      const userPhoneBalance = document.getElementById('user-phone-balance');
-      if (userPhoneBalance) {
-        userPhoneBalance.textContent = phoneNumber;
-      }
-      
-      const joinDateBalance = document.getElementById('join-date-balance');
-      if (joinDateBalance) {
-        const now = new Date();
-        joinDateBalance.textContent = now.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' });
-      }
       
       console.log('[Dashboard] User data loaded:', {
         userId: currentUserId,
@@ -3654,10 +5790,70 @@
         balanceService = new BalanceService(CONFIG);
         await balanceService.connect();
         console.log('Balance service initialized');
+
+        // -------------------------------------------------------------
+        // Phase A v3 — Storage + Notifications
+        // -------------------------------------------------------------
+        // CloudinaryService is constructed unconditionally; its
+        // `available` property tells callers whether to use Cloudinary
+        // or fall back to base64. No async connect step.
+        try {
+          cloudinaryService = new CloudinaryService();
+          // Expose on `window` so services that don't receive the
+          // dashboard's local references (e.g. DisputeService.uploadPhotos)
+          // can still discover it. Same pattern we use for
+          // disputeAgentService.
+          if (typeof window !== 'undefined') {
+            window.cloudinaryService = cloudinaryService;
+          }
+          console.log('[Dashboard] Cloudinary',
+            cloudinaryService.available ? '✅ ready' : '⚠️ not configured (base64 fallback)');
+        } catch (e) {
+          console.error('[Dashboard] CloudinaryService init failed:', e);
+        }
+
+        // NotificationService talks to BOTH Turso (in-app rows) and
+        // the Python AI engine's /api/v1/notify/email proxy. The
+        // service URL is taken from CONFIG.aiEngine.url, falling back
+        // to localhost:5000 if not set.
+        try {
+          notificationService = new NotificationService(CONFIG);
+          await notificationService.connect();
+          if (typeof window !== 'undefined') {
+            window.notificationService = notificationService;
+          }
+          // Wire the bell + panel UI now that the backend service is
+          // up. We bind exactly once (idempotent — bind() doesn't
+          // double-register). Initial badge count is fetched after
+          // currentUserId is set lower in the init flow; we kick it
+          // off here as a no-op-safe call.
+          NotifPanel.bind();
+          NotifPanel.refreshBadge();
+          console.log('[Dashboard] ✅ NotificationService ready');
+        } catch (e) {
+          console.error('[Dashboard] NotificationService init failed:', e);
+        }
         
         disputeService = new DisputeService(CONFIG);
         await disputeService.connect();
+        if (typeof window !== 'undefined') {
+          window.disputeService = disputeService;
+        }
         console.log('Dispute service initialized');
+
+        // ----- Phase F: FaceVerificationService -----------------------
+        // Best-effort init. If the Gemini key is missing the service
+        // still constructs cleanly — its .available getter goes false
+        // and the FaceGate UI module below skips the check entirely.
+        try {
+          faceVerificationService = new FaceVerificationService({ turso: CONFIG.turso });
+          await faceVerificationService.connect();
+          if (typeof window !== 'undefined') window.faceVerificationService = faceVerificationService;
+          console.log('[Dashboard] ✅ FaceVerificationService ready (available =',
+                      faceVerificationService.available, ')');
+        } catch (e) {
+          console.warn('[Dashboard] FaceVerificationService init failed (non-fatal):', e.message);
+        }
         
         // Initialize balance display
         await refreshBalanceDisplay();
@@ -4392,7 +6588,40 @@
           showErrorNotification('Please fix the errors in the form');
           return;
         }
-        
+
+        // ----- Phase F: face re-verification gate ---------------------
+        // Withdrawals move money OUT of escrow into a real bank
+        // account, so they're a prime target for account-takeover
+        // attacks. We always pass the trigger 'large_withdrawal' —
+        // shouldReverify() promotes it to a hard requirement once
+        // amount >= 500,000 NGN, and otherwise requires a check only
+        // when last_face_verified_at is null or > 30 days old. Below
+        // that threshold AND with a fresh check, no UI is shown and
+        // this call resolves instantly with skipped:true.
+        try {
+          const gate = await FaceGate.requireVerification({
+            trigger: 'large_withdrawal',
+            amount: amount,
+            // No anomaly engine in this flow yet, so we don't pass a
+            // score. Stale + amount-based rules cover this path.
+          });
+          if (!gate.ok) {
+            showErrorNotification(
+              gate.reason === 'verdict_fail'
+                ? 'Withdrawal blocked: face verification failed.'
+                : gate.reason === 'verdict_manual'
+                ? 'Could not verify your face. Withdrawal cancelled — please try again with better lighting.'
+                : 'Withdrawal cancelled.'
+            );
+            return;
+          }
+        } catch (e) {
+          // FaceGate is internally fail-safe; if it ever throws, log
+          // and fail-open so a glitch in the verification layer
+          // doesn't strand a user with their funds.
+          console.warn('[Withdraw] FaceGate threw, proceeding without face check:', e);
+        }
+
         // Disable submit button
         const submitButton = document.getElementById('btn-submit-withdraw');
         submitButton.disabled = true;
@@ -4723,11 +6952,14 @@
               showErrorNotification(`Max ${MAX_FILES} files`);
               break;
             }
+            // Keep the raw `File` reference alongside the preview data
+            // URL. The dataUrl is used for the thumbnail preview, the
+            // File is what gets streamed to Cloudinary at submit time.
             if (!file.type.startsWith('image/')) continue;
             if (file.size > MAX_SIZE) { showErrorNotification(`${file.name} > 5MB`); continue; }
             const reader = new FileReader();
             reader.onload = e => {
-              joinState.fulfillmentFiles.push({ name: file.name, dataUrl: e.target.result });
+              joinState.fulfillmentFiles.push({ name: file.name, dataUrl: e.target.result, file });
               render();
             };
             reader.readAsDataURL(file);
@@ -4760,14 +6992,46 @@
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting…';
         try {
-          // Persist seller assignment + proof
+          // ----- Upload fulfillment photos to Cloudinary -----
+          // We upload IN PARALLEL (all photos at once) and only
+          // persist the resulting https:// URLs. If Cloudinary isn't
+          // configured or fails on a given file, that file is simply
+          // omitted from the persisted set — base64 data URIs are
+          // never written to Turso because they bust the row-size
+          // ceiling. The thumbnail UI keeps the local previews until
+          // the seller closes the modal, so the upload still feels
+          // responsive on the client.
+          submitBtn.textContent = 'Uploading photos…';
+          const filesToUpload = joinState.fulfillmentFiles
+            .filter(f => f && f.file)
+            .map(f => f.file);
+          let uploadedUrls = [];
+          if (window.cloudinaryService && window.cloudinaryService.available && filesToUpload.length) {
+            const results = await Promise.all(
+              filesToUpload.map(file =>
+                window.cloudinaryService
+                  .uploadFulfillmentProof(file, { userId: currentUserId, transactionId: t.transaction_id })
+                  .then(r => r.secureUrl)
+                  .catch(err => {
+                    console.warn('[Dashboard] Cloudinary fulfillment upload failed for', file.name, err.message);
+                    return null;
+                  })
+              )
+            );
+            uploadedUrls = results.filter(u => typeof u === 'string' && u.length > 0);
+          } else if (filesToUpload.length) {
+            console.warn('[Dashboard] Cloudinary not available — fulfillment proof will be persisted with 0 URLs. Configure cloudinary-config.js to enable.');
+          }
+
+          submitBtn.textContent = 'Saving…';
+          // Persist seller assignment + proof URLs
           await transactionService.updateSeller(t.transaction_id, currentUserId);
-          await transactionService.uploadFulfillmentProof(
-            t.transaction_id,
-            joinState.fulfillmentFiles.map(f => f.dataUrl)
-          );
+          await transactionService.uploadFulfillmentProof(t.transaction_id, uploadedUrls);
           closeModal('upload-proof-modal');
-          showSuccessNotification('Fulfillment proof submitted. Buyer will be notified to fund escrow.');
+          const photoSummary = uploadedUrls.length === filesToUpload.length
+            ? `${uploadedUrls.length} photo${uploadedUrls.length === 1 ? '' : 's'} uploaded`
+            : `${uploadedUrls.length}/${filesToUpload.length} photos uploaded`;
+          showSuccessNotification(`Fulfillment proof submitted (${photoSummary}). Buyer will be notified to fund escrow.`);
           // Refresh dashboard transactions if available
           if (typeof refreshActiveTransactions === 'function') {
             try { await refreshActiveTransactions(); } catch (e) { /* non-fatal */ }
@@ -4950,7 +7214,46 @@
           
           // Verdict is "pass" - proceed to funding
           console.log('AI risk check passed, proceeding to funding...');
-          
+
+          // ----- Phase F: face re-verification gate -------------------
+          // Even on a "pass" verdict, certain conditions warrant a
+          // fresh face check (large amount, medium-anomaly + stale,
+          // etc.). FaceGate.requireVerification handles the decision
+          // internally — if shouldReverify() says no it returns
+          // {ok:true, skipped:...} without showing any UI, so this
+          // call is essentially free in low-risk paths.
+          //
+          // Score scale: AnomalyEngine returns 0–100; FaceGate
+          // expects 0–1, so we normalise.
+          try {
+            const rawScore = Number(riskResult.risk_score) || 0;
+            const normalisedScore = rawScore > 1 ? rawScore / 100 : rawScore;
+            const gate = await FaceGate.requireVerification({
+              trigger: 'fund_high_risk',
+              anomalyScore: normalisedScore,
+              amount: Number(currentTransaction.price) || 0,
+              transactionId: currentTransaction.transaction_id
+            });
+            if (!gate.ok) {
+              fundButton.disabled = false;
+              fundButton.textContent = 'Fund Escrow';
+              showErrorNotification(
+                gate.reason === 'verdict_fail'
+                  ? 'Funding blocked: face verification failed.'
+                  : gate.reason === 'verdict_manual'
+                  ? 'Could not verify your face. Funding cancelled — please try again with better lighting.'
+                  : 'Funding cancelled.'
+              );
+              return;
+            }
+            // gate.ok === true — either verified or skipped cleanly.
+          } catch (e) {
+            // FaceGate itself should never throw, but if it does we
+            // log and proceed (fail-open) rather than block on an
+            // internal error.
+            console.warn('[Dashboard] FaceGate threw, proceeding without face check:', e);
+          }
+
           fundButton.textContent = 'Funding...';
           
           // Update transaction risk score in database
@@ -4981,7 +7284,12 @@
           }
           
           console.log('Transaction funded successfully!');
-          
+
+          // Fire notifications. Non-blocking — failures here must not
+          // affect the buyer's success modal.
+          NotifyFlow.fundingConfirmed(currentTransaction.transaction_id, currentUserId)
+            .catch(err => console.warn('[Dashboard] funding notify failed:', err));
+
           // Optimistic balance update (Requirement 11.5)
           await optimisticBalanceUpdate();
           
@@ -5566,6 +7874,34 @@
               throw new Error('Unknown cancellation mode');
           }
 
+          // Fire the right NotifyFlow helper for whichever cancellation
+          // sub-event just happened. Fire-and-forget — failures here
+          // must not block the UX path. We deliberately do this
+          // BEFORE the loadActiveTransactions() reload below so the
+          // recipient's badge already reflects reality if they're in
+          // another tab.
+          //
+          // The 'cancel' mode (unilateral, pre-funding) has no
+          // counterparty yet so there's nothing to notify — skip it.
+          try {
+            switch (mode) {
+              case 'request':
+                NotifyFlow.cancellationRequested(txnId, currentUserId, reason).catch(()=>{});
+                break;
+              case 'withdraw':
+                NotifyFlow.cancellationWithdrawn(txnId, currentUserId).catch(()=>{});
+                break;
+              case 'accept':
+                NotifyFlow.cancellationAccepted(txnId, currentUserId).catch(()=>{});
+                break;
+              case 'decline':
+                NotifyFlow.cancellationDeclined(txnId, currentUserId).catch(()=>{});
+                break;
+            }
+          } catch (notifyErr) {
+            console.warn('[Cancel] notify dispatch failed:', notifyErr);
+          }
+
           // Close the confirmation modal first, then surface the result via
           // the centered "action-success-modal" — same component used by
           // Mark-as-Shipped / Accept Item / Dispute, matching the success
@@ -5684,7 +8020,11 @@
           }
           
           console.log('Transaction marked as shipped successfully');
-          
+
+          // Notify the buyer that the item is on the way.
+          NotifyFlow.shipmentCreated(currentShipTransactionId, currentUserId)
+            .catch(err => console.warn('[Dashboard] shipment notify failed:', err));
+
           // Close confirmation modal
           closeModal('ship-confirmation-modal');
           currentShipTransactionId = null;
@@ -5764,7 +8104,12 @@
           }
           
           console.log('Item accepted successfully, funds released to seller');
-          
+
+          // Notify the seller they've been paid. Buyer gets a quiet
+          // in-app confirmation. Email goes to the seller only.
+          NotifyFlow.transactionCompleted(currentAcceptTransactionId, currentUserId)
+            .catch(err => console.warn('[Dashboard] completion notify failed:', err));
+
           // Optimistic balance update (Requirement 11.5)
           await optimisticBalanceUpdate();
           
@@ -6189,11 +8534,35 @@
           // verdict + transcript will be written onto this row by
           // disputeService.resolveWithAgentVerdict().
           if (!flow.disputeRecordId) {
-            // We pass an empty photoUrls list to createDispute because
-            // base64 photo storage is a known TODO. The photos still
-            // get sent to the agent for analysis above.
+            // -------- Cloudinary upload for dispute photos --------
+            // We upload the attached photos to Cloudinary in parallel
+            // with creating the dispute row. The base64-encoded copies
+            // still get sent to Gemini for analysis below (Gemini
+            // accepts inline base64), so verdict quality is unaffected.
+            //
+            // Cloudinary URLs are filtered to https:// only — base64
+            // fallback URLs from a failed Cloudinary upload would
+            // overflow Turso's row-size limit on the `photo_urls`
+            // column. Better to persist 0 photos than to break the
+            // INSERT. The Gemini agent still gets to see them all.
+            let photoUrlsForDb = [];
+            if (flow.photoFiles && flow.photoFiles.length > 0) {
+              try {
+                const uploaded = await disputeService.uploadPhotos(
+                  Array.from(flow.photoFiles).slice(0, 4),
+                  { userId: currentUserId, transactionId: flow.transactionId }
+                );
+                photoUrlsForDb = (uploaded || []).filter(
+                  u => typeof u === 'string' && /^https?:\/\//i.test(u)
+                );
+              } catch (uploadErr) {
+                console.warn('[Dashboard] Dispute photo upload failed (non-fatal):', uploadErr.message);
+                photoUrlsForDb = [];
+              }
+            }
+
             const createResult = await disputeService.createDispute(
-              flow.transactionId, currentUserId, description, []
+              flow.transactionId, currentUserId, description, photoUrlsForDb
             );
             if (!createResult.success) {
               throw new Error(createResult.message || 'Failed to create dispute record');
@@ -6284,6 +8653,13 @@
         }
 
         // 3. Notify both parties — best-effort, no UX blocker.
+        //    Two channels:
+        //      (a) the legacy disputeService.notifyParties() hook —
+        //          some downstream code relies on the side-effects
+        //          it produces (state-history audit row, etc.).
+        //      (b) the new NotifyFlow.disputeOpened() helper, which
+        //          adds an in-app notification row + (optionally) a
+        //          Resend email to the counterparty.
         try {
           let msg;
           if (resolutionResult.resolutionType === 'automated') {
@@ -6293,6 +8669,23 @@
           }
           await disputeService.notifyParties(flow.transactionId, resolutionResult.resolutionType, msg);
         } catch (_) { /* non-fatal */ }
+
+        try {
+          await NotifyFlow.disputeOpened(
+            flow.transactionId,
+            currentUserId,
+            (flow.description || '').slice(0, 140)
+          );
+        } catch (notifyErr) {
+          console.warn('[Dashboard] dispute notify failed:', notifyErr);
+        }
+
+        // 3b. Notify the verdict outcome — distinct from the "opened"
+        //     notification above. For automated resolutions this tells
+        //     each party who won; for manual escalations it confirms
+        //     the case is queued. Best-effort, fire-and-forget.
+        NotifyFlow.disputeResolved(flow.transactionId, verdict, resolutionResult)
+          .catch(err => console.warn('[Dashboard] dispute resolved notify failed:', err));
 
         // 4. Show the agent's final word in the transcript, then the verdict card.
         _appendDisputeBubble('agent', verdict.reasoning || 'Ruling recorded.');

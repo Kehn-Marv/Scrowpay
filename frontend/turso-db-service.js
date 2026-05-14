@@ -372,7 +372,36 @@ class TursoDBService {
         // lost a dispute to. A user with 5 losses across 5 different
         // counterparties is far riskier than 5 losses to the same
         // chronic complainer; the AnomalyDetectionEngine reads this.
-        { name: 'distinct_dispute_losers',         definition: 'INTEGER DEFAULT 0' }
+        { name: 'distinct_dispute_losers',         definition: 'INTEGER DEFAULT 0' },
+        // ----- v3 additions (email + admin + face reference) -----
+        // Email is captured at signup for transactional notifications
+        // (Resend) and as the channel for the signup OTP. Nullable so
+        // legacy phone-only accounts still work.
+        { name: 'email',                           definition: 'TEXT' },
+        // Set to 1 after the user enters the correct OTP delivered to
+        // their email. Used by transactional-email paths to decide
+        // whether to actually attempt delivery.
+        { name: 'email_verified',                  definition: 'INTEGER DEFAULT 0' },
+        // Single admin flag — flipped manually in the DB for now.
+        // Admin dashboard (admin.html) checks this on load and 403s
+        // anyone who reaches it without it set.
+        { name: 'is_admin',                        definition: 'INTEGER DEFAULT 0' },
+        // Face reference image captured during signup liveness. The
+        // URL is a Cloudinary secure_url (NOT a base64 blob). On
+        // re-verification we send THIS plus a freshly captured frame
+        // to FaceVerificationService for a same-person verdict.
+        { name: 'face_reference_url',              definition: 'TEXT' },
+        { name: 'face_reference_uploaded_at',      definition: 'DATETIME' },
+        // Phase F: timestamp of the most recent SUCCESSFUL face
+        // re-verification (Gemini match=true). Used to decide whether
+        // a fresh re-verify is needed before high-risk actions. NULL
+        // means "never re-verified since signup" — treated as stale.
+        { name: 'last_face_verified_at',           definition: 'DATETIME' },
+        // Profile fields visible in the "My Profile" panel. Address is
+        // a single free-text field for now (state + city + street).
+        // We deliberately do NOT add a `nickname` column — the user
+        // explicitly opted out of having a nickname field on profile.
+        { name: 'address',                         definition: 'TEXT' }
       ];
       
       // Add missing columns
@@ -722,6 +751,103 @@ class TursoDBService {
         console.error('[TursoDBService] anomaly_decisions setup failed:', e);
       }
 
+      // ----- notifications (in-app notification bell) -----
+      // One row per notification surfaced in the bell-icon panel.
+      // `category` drives the tab layout in the UI (Transactions vs
+      // Activities). `action_url` is optional and turns the row into
+      // a clickable deep-link (e.g. open a specific transaction).
+      // `severity` is the icon color (success/info/warning/danger).
+      // We also persist `is_read` so the badge count is correct after
+      // a tab close; mark-all-read just bulk-UPDATEs by user_id.
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category TEXT NOT NULL DEFAULT 'activities'
+              CHECK(category IN ('transactions','activities')),
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            severity TEXT DEFAULT 'info'
+              CHECK(severity IN ('info','success','warning','danger')),
+            action_url TEXT,
+            transaction_id TEXT,
+            metadata TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_notif_user_unread ON notifications(user_id, is_read, created_at DESC)'
+        );
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_notif_user_created ON notifications(user_id, created_at DESC)'
+        );
+        console.log('[TursoDBService] ✅ notifications table ready');
+      } catch (e) {
+        console.error('[TursoDBService] notifications setup failed:', e);
+      }
+
+      // ----- email_otps (signup + sensitive-action OTP) -----
+      // We store ONLY the SHA-256 hash of the OTP, never the plaintext.
+      // `purpose` separates signup OTPs from password-reset / withdrawal
+      // OTPs so a code minted for one flow can't be replayed against
+      // another. `attempts` is the wrong-code counter; we lock the row
+      // after 5 wrong tries by setting `used_at`.
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS email_otps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            purpose TEXT NOT NULL DEFAULT 'signup',
+            code_hash TEXT NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_otp_email_purpose ON email_otps(email, purpose, created_at DESC)'
+        );
+        console.log('[TursoDBService] ✅ email_otps table ready');
+      } catch (e) {
+        console.error('[TursoDBService] email_otps setup failed:', e);
+      }
+
+      // ----- face_verifications (re-verification audit) -----
+      // One row per face-comparison attempt. Stores the URLs of both
+      // images (reference + fresh capture) plus Gemini's verdict so
+      // an admin reviewing a flagged action can see exactly what the
+      // system saw. `trigger` records WHY we asked (large withdrawal,
+      // password change, anomaly review, etc.).
+      try {
+        await this._executeHttp(`
+          CREATE TABLE IF NOT EXISTS face_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            trigger TEXT NOT NULL,
+            reference_url TEXT,
+            capture_url TEXT,
+            match INTEGER,
+            confidence REAL,
+            reasoning TEXT,
+            transaction_id TEXT,
+            engine_used TEXT DEFAULT 'gemini',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+        await this._executeHttp(
+          'CREATE INDEX IF NOT EXISTS idx_fv_user_created ON face_verifications(user_id, created_at DESC)'
+        );
+        console.log('[TursoDBService] ✅ face_verifications table ready');
+      } catch (e) {
+        console.error('[TursoDBService] face_verifications setup failed:', e);
+      }
+
       console.log('[TursoDBService] ✅ Migrations complete');
       
     } catch (error) {
@@ -777,6 +903,49 @@ class TursoDBService {
     }
   }
   
+  /**
+   * Checks if an email is already registered.
+   *
+   * Mirrors checkPhoneDuplicate(). We lower-case the email both at
+   * write-time (saveUser) and here so casing never causes false
+   * negatives. Returns false if the `email` column doesn't exist yet
+   * (very old deployment) — the migration adds it but we keep this
+   * defensive so signup doesn't break before migration runs.
+   *
+   * @param {string} email
+   * @returns {Promise<boolean>}
+   */
+  async checkEmailDuplicate(email) {
+    try {
+      if (!this.connected) {
+        throw new Error('Database not connected. Call connect() first.');
+      }
+      const normalized = String(email || '').trim().toLowerCase();
+      if (!normalized) return false;
+
+      const result = await this._executeHttp(
+        'SELECT COUNT(*) as count FROM users WHERE email = ?',
+        [normalized]
+      );
+      const executeResult = result.results[0].response.result;
+      if (!executeResult.rows || executeResult.rows.length === 0) return false;
+      const cell = executeResult.rows[0][0];
+      const count = typeof cell === 'object' ? parseInt(cell.value) : cell;
+      const exists = count > 0;
+      console.log(`[TursoDBService] Email duplicate check: ${normalized} - ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+      return exists;
+    } catch (error) {
+      console.error('[TursoDBService] Email duplicate check failed:', error);
+      // Missing column on old DB — treat as "no duplicates" so the
+      // signup flow can proceed; the migration will add the column on
+      // next reconnect.
+      if (/no such column|no such table/i.test(error.message)) {
+        return false;
+      }
+      throw new Error('Database query failed: ' + error.message);
+    }
+  }
+
   /**
    * Checks if a BVN or NIN already exists in the database
    * @param {string} idNumber - BVN or NIN number (11 digits)
@@ -840,15 +1009,21 @@ class TursoDBService {
         throw new Error('Database not connected. Call connect() first.');
       }
       
-      const sql = `INSERT INTO users (
-        phone_number, id_type, id_number, first_name, middle_name, last_name,
-        dob, gender, virtual_account_number, bank_code,
-        current_address_state, current_address_lga, current_address_area,
-        current_address_text, current_address_landmark,
-        permanent_address_state, permanent_address_lga, permanent_address_area,
-        permanent_address_text, hashed_pin
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      
+      // Build the column list dynamically so optional fields (face
+      // reference URL, email captured at signup) only get included
+      // when they're actually present. This avoids polluting the
+      // INSERT with nulls AND keeps the statement compatible with
+      // older databases where these columns may not exist yet (the
+      // migration above adds them, but on very old deployments the
+      // user may have hit this code path before the migration ran).
+      const columns = [
+        'phone_number', 'id_type', 'id_number', 'first_name', 'middle_name', 'last_name',
+        'dob', 'gender', 'virtual_account_number', 'bank_code',
+        'current_address_state', 'current_address_lga', 'current_address_area',
+        'current_address_text', 'current_address_landmark',
+        'permanent_address_state', 'permanent_address_lga', 'permanent_address_area',
+        'permanent_address_text', 'hashed_pin'
+      ];
       const args = [
         userData.phoneNumber,
         userData.idType,
@@ -871,6 +1046,25 @@ class TursoDBService {
         userData.permanentAddress.addressText,
         userData.hashedPin
       ];
+
+      if (userData.faceReferenceUrl) {
+        columns.push('face_reference_url');
+        args.push(userData.faceReferenceUrl);
+        columns.push('face_reference_uploaded_at');
+        args.push(userData.faceReferenceUploadedAt || new Date().toISOString());
+      }
+      if (userData.email) {
+        columns.push('email');
+        args.push(String(userData.email).trim().toLowerCase());
+        // email_verified is flipped to 1 only by the OTP verification
+        // step (Phase D). Storing the email here without verifying it
+        // just records what the user typed.
+        columns.push('email_verified');
+        args.push(userData.emailVerified ? 1 : 0);
+      }
+
+      const placeholders = columns.map(() => '?').join(', ');
+      const sql = `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders})`;
       
       const result = await this._executeHttp(sql, args);
       

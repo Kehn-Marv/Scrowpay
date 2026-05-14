@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · ScrowPay</title>
+
+  <!--
+    Phase G: Admin / Moderator dashboard.
+
+    GOAL
+    ----
+    A read-mostly operational view for ScrowPay staff. Three concerns
+    drive its design:
+
+      1. Manual dispute review queue. The Gemini DisputeAgent
+         auto-resolves only when confidence > 90%; everything below
+         that threshold lands here for a human to rule on. This page
+         is the missing piece called out in APP_GUIDE.md.
+
+      2. Face verification audit. Every Phase F face check writes a
+         row to `face_verifications` — admins need to see the failed
+         ones quickly to spot account-takeover attempts.
+
+      3. Risky-transactions monitor. Funded transactions with high
+         AI risk scores are surfaced here so a moderator can hold or
+         intervene before delivery.
+
+    AUTH MODEL
+    ----------
+    The page reads `users.is_admin` for the currently signed-in user.
+    Anyone without `is_admin = 1` sees a 403 splash — no other parts
+    of the page render. The flag is set manually in the DB; there is
+    no UI to grant admin access (intentional).
+  -->
+
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            display: ['Syne', 'sans-serif']
+          },
+          colors: {
+            'sp-green': '#caff04',
+            'sp-dark':  '#111111',
+            'sp-bg':    '#f2f2f0'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background: #f2f2f0; color: #111111; }
+    .font-display { font-family: 'Syne', sans-serif; }
+
+    /* Tab styling — pill-shaped, OPay-esque. */
+    .admin-tab {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .admin-tab:hover { background: rgba(0,0,0,0.04); }
+    .admin-tab.active {
+      background: #111111;
+      color: #caff04;
+      border-color: #111111;
+    }
+    .admin-tab .tab-count {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      color: inherit;
+    }
+    .admin-tab:not(.active) .tab-count {
+      background: rgba(0,0,0,0.08);
+      color: #555;
+    }
+
+    /* Card/section styling shared across panels. */
+    .admin-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Small status badges used in tables. */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.01em;
+    }
+    .badge-green  { background: rgba(16, 185, 129, 0.12); color: #047857; }
+    .badge-red    { background: rgba(239, 68, 68, 0.12);  color: #b91c1c; }
+    .badge-amber  { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+    .badge-gray   { background: rgba(107, 114, 128, 0.12); color: #374151; }
+    .badge-blue   { background: rgba(59, 130, 246, 0.12);  color: #1d4ed8; }
+
+    /* Empty-state placeholders. */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #6b7280;
+    }
+    .empty-state svg { width: 44px; height: 44px; margin: 0 auto 12px; opacity: 0.5; }
+
+    /* Loader spinner used on init + while tabs load. */
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #111111;
+      border-radius: 50%;
+      animation: admin-spin 0.8s linear infinite;
+    }
+    @keyframes admin-spin { to { transform: rotate(360deg); } }
+
+    /* Modal shell used by the dispute resolve dialog. */
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(17, 17, 17, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50; padding: 16px;
+    }
+    .modal[hidden] { display: none; }
+    .modal-box {
+      background: #fff;
+      border-radius: 18px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+
+    .photo-thumb {
+      width: 84px; height: 84px;
+      border-radius: 10px;
+      background-size: cover;
+      background-position: center;
+      border: 1px solid rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+
+    /* Bottom-of-card action button group used in the resolve modal. */
+    .resolution-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 600; font-size: 14px;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: all 0.15s;
+    }
+    .resolution-btn.refund   { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+    .resolution-btn.refund:hover   { background: #dbeafe; }
+    .resolution-btn.release  { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+    .resolution-btn.release:hover  { background: #d1fae5; }
+    .resolution-btn.split    { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+    .resolution-btn.split:hover    { background: #fef3c7; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ============================================================ -->
+  <!-- AUTH SPLASH                                                  -->
+  <!-- Shown while we load the session + check is_admin. Hidden     -->
+  <!-- once we know whether the user is allowed in.                 -->
+  <!-- ============================================================ -->
+  <div id="auth-splash" class="min-h-screen flex flex-col items-center justify-center text-center p-6">
+    <div class="spinner mb-4"></div>
+    <p class="text-sm text-gray-500">Verifying admin access…</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 403 STATE                                                    -->
+  <!-- ============================================================ -->
+  <div id="auth-denied" hidden class="min-h-screen flex flex-col items-center justify-center text-center p-6">
+    <div class="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-5">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" class="w-8 h-8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z"/>
+      </svg>
+    </div>
+    <h1 class="font-display text-2xl mb-2">Admin access required</h1>
+    <p class="text-gray-600 mb-6 max-w-sm">This dashboard is reserved for ScrowPay moderators. Your account doesn't have the admin flag set.</p>
+    <div class="flex gap-3">
+      <a href="dashboard.html" class="px-5 py-2.5 rounded-full bg-sp-dark text-sp-green font-semibold text-sm">Back to dashboard</a>
+      <button id="btn-deny-logout" class="px-5 py-2.5 rounded-full bg-white border border-gray-200 text-sp-dark font-semibold text-sm hover:bg-gray-50">Sign out</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ADMIN APP (only visible once auth check passes)              -->
+  <!-- ============================================================ -->
+  <div id="admin-app" hidden>
+    <!-- Header -->
+    <header class="bg-sp-dark text-white">
+      <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-sp-green flex items-center justify-center">
+            <svg class="w-4 h-4 text-sp-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="font-display font-bold text-lg leading-none">ScrowPay</div>
+            <div class="text-[11px] uppercase tracking-widest text-gray-400 mt-0.5">Admin Console</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden sm:block">
+            <div id="admin-name" class="text-sm font-medium">—</div>
+            <div id="admin-phone" class="text-[11px] text-gray-400">—</div>
+          </div>
+          <button id="btn-admin-logout" class="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium border border-white/15">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats strip — quick at-a-glance counts. -->
+    <section class="max-w-7xl mx-auto px-6 mt-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="admin-card p-4">
+          <div class="text-[11px] uppercase tracking-widest text-gray-500 mb-1">Pending review</div>
+          <div id="stat-pending-disputes" class="font-display text-2xl font-bold">—</div>
+        </div>
+        <div class="admin-card p-4">
+          <div class="text-[11px] uppercase tracking-widest text-gray-500 mb-1">Face fails (24h)</div>
+          <div id="stat-face-fails" class="font-display text-2xl font-bold">—</div>
+        </div>
+        <div class="admin-card p-4">
+          <div class="text-[11px] uppercase tracking-widest text-gray-500 mb-1">High-risk txns</div>
+          <div id="stat-risky-txns" class="font-display text-2xl font-bold">—</div>
+        </div>
+        <div class="admin-card p-4">
+          <div class="text-[11px] uppercase tracking-widest text-gray-500 mb-1">Total users</div>
+          <div id="stat-users" class="font-display text-2xl font-bold">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab nav -->
+    <nav class="max-w-7xl mx-auto px-6 mt-6 flex flex-wrap gap-2">
+      <button class="admin-tab active" data-tab="disputes">
+        Disputes <span class="tab-count" id="count-disputes">0</span>
+      </button>
+      <button class="admin-tab" data-tab="face">
+        Face Verifications <span class="tab-count" id="count-face">0</span>
+      </button>
+      <button class="admin-tab" data-tab="txns">
+        Risky Transactions <span class="tab-count" id="count-txns">0</span>
+      </button>
+      <button class="admin-tab" data-tab="users">
+        Users <span class="tab-count" id="count-users">0</span>
+      </button>
+    </nav>
+
+    <!-- Tab panels -->
+    <main class="max-w-7xl mx-auto px-6 py-6">
+      <!-- DISPUTES PANEL ---------------------------------------------- -->
+      <section data-panel="disputes">
+        <div class="admin-card overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="font-display text-lg font-bold">Pending dispute review</h2>
+              <p class="text-xs text-gray-500 mt-0.5">Cases the AI agent couldn't resolve confidently.</p>
+            </div>
+            <button id="btn-refresh-disputes" class="text-xs font-medium text-gray-500 hover:text-sp-dark">Refresh</button>
+          </div>
+          <div id="disputes-list"></div>
+        </div>
+      </section>
+
+      <!-- FACE VERIFICATIONS PANEL ----------------------------------- -->
+      <section data-panel="face" hidden>
+        <div class="admin-card overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 class="font-display text-lg font-bold">Face verification log</h2>
+              <p class="text-xs text-gray-500 mt-0.5">Most recent re-verification attempts (Phase F).</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="face-filter" class="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white">
+                <option value="all">All verdicts</option>
+                <option value="fail">Failed only</option>
+                <option value="manual">Manual review only</option>
+                <option value="pass">Passed only</option>
+              </select>
+              <button id="btn-refresh-face" class="text-xs font-medium text-gray-500 hover:text-sp-dark">Refresh</button>
+            </div>
+          </div>
+          <div id="face-list"></div>
+        </div>
+      </section>
+
+      <!-- RISKY TRANSACTIONS PANEL ----------------------------------- -->
+      <section data-panel="txns" hidden>
+        <div class="admin-card overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="font-display text-lg font-bold">High-risk transactions</h2>
+              <p class="text-xs text-gray-500 mt-0.5">Risk score ≥ 50 or AI verdict ≠ pass. Sorted by score.</p>
+            </div>
+            <button id="btn-refresh-txns" class="text-xs font-medium text-gray-500 hover:text-sp-dark">Refresh</button>
+          </div>
+          <div id="txns-list"></div>
+        </div>
+      </section>
+
+      <!-- USERS PANEL ------------------------------------------------ -->
+      <section data-panel="users" hidden>
+        <div class="admin-card overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <div>
+              <h2 class="font-display text-lg font-bold">Users</h2>
+              <p class="text-xs text-gray-500 mt-0.5">Most recent signups. Read-only.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="users-search" type="search" placeholder="Search name / phone / email…" class="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white w-56">
+              <button id="btn-refresh-users" class="text-xs font-medium text-gray-500 hover:text-sp-dark">Refresh</button>
+            </div>
+          </div>
+          <div id="users-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- DISPUTE RESOLUTION MODAL                                     -->
+  <!-- ============================================================ -->
+  <div id="resolve-modal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 class="font-display text-lg font-bold">Resolve dispute</h3>
+          <p class="text-[12px] text-gray-500 mt-0.5" id="resolve-modal-txn-id">—</p>
+        </div>
+        <button id="resolve-modal-close" class="text-gray-400 hover:text-sp-dark p-1">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-5">
+        <!-- Transaction summary -->
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-gray-500">Amount</div>
+            <div id="resolve-modal-amount" class="font-display font-bold text-lg">—</div>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-gray-500">Raised by</div>
+            <div id="resolve-modal-raised-by" class="font-medium">—</div>
+          </div>
+          <div class="col-span-2">
+            <div class="text-[11px] uppercase tracking-wider text-gray-500">Item description</div>
+            <div id="resolve-modal-item" class="text-gray-700">—</div>
+          </div>
+          <div class="col-span-2">
+            <div class="text-[11px] uppercase tracking-wider text-gray-500">User's complaint</div>
+            <div id="resolve-modal-desc" class="text-gray-700 whitespace-pre-wrap">—</div>
+          </div>
+        </div>
+
+        <!-- AI verdict block -->
+        <div id="resolve-modal-ai" class="rounded-xl bg-amber-50 border border-amber-200 p-4">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="badge badge-amber">AI Recommendation</span>
+            <span id="resolve-modal-ai-confidence" class="text-[11px] text-gray-600">—</span>
+          </div>
+          <div id="resolve-modal-ai-verdict" class="font-display font-bold text-base mb-1">—</div>
+          <p id="resolve-modal-ai-reasoning" class="text-sm text-gray-700">—</p>
+        </div>
+
+        <!-- Photos -->
+        <div>
+          <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Evidence photos</div>
+          <div id="resolve-modal-photos" class="flex flex-wrap gap-2">
+            <span class="text-xs text-gray-400">No photos uploaded.</span>
+          </div>
+        </div>
+
+        <!-- Admin notes -->
+        <div>
+          <label for="resolve-modal-notes" class="text-[11px] uppercase tracking-wider text-gray-500 block mb-1.5">Resolution notes (optional)</label>
+          <textarea id="resolve-modal-notes" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:border-sp-dark focus:ring-0 resize-none" placeholder="Reasoning shown in audit trail…"></textarea>
+        </div>
+
+        <!-- Resolution buttons -->
+        <div>
+          <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Decide</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button class="resolution-btn refund" data-resolution="refund_buyer">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a4 4 0 014 4v0a4 4 0 01-4 4H7m0 0l3-3m-3 3l3 3"/>
+              </svg>
+              Refund buyer
+            </button>
+            <button class="resolution-btn release" data-resolution="release_to_seller">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              Release to seller
+            </button>
+            <button class="resolution-btn split" data-resolution="split">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7l4-4m0 0l4 4m-4-4v18"/>
+              </svg>
+              Split 50/50
+            </button>
+          </div>
+          <p id="resolve-modal-status" class="text-xs text-gray-500 mt-3 hidden"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- DEPENDENCIES                                                 -->
+  <!-- Mirror the dashboard's load order. Some services aren't      -->
+  <!-- needed here (StateMachine, BalanceService, etc.) — we only   -->
+  <!-- include what the admin views actually use.                   -->
+  <!-- ============================================================ -->
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="turso-config.js"></script>
+  <script src="gemini-config.js"></script>
+  <script src="turso-db-service.js"></script>
+  <script src="SessionService.js"></script>
+  <script src="squad-api-service.js"></script>
+  <script src="TrustEngineService.js"></script>
+  <script src="DisputeService.js"></script>
+
+  <script>
+    /* ================================================================
+       AdminApp — single IIFE that owns the whole page lifecycle.
+
+       FLOW
+       ----
+         1. boot()                – auth check + initial paint
+         2. loadStats()           – populate the 4 KPI cards
+         3. switchTab(name)       – swap visible panel + lazy-load data
+         4. each tab has its own load* + render* pair
+         5. Dispute resolution opens a modal that calls
+            DisputeService.resolveManually() and refreshes on success
+
+       Everything is plain DOM — no framework. We deliberately load
+       data lazily per tab so Turso roundtrips only happen when a
+       moderator actually opens that view.
+       ================================================================ */
+    const AdminApp = (function () {
+      const $ = (id) => document.getElementById(id);
+      let dbService = null;
+      let sessionService = null;
+      let disputeService = null;
+      let currentAdmin = null;       // user row of the signed-in admin
+      let currentDispute = null;     // dispute row currently open in resolve modal
+
+      // ── Auth gate ───────────────────────────────────────────────────────
+      async function boot() {
+        try {
+          // 1. Validate session ----------------------------------------------
+          sessionService = new SessionService(CONFIG);
+          if (!sessionService.isAuthenticated()) {
+            // No session at all → straight to sign-in.
+            window.location.href = 'sign-in.html';
+            return;
+          }
+          const session = sessionService.getSession();
+          if (!session || !session.userId) {
+            window.location.href = 'sign-in.html';
+            return;
+          }
+
+          // 2. Connect DB and load the user row ------------------------------
+          dbService = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
+          await dbService.connect();
+
+          const userRow = await fetchUserById(session.userId);
+          if (!userRow) {
+            return showDenied();
+          }
+          if (Number(userRow.is_admin) !== 1) {
+            return showDenied();
+          }
+          currentAdmin = userRow;
+
+          // 3. Wire DisputeService — needed for resolve-modal actions.
+          disputeService = new DisputeService(CONFIG);
+          await disputeService.connect();
+
+          // 4. Reveal the app + bind UI.
+          $('auth-splash').hidden = true;
+          $('admin-app').hidden = false;
+          paintHeader();
+          bindUi();
+
+          // 5. Initial data loads.
+          loadStats();
+          loadDisputes();
+        } catch (err) {
+          console.error('[Admin] boot failed:', err);
+          showDenied(err.message || 'Boot failed');
+        }
+      }
+
+      function showDenied(extra) {
+        $('auth-splash').hidden = true;
+        $('admin-app').hidden = true;
+        $('auth-denied').hidden = false;
+        if (extra) console.warn('[Admin] denied reason:', extra);
+      }
+
+      function paintHeader() {
+        const fullName = [currentAdmin.first_name, currentAdmin.last_name].filter(Boolean).join(' ');
+        $('admin-name').textContent  = fullName || 'Admin';
+        $('admin-phone').textContent = currentAdmin.phone_number || '';
+      }
+
+      function bindUi() {
+        $('btn-admin-logout').addEventListener('click', () => {
+          if (sessionService && sessionService.logout) sessionService.logout();
+          else window.location.href = 'sign-in.html';
+        });
+        $('btn-deny-logout').addEventListener('click', () => {
+          if (sessionService && sessionService.logout) sessionService.logout();
+          else window.location.href = 'sign-in.html';
+        });
+
+        // Tab switching.
+        document.querySelectorAll('.admin-tab').forEach(btn => {
+          btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        // Refresh buttons.
+        $('btn-refresh-disputes').addEventListener('click', loadDisputes);
+        $('btn-refresh-face').addEventListener('click', loadFaceVerifications);
+        $('btn-refresh-txns').addEventListener('click', loadRiskyTransactions);
+        $('btn-refresh-users').addEventListener('click', loadUsers);
+
+        // Face filter.
+        $('face-filter').addEventListener('change', loadFaceVerifications);
+
+        // Users search (debounced).
+        let userSearchTimer = null;
+        $('users-search').addEventListener('input', () => {
+          clearTimeout(userSearchTimer);
+          userSearchTimer = setTimeout(loadUsers, 250);
+        });
+
+        // Resolve modal.
+        $('resolve-modal-close').addEventListener('click', closeResolveModal);
+        document.querySelectorAll('.resolution-btn').forEach(btn => {
+          btn.addEventListener('click', () => applyResolution(btn.dataset.resolution));
+        });
+      }
+
+      // ── Tab management ─────────────────────────────────────────────────
+      const TAB_LOADERS = {
+        disputes: { fn: loadDisputes, loaded: false },
+        face:     { fn: loadFaceVerifications, loaded: false },
+        txns:     { fn: loadRiskyTransactions, loaded: false },
+        users:    { fn: loadUsers, loaded: false }
+      };
+      function switchTab(name) {
+        document.querySelectorAll('.admin-tab').forEach(b => {
+          b.classList.toggle('active', b.dataset.tab === name);
+        });
+        document.querySelectorAll('[data-panel]').forEach(p => {
+          p.hidden = p.dataset.panel !== name;
+        });
+        const t = TAB_LOADERS[name];
+        if (t && !t.loaded) { t.loaded = true; t.fn(); }
+      }
+
+      // ── Stats ──────────────────────────────────────────────────────────
+      async function loadStats() {
+        try {
+          const [pendingCount, faceFailCount, riskyCount, userCount] = await Promise.all([
+            countRows(`SELECT COUNT(*) AS n FROM disputes d
+                       JOIN transactions t ON t.transaction_id = d.transaction_id
+                       WHERE t.state = 'Disputed'`),
+            countRows(`SELECT COUNT(*) AS n FROM face_verifications
+                       WHERE match = 0
+                         AND created_at >= datetime('now', '-1 day')`),
+            countRows(`SELECT COUNT(*) AS n FROM transactions
+                       WHERE risk_score >= 50 AND state IN ('Funded_Locked','In_Transit','Disputed')`),
+            countRows(`SELECT COUNT(*) AS n FROM users`)
+          ]);
+          $('stat-pending-disputes').textContent = pendingCount;
+          $('stat-face-fails').textContent       = faceFailCount;
+          $('stat-risky-txns').textContent       = riskyCount;
+          $('stat-users').textContent            = userCount;
+          $('count-disputes').textContent        = pendingCount;
+          $('count-face').textContent            = faceFailCount;
+          $('count-txns').textContent            = riskyCount;
+          $('count-users').textContent           = userCount;
+        } catch (e) {
+          console.warn('[Admin] loadStats failed:', e);
+        }
+      }
+
+      async function countRows(sql, args = []) {
+        const result = await dbService._executeHttp(sql, args);
+        const row = parseRows(result)[0];
+        return Number(row && (row.n || row.N || Object.values(row)[0])) || 0;
+      }
+
+      // ── Disputes panel ─────────────────────────────────────────────────
+      async function loadDisputes() {
+        const container = $('disputes-list');
+        container.innerHTML = '<div class="empty-state"><div class="spinner mx-auto"></div><p class="text-sm mt-3">Loading…</p></div>';
+
+        try {
+          // Disputes whose linked transaction is still in 'Disputed'
+          // state. This catches both AI-flagged manual-review cases
+          // AND brand-new disputes that haven't been triaged yet.
+          const result = await dbService._executeHttp(`
+            SELECT d.id            AS dispute_id,
+                   d.transaction_id AS transaction_id,
+                   d.raised_by      AS raised_by,
+                   d.description    AS description,
+                   d.photo_urls     AS photo_urls,
+                   d.ai_resolution  AS ai_resolution,
+                   d.ai_confidence  AS ai_confidence,
+                   d.resolution_type AS resolution_type,
+                   d.created_at     AS dispute_created_at,
+                   t.price          AS price,
+                   t.item_description AS item_description,
+                   t.state          AS state,
+                   t.buyer_id       AS buyer_id,
+                   t.seller_id      AS seller_id
+              FROM disputes d
+              JOIN transactions t ON t.transaction_id = d.transaction_id
+             WHERE t.state = 'Disputed'
+             ORDER BY d.created_at DESC
+             LIMIT 100
+          `);
+          const rows = parseRows(result);
+
+          if (rows.length === 0) {
+            container.innerHTML = emptyState('🎉', 'All caught up', 'No disputes are waiting for review right now.');
+            return;
+          }
+
+          container.innerHTML = '<div class="divide-y divide-gray-100">' +
+            rows.map(renderDisputeRow).join('') +
+            '</div>';
+
+          // Bind row clicks.
+          container.querySelectorAll('[data-dispute-id]').forEach(el => {
+            el.addEventListener('click', () => openResolveModal(el.dataset.disputeId, rows));
+          });
+        } catch (err) {
+          console.error('[Admin] loadDisputes failed:', err);
+          container.innerHTML = emptyState('⚠️', 'Could not load disputes', err.message);
+        }
+      }
+
+      function renderDisputeRow(row) {
+        const price = formatNgn(row.price);
+        const raisedSide = (row.raised_by === row.buyer_id) ? 'buyer' : (row.raised_by === row.seller_id ? 'seller' : 'party');
+        const aiBadge = row.ai_resolution
+          ? `<span class="badge badge-amber">AI: ${prettyResolution(row.ai_resolution)} (${Math.round(Number(row.ai_confidence)||0)}%)</span>`
+          : '<span class="badge badge-gray">Not analysed</span>';
+        const desc = (row.description || '').slice(0, 140);
+
+        return `
+          <button data-dispute-id="${row.dispute_id}" class="w-full text-left px-5 py-4 hover:bg-gray-50 transition flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-display font-bold">
+              !
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="font-display font-bold text-base">${escapeHtml(row.transaction_id)}</span>
+                <span class="badge badge-red">Disputed</span>
+                ${aiBadge}
+              </div>
+              <p class="text-sm text-gray-700 truncate">${escapeHtml(row.item_description || 'No item description')}</p>
+              <p class="text-xs text-gray-500 mt-1">Raised by ${raisedSide} · ${escapeHtml(desc)}${row.description && row.description.length > 140 ? '…' : ''}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="font-display font-bold">${price}</div>
+              <div class="text-[11px] text-gray-500 mt-0.5">${formatRelativeTime(row.dispute_created_at)}</div>
+            </div>
+          </button>`;
+      }
+
+      // ── Resolve modal ──────────────────────────────────────────────────
+      function openResolveModal(disputeId, rows) {
+        const row = rows.find(r => String(r.dispute_id) === String(disputeId));
+        if (!row) return;
+        currentDispute = row;
+
+        $('resolve-modal-txn-id').textContent  = row.transaction_id;
+        $('resolve-modal-amount').textContent  = formatNgn(row.price);
+        $('resolve-modal-raised-by').textContent =
+          (row.raised_by === row.buyer_id) ? 'Buyer' : (row.raised_by === row.seller_id ? 'Seller' : 'Unknown');
+        $('resolve-modal-item').textContent    = row.item_description || '—';
+        $('resolve-modal-desc').textContent    = row.description || '—';
+
+        // AI block
+        if (row.ai_resolution) {
+          $('resolve-modal-ai').classList.remove('hidden');
+          $('resolve-modal-ai-verdict').textContent =
+            'Recommended: ' + prettyResolution(row.ai_resolution);
+          $('resolve-modal-ai-confidence').textContent =
+            'Confidence: ' + Math.round(Number(row.ai_confidence) || 0) + '%';
+          // ai_reasoning isn't a column on disputes — we surface the raw
+          // ai_resolution as the verdict and skip free-text reasoning
+          // here. Future work: add ai_reasoning column.
+          $('resolve-modal-ai-reasoning').textContent =
+            'Below auto-resolve threshold — escalated to manual review.';
+        } else {
+          $('resolve-modal-ai').classList.add('hidden');
+        }
+
+        // Photos — photo_urls is a JSON-encoded array of strings.
+        const photoEl = $('resolve-modal-photos');
+        let photos = [];
+        try { photos = row.photo_urls ? JSON.parse(row.photo_urls) : []; } catch (_) {}
+        if (Array.isArray(photos) && photos.length) {
+          photoEl.innerHTML = photos.map(u =>
+            `<a href="${u}" target="_blank" class="photo-thumb" style="background-image:url('${u}')" title="Open in new tab"></a>`
+          ).join('');
+        } else {
+          photoEl.innerHTML = '<span class="text-xs text-gray-400">No photos uploaded.</span>';
+        }
+
+        $('resolve-modal-notes').value = '';
+        $('resolve-modal-status').classList.add('hidden');
+        document.querySelectorAll('.resolution-btn').forEach(b => b.disabled = false);
+        $('resolve-modal').hidden = false;
+      }
+
+      function closeResolveModal() {
+        $('resolve-modal').hidden = true;
+        currentDispute = null;
+      }
+
+      async function applyResolution(resolution) {
+        if (!currentDispute) return;
+
+        const buttons = document.querySelectorAll('.resolution-btn');
+        buttons.forEach(b => b.disabled = true);
+
+        const status = $('resolve-modal-status');
+        status.classList.remove('hidden');
+        status.classList.remove('text-red-600');
+        status.textContent = 'Applying ' + prettyResolution(resolution).toLowerCase() + '…';
+
+        try {
+          const result = await disputeService.resolveManually(
+            currentDispute.transaction_id,
+            resolution,
+            {
+              adminUserId: currentAdmin.id,
+              notes: $('resolve-modal-notes').value || ''
+            }
+          );
+          if (!result.success) throw new Error(result.message || 'Resolution failed');
+
+          status.textContent = '✅ ' + (result.message || 'Resolved');
+          // Brief pause so the moderator sees the success line, then
+          // close + refresh the list + stats.
+          setTimeout(() => {
+            closeResolveModal();
+            loadDisputes();
+            loadStats();
+          }, 700);
+        } catch (err) {
+          console.error('[Admin] resolveManually failed:', err);
+          status.classList.add('text-red-600');
+          status.textContent = '❌ ' + err.message;
+          buttons.forEach(b => b.disabled = false);
+        }
+      }
+
+      // ── Face verifications panel ───────────────────────────────────────
+      async function loadFaceVerifications() {
+        const container = $('face-list');
+        container.innerHTML = '<div class="empty-state"><div class="spinner mx-auto"></div><p class="text-sm mt-3">Loading…</p></div>';
+
+        const filter = $('face-filter').value;
+        let where = '1=1';
+        if (filter === 'fail') where = 'fv.match = 0 AND fv.confidence >= 0.75';
+        else if (filter === 'manual') where = '(fv.match IS NULL OR fv.confidence < 0.75)';
+        else if (filter === 'pass') where = 'fv.match = 1 AND fv.confidence >= 0.75';
+
+        try {
+          const result = await dbService._executeHttp(`
+            SELECT fv.id, fv.user_id, fv.trigger, fv.match, fv.confidence,
+                   fv.reasoning, fv.transaction_id, fv.reference_url,
+                   fv.capture_url, fv.created_at,
+                   u.first_name, u.last_name, u.phone_number
+              FROM face_verifications fv
+              LEFT JOIN users u ON u.id = fv.user_id
+             WHERE ${where}
+             ORDER BY fv.created_at DESC
+             LIMIT 80
+          `);
+          const rows = parseRows(result);
+          if (rows.length === 0) {
+            container.innerHTML = emptyState('🔍', 'No verification attempts', 'Nothing matches this filter.');
+            return;
+          }
+          container.innerHTML = '<div class="divide-y divide-gray-100">' +
+            rows.map(renderFaceRow).join('') + '</div>';
+        } catch (err) {
+          console.error('[Admin] loadFaceVerifications failed:', err);
+          container.innerHTML = emptyState('⚠️', 'Could not load', err.message);
+        }
+      }
+
+      function renderFaceRow(row) {
+        const name = [row.first_name, row.last_name].filter(Boolean).join(' ') || 'User #' + row.user_id;
+        let verdictBadge;
+        if (row.match === 1 && Number(row.confidence) >= 0.75) {
+          verdictBadge = '<span class="badge badge-green">Passed</span>';
+        } else if (row.match === 0 && Number(row.confidence) >= 0.75) {
+          verdictBadge = '<span class="badge badge-red">Failed</span>';
+        } else {
+          verdictBadge = '<span class="badge badge-amber">Manual review</span>';
+        }
+        const conf = Math.round((Number(row.confidence) || 0) * 100);
+        const refThumb = row.reference_url ? `<div class="photo-thumb" style="background-image:url('${row.reference_url}')" onclick="window.open('${row.reference_url}','_blank')"></div>` : '<div class="photo-thumb bg-gray-100"></div>';
+
+        return `
+          <div class="px-5 py-4 flex items-start gap-4">
+            ${refThumb}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="font-medium text-sm">${escapeHtml(name)}</span>
+                ${verdictBadge}
+                <span class="badge badge-gray">${escapeHtml(row.trigger || 'manual')}</span>
+                <span class="text-[11px] text-gray-500">conf ${conf}%</span>
+              </div>
+              <p class="text-xs text-gray-600">${escapeHtml((row.reasoning || '').slice(0, 220))}</p>
+              <p class="text-[11px] text-gray-400 mt-1">
+                ${row.phone_number ? escapeHtml(row.phone_number) + ' · ' : ''}
+                ${row.transaction_id ? 'txn ' + escapeHtml(row.transaction_id) + ' · ' : ''}
+                ${formatRelativeTime(row.created_at)}
+              </p>
+            </div>
+          </div>`;
+      }
+
+      // ── Risky transactions panel ───────────────────────────────────────
+      async function loadRiskyTransactions() {
+        const container = $('txns-list');
+        container.innerHTML = '<div class="empty-state"><div class="spinner mx-auto"></div><p class="text-sm mt-3">Loading…</p></div>';
+
+        try {
+          const result = await dbService._executeHttp(`
+            SELECT t.transaction_id, t.price, t.state, t.risk_score, t.ai_verdict,
+                   t.item_description, t.created_at,
+                   b.first_name AS buyer_first, b.last_name AS buyer_last,
+                   s.first_name AS seller_first, s.last_name AS seller_last
+              FROM transactions t
+              LEFT JOIN users b ON b.id = t.buyer_id
+              LEFT JOIN users s ON s.id = t.seller_id
+             WHERE (t.risk_score >= 50 OR (t.ai_verdict IS NOT NULL AND t.ai_verdict <> 'pass'))
+             ORDER BY t.risk_score DESC, t.created_at DESC
+             LIMIT 80
+          `);
+          const rows = parseRows(result);
+          if (rows.length === 0) {
+            container.innerHTML = emptyState('🛡️', 'Nothing risky', 'No transactions are above the risk threshold.');
+            return;
+          }
+          container.innerHTML = '<div class="divide-y divide-gray-100">' +
+            rows.map(renderTxnRow).join('') + '</div>';
+        } catch (err) {
+          console.error('[Admin] loadRiskyTransactions failed:', err);
+          container.innerHTML = emptyState('⚠️', 'Could not load', err.message);
+        }
+      }
+
+      function renderTxnRow(row) {
+        const score = Number(row.risk_score) || 0;
+        const scoreClass = score > 80 ? 'badge-red' : score > 50 ? 'badge-amber' : 'badge-gray';
+        const verdictBadge = row.ai_verdict && row.ai_verdict !== 'pass'
+          ? `<span class="badge badge-red">${escapeHtml(row.ai_verdict)}</span>`
+          : '';
+        const stateColor = STATE_COLORS[row.state] || 'badge-gray';
+        const buyer = [row.buyer_first, row.buyer_last].filter(Boolean).join(' ') || '—';
+        const seller = [row.seller_first, row.seller_last].filter(Boolean).join(' ') || '—';
+        return `
+          <div class="px-5 py-4 flex items-start gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="font-display font-bold">${escapeHtml(row.transaction_id)}</span>
+                <span class="badge ${stateColor}">${escapeHtml(row.state || '—')}</span>
+                <span class="badge ${scoreClass}">Risk ${score.toFixed(1)}</span>
+                ${verdictBadge}
+              </div>
+              <p class="text-sm text-gray-700 truncate">${escapeHtml(row.item_description || '')}</p>
+              <p class="text-[11px] text-gray-500 mt-1">${escapeHtml(buyer)} → ${escapeHtml(seller)} · ${formatRelativeTime(row.created_at)}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="font-display font-bold">${formatNgn(row.price)}</div>
+            </div>
+          </div>`;
+      }
+
+      // ── Users panel ────────────────────────────────────────────────────
+      async function loadUsers() {
+        const container = $('users-list');
+        container.innerHTML = '<div class="empty-state"><div class="spinner mx-auto"></div><p class="text-sm mt-3">Loading…</p></div>';
+
+        const q = ($('users-search').value || '').trim();
+        let where = '1=1';
+        const args = [];
+        if (q) {
+          where = `(first_name LIKE ? OR last_name LIKE ? OR phone_number LIKE ? OR email LIKE ?)`;
+          const wild = '%' + q + '%';
+          args.push(wild, wild, wild, wild);
+        }
+
+        try {
+          const result = await dbService._executeHttp(`
+            SELECT id, first_name, last_name, phone_number, email,
+                   email_verified, is_admin, face_reference_url,
+                   last_face_verified_at, created_at
+              FROM users
+             WHERE ${where}
+             ORDER BY created_at DESC
+             LIMIT 80
+          `, args);
+          const rows = parseRows(result);
+          if (rows.length === 0) {
+            container.innerHTML = emptyState('👥', 'No users match', q ? 'Try a different search term.' : 'No users in the database yet.');
+            return;
+          }
+          container.innerHTML = '<div class="divide-y divide-gray-100">' +
+            rows.map(renderUserRow).join('') + '</div>';
+        } catch (err) {
+          console.error('[Admin] loadUsers failed:', err);
+          container.innerHTML = emptyState('⚠️', 'Could not load', err.message);
+        }
+      }
+
+      function renderUserRow(row) {
+        const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ') || 'Unnamed';
+        const initials = (row.first_name || '?').charAt(0).toUpperCase();
+        const photo = row.face_reference_url
+          ? `style="background-image:url('${row.face_reference_url}')"`
+          : '';
+        const adminBadge = Number(row.is_admin) === 1
+          ? '<span class="badge badge-blue">Admin</span>' : '';
+        const emailBadge = row.email
+          ? (Number(row.email_verified) === 1
+             ? '<span class="badge badge-green">Email verified</span>'
+             : '<span class="badge badge-amber">Email unverified</span>')
+          : '';
+        const faceBadge = row.face_reference_url
+          ? '<span class="badge badge-green">Face on file</span>'
+          : '<span class="badge badge-gray">No face</span>';
+
+        return `
+          <div class="px-5 py-4 flex items-center gap-4">
+            <div class="photo-thumb !w-10 !h-10 !rounded-full bg-sp-green flex items-center justify-center font-display font-bold text-sp-dark" ${photo}>
+              ${row.face_reference_url ? '' : initials}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                <span class="font-medium">${escapeHtml(fullName)}</span>
+                ${adminBadge}${emailBadge}${faceBadge}
+              </div>
+              <div class="text-xs text-gray-500">
+                ${escapeHtml(row.phone_number || '')}${row.email ? ' · ' + escapeHtml(row.email) : ''}
+              </div>
+            </div>
+            <div class="text-right text-[11px] text-gray-500 flex-shrink-0">
+              joined ${formatRelativeTime(row.created_at)}
+            </div>
+          </div>`;
+      }
+
+      // ── Helpers ───────────────────────────────────────────────────────
+      // Mirror the schema's CHECK constraint exactly. The schema
+      // (turso-db-service.js) defines states as Created, Funded_Locked,
+      // In_Transit, Disputed, Completed, Cancelled, Refunded — there
+      // is no Shipped/Delivered state in this codebase.
+      const STATE_COLORS = {
+        Created: 'badge-gray',
+        Funded_Locked: 'badge-blue',
+        In_Transit: 'badge-amber',
+        Disputed: 'badge-red',
+        Completed: 'badge-green',
+        Cancelled: 'badge-gray',
+        Refunded: 'badge-gray'
+      };
+
+      // Turso's HTTP API hands back results in a positional shape:
+      //   results[0].response.result.cols  -> [{name, type}, ...]
+      //   results[0].response.result.rows  -> [[cell, cell, ...], ...]
+      // Each cell is `{type, value}` for typed cells. This helper
+      // flattens that into plain objects keyed by column name so the
+      // rest of the page can use row.created_at / row.price / etc.
+      function parseRows(result) {
+        try {
+          const r = result?.results?.[0]?.response?.result;
+          if (!r) return [];
+          const cols = r.cols.map(c => c.name);
+          return (r.rows || []).map(rawRow => {
+            const obj = {};
+            rawRow.forEach((cell, i) => {
+              const v = (cell && typeof cell === 'object' && 'value' in cell) ? cell.value : cell;
+              // Coerce numeric strings to numbers for known numeric fields.
+              if (NUMERIC_COLUMNS.has(cols[i]) && v != null && v !== '') {
+                obj[cols[i]] = Number(v);
+              } else {
+                obj[cols[i]] = v;
+              }
+            });
+            return obj;
+          });
+        } catch (e) {
+          console.warn('[Admin] parseRows failed:', e);
+          return [];
+        }
+      }
+      const NUMERIC_COLUMNS = new Set([
+        'id', 'dispute_id', 'user_id', 'raised_by', 'buyer_id', 'seller_id',
+        'price', 'risk_score', 'ai_confidence', 'confidence', 'match',
+        'is_admin', 'email_verified', 'n'
+      ]);
+
+      async function fetchUserById(userId) {
+        const result = await dbService._executeHttp(
+          'SELECT * FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        );
+        return parseRows(result)[0] || null;
+      }
+
+      function formatNgn(amount) {
+        const n = Number(amount) || 0;
+        return '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function formatRelativeTime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        const diffMs = Date.now() - d.getTime();
+        const sec = Math.round(diffMs / 1000);
+        if (sec < 60) return sec + 's ago';
+        const min = Math.round(sec / 60);
+        if (min < 60) return min + 'm ago';
+        const hr = Math.round(min / 60);
+        if (hr < 24) return hr + 'h ago';
+        const day = Math.round(hr / 24);
+        if (day < 30) return day + 'd ago';
+        return d.toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      function prettyResolution(r) {
+        if (r === 'refund_buyer') return 'Refund buyer';
+        if (r === 'release_to_seller') return 'Release to seller';
+        if (r === 'split') return 'Split 50/50';
+        return r || '—';
+      }
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+      function emptyState(emoji, title, sub) {
+        return `<div class="empty-state">
+          <div class="text-3xl mb-2">${emoji}</div>
+          <p class="text-sm font-medium text-gray-700 mb-1">${escapeHtml(title)}</p>
+          <p class="text-xs text-gray-500">${escapeHtml(sub || '')}</p>
+        </div>`;
+      }
+
+      return { boot };
+    })();
+
+    document.addEventListener('DOMContentLoaded', AdminApp.boot);
+  </script>
+</body>
+</html>
