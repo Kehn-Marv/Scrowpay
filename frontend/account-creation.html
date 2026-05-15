@@ -681,28 +681,8 @@
           console.error('[App] ⚠️ Schema initialization warning:', schemaError);
         }
 
-        // Stand up the EmailOTPService now that the schema is in
-        // place (it depends on the email_otps table created by
-        // initializeAllSchemas). It needs its OWN dbService — passing
-        // through CONFIG.turso here so the service builds an internal
-        // TursoDBService it can call _executeHttp on.
-        try {
-          if (typeof EmailOTPService !== 'undefined') {
-            emailOTPService = new EmailOTPService({
-              turso: window.CONFIG.turso,
-              aiEngine: window.CONFIG.aiEngine || { url: 'http://localhost:5000' }
-            });
-            await emailOTPService.connect();
-            window.emailOTPService = emailOTPService;
-            console.log('[App] ✅ EmailOTPService ready');
-            _emailOTPServiceReadyResolve(emailOTPService);
-          } else {
-            _emailOTPServiceReadyResolve(null);
-          }
-        } catch (otpErr) {
-          console.warn('[App] EmailOTPService init failed — signup will fall back to legacy 123456 OTP:', otpErr.message);
-          _emailOTPServiceReadyResolve(null);
-        }
+        // EmailOTPService DISABLED for demo — all OTP uses hardcoded 123456
+        _emailOTPServiceReadyResolve(null);
       })
       .catch(error => {
         console.error('[App] ❌ Database connection failed:', error);
@@ -1000,6 +980,8 @@
         }
         if (registrationState.email) {
           emailInput.value = registrationState.email;
+        } else {
+          emailInput.value = 'kehnmarvv@gmail.com';
         }
         
         phoneInput.addEventListener('input', (e) => {
@@ -1109,45 +1091,9 @@
           registrationState.emailVerified = false;
           registrationState.verificationStatus.otpVerified = false;
 
-          // Only send real email OTP to the owner's email (Resend
-          // free-tier limitation). Everyone else uses hardcoded 123456.
-          const OWNER_EMAIL = 'kehnmarvv@gmail.com';
-          const isOwnerEmail = emailValue.trim().toLowerCase() === OWNER_EMAIL;
-
+          // Resend API DISABLED for demo — all emails use hardcoded 123456
           nextBtn.disabled = true;
-          if (isOwnerEmail) {
-            nextBtn.innerHTML = '<span class="spinner"></span><span>Sending code…</span>';
-            try {
-              let svc = emailOTPService;
-              if (!svc) {
-                svc = await Promise.race([
-                  emailOTPServiceReady,
-                  new Promise(res => setTimeout(() => res(null), 30000))
-                ]);
-              }
-              if (svc) {
-                const result = await svc.requestOTP(emailValue, {
-                  purpose: 'signup',
-                  name: ''
-                });
-                if (result.delivered) {
-                  showToast('Verification code sent to ' + emailValue);
-                } else if (result.fallback) {
-                  showToast('Using test code: 123456');
-                } else if (result.error) {
-                  showToast(result.error, 4000);
-                }
-              } else {
-                showToast('Email service unavailable — use test code 123456', 4000);
-              }
-            } catch (otpErr) {
-              console.warn('[Stage1] OTP request failed:', otpErr);
-              showToast('Could not send email — use test code 123456', 4000);
-            }
-          } else {
-            // Non-owner email: skip email sending, use hardcoded OTP
-            showToast('Verification code ready — enter 123456 on the next screen');
-          }
+          showToast('Verification code ready — enter 123456 on the next screen');
           nextBtn.disabled = false;
           nextBtn.textContent = 'Next';
 
@@ -1244,33 +1190,10 @@
 
         resendBtn.addEventListener('click', async () => {
           if (resendCooldown > 0) return;
-          const OWNER_EMAIL = 'kehnmarvv@gmail.com';
-          const isOwnerEmail = (registrationState.email || '').trim().toLowerCase() === OWNER_EMAIL;
-
-          if (!isOwnerEmail) {
-            // Non-owner: just remind them of the test code
-            showToast('Use the test code: 123456', 3000);
-            resendCooldown = 10;
-            refreshResendUi();
-            return;
-          }
-          if (!emailOTPService) {
-            showToast('Email service unavailable — try the test code 123456', 4000);
-            return;
-          }
-          resendCooldown = 30;
+          // Resend API DISABLED for demo — all emails use hardcoded 123456
+          showToast('Use the test code: 123456', 3000);
+          resendCooldown = 10;
           refreshResendUi();
-          try {
-            const result = await emailOTPService.requestOTP(registrationState.email, {
-              purpose: 'signup'
-            });
-            if (result.delivered)        showToast('New code sent to ' + registrationState.email);
-            else if (result.fallback)    showToast('Email service unavailable — use the test code 123456 in dev', 5000);
-            else if (result.error)       showToast(result.error, 4000);
-          } catch (err) {
-            console.warn('[Stage2] resend failed:', err);
-            showToast('Could not send code — please try again', 4000);
-          }
         });
 
         // ---- Verify ------------------------------------------------------
@@ -1290,45 +1213,13 @@
 
           try {
             let verified = false;
-            const OWNER_EMAIL = 'kehnmarvv@gmail.com';
-            const isOwnerEmail = (registrationState.email || '').trim().toLowerCase() === OWNER_EMAIL;
-
-            if (isOwnerEmail && emailOTPService) {
-              // Owner email: use real EmailOTPService verification
-              const result = await emailOTPService.verifyOTP(
-                registrationState.email, otp, 'signup'
-              );
-              if (result.ok) {
-                verified = true;
-              } else if (result.reason === 'no_active_otp') {
-                console.warn('[Stage2] No live OTP — falling back to dev OTPService.');
-                verified = OTPService.verifyOTP(otp);
-              } else if (result.reason === 'expired') {
-                showModal('Code Expired', 'That code has expired. Please tap "Resend code" to get a fresh one.', [
-                  { text: 'OK', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
-                ]);
-                return;
-              } else if (result.reason === 'locked') {
-                showModal('Too Many Attempts', 'You\u2019ve entered the wrong code too many times. Please tap "Resend code" to start over.', [
-                  { text: 'OK', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
-                ]);
-                return;
-              } else {
-                const left = result.attemptsLeft != null ? ` (${result.attemptsLeft} ${result.attemptsLeft === 1 ? 'try' : 'tries'} left)` : '';
-                showModal('Incorrect Code', 'That code doesn\u2019t match' + left + '. Please double-check and try again.', [
-                  { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
-                ]);
-                return;
-              }
-            } else {
-              // Non-owner email OR no service: use hardcoded 123456
-              verified = OTPService.verifyOTP(otp);
-              if (!verified) {
-                showModal('Incorrect Code', 'That code doesn\u2019t match. Please try again.', [
-                  { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
-                ]);
-                return;
-              }
+            // Resend API DISABLED for demo — all emails use hardcoded 123456
+            verified = OTPService.verifyOTP(otp);
+            if (!verified) {
+              showModal('Incorrect Code', 'That code doesn\u2019t match. Please try again.', [
+                { text: 'Retry', primary: true, onClick: () => { otpInputBox.clear(); otpInputBox.focus(); } }
+              ]);
+              return;
             }
 
             if (verified) {

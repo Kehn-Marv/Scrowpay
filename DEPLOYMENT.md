@@ -253,7 +253,7 @@ All three are managed services — no deployment. Just point your production key
 | Secret-key prefix | `sandbox_sk_` | `sk_live_` |
 | Public-key prefix | `sandbox_pk_` | `pk_live_` |
 | Base URL | `sandbox-api-d.squadco.com` | `api-d.squadco.com` |
-| BVN/NIN | Test values only | Real values |
+| BVN | Test values only | Real values |
 | Money | None — fake | **Real** |
 | Use for | Local dev, demos, staging | Production only |
 

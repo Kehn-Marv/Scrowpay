@@ -152,3 +152,51 @@ Ideas for future scripts (not built yet):
   opening the admin UI
 - `seed-test-data.ps1` — creates a couple of fake transactions for
   demo recording
+
+---
+
+## `test-dispute-helper.js`
+
+Backdates a transaction's `shipped_at` timestamp to enable immediate
+dispute testing without waiting for the delivery timeline.
+
+### Why this exists
+
+The dispute functionality requires transactions to be in `In_Transit`
+state. While there's no hard UI restriction on when you can click the
+dispute button, for realistic testing you may want the transaction to
+appear as if it was shipped days ago. This script modifies the
+`shipped_at` timestamp so you can test disputes immediately.
+
+### Usage
+
+1. Open `scripts/test-dispute-helper.js` in your editor
+2. Update the configuration at the top:
+   ```javascript
+   const TRANSACTION_ID = 'TXN-your-transaction-id-here';
+   const DAYS_AGO = 2; // How many days to backdate
+   const TURSO_DATABASE_URL = 'your-turso-url-here';
+   const TURSO_AUTH_TOKEN = 'your-turso-token-here';
+   ```
+
+3. Run the script:
+   ```bash
+   node scripts/test-dispute-helper.js
+   ```
+
+### What it does
+
+- Updates the `shipped_at` timestamp to X days in the past
+- Allows you to test dispute functionality immediately
+- Useful for development, testing, and demos
+
+### Alternative: Browser Console Method
+
+If you don't want to use Node.js, you can run this directly in your
+browser console while on the dashboard page. See `TESTING_DISPUTES.md`
+in the project root for the full command.
+
+### Requirements
+
+- Node.js 14+ (for fetch API support)
+- Turso database credentials (URL and auth token)

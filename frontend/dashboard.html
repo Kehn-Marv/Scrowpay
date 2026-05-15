@@ -847,54 +847,47 @@
     }
 
     /* ============================================================
-       PROFILE MODAL (Phase E) — redesigned
+       PROFILE MODAL — Refined & Sleek Design
        ----------------------------------------------------------------
-       Sleek single-page profile card mirroring the account-creation
-       aesthetic: DM Sans/Syne, brand green (#caff04), soft greys,
-       pill buttons. Two-column body so everything fits on one
-       desktop viewport without scrolling. Collapses to one column
-       on mobile (≤640px) where vertical space is fine.
+       Modern, clean profile modal matching the app's refined aesthetic.
+       Features improved spacing, elegant typography, and card-based
+       layout similar to other modals in the app.
        ============================================================ */
     #profile-modal .modal-content {
-      max-width: 720px;
-      width: 92%;
+      max-width: 780px;
+      width: 90%;
       padding: 0;
       border-radius: 24px;
-      max-height: none;
-      overflow: hidden;
-      box-shadow: 0 24px 70px rgba(0,0,0,0.22);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.18);
+      background: #fafafa;
     }
 
-    /* Dark header band — name, phone, trust pill */
+    /* Elegant header with gradient background */
     .profile-header {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 18px;
-      padding: 22px 26px;
-      background:
-        radial-gradient(120% 160% at 100% 0%, rgba(202,255,4,0.12) 0%, rgba(202,255,4,0) 55%),
-        #111111;
+      gap: 20px;
+      padding: 28px 32px 24px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
       color: #fff;
     }
     .profile-header-text { min-width: 0; flex: 1; }
     .profile-header-name {
       font-family: 'Syne', sans-serif;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: -0.01em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.15;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 5px;
     }
     .profile-header-sub {
-      font-size: 13px;
-      color: rgba(255,255,255,0.65);
-      margin-top: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+      letter-spacing: -0.01em;
     }
     .profile-header-trust {
       display: inline-flex;
@@ -902,61 +895,77 @@
       gap: 6px;
       font-size: 12px;
       font-weight: 700;
-      padding: 6px 12px;
+      padding: 7px 14px;
       border-radius: 999px;
       background: var(--green, #caff04);
       color: #111111;
-      margin-top: 10px;
-      letter-spacing: 0.01em;
+      margin-top: 12px;
+      letter-spacing: 0;
     }
-    .profile-header-trust svg { stroke: #111111; }
+    .profile-header-trust svg { 
+      stroke: #111111;
+      width: 13px;
+      height: 13px;
+    }
 
-    /* Body: two-column grid on desktop, single column on mobile */
+    /* Body: clean two-column grid layout */
     .profile-body {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
+      gap: 16px;
+      padding: 24px 32px;
+      background: #fafafa;
+    }
+
+    /* Card-style sections with subtle shadows */
+    .profile-section {
       background: #ffffff;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.06);
     }
-    .profile-body > .profile-section:nth-child(odd) {
-      border-right: 1px solid #f1f3f5;
-    }
+    
     /* Address section spans full width */
     .profile-section.profile-section-wide {
       grid-column: 1 / -1;
-      border-top: 1px solid #f1f3f5;
-      border-right: none;
-      padding: 14px 26px 16px;
     }
 
-    .profile-section {
-      padding: 18px 26px 16px;
-    }
     .profile-section-title {
-      font-family: 'DM Sans', sans-serif;
+      font-family: 'Syne', sans-serif;
       font-size: 10.5px;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: #888888;
-      margin-bottom: 10px;
+      color: #999999;
+      margin-bottom: 16px;
     }
+    
     .profile-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 7px 0;
-      min-height: 30px;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 11px 0;
+      border-bottom: 1px solid #f5f5f5;
     }
+    .profile-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .profile-row:first-of-type {
+      padding-top: 0;
+    }
+    
     .profile-row-label {
-      font-size: 12.5px;
-      color: #888888;
+      font-size: 13px;
+      color: #666666;
       flex-shrink: 0;
       font-weight: 500;
+      line-height: 1.5;
     }
     .profile-row-value {
-      font-size: 13.5px;
+      font-size: 14px;
       color: #111111;
       font-weight: 600;
       text-align: right;
@@ -964,71 +973,76 @@
       display: inline-flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 6px 8px;
+      gap: 8px 10px;
       justify-content: flex-end;
-      max-width: 70%;
+      max-width: 65%;
+      line-height: 1.5;
     }
 
-    /* Verification badges — brand green for verified, amber for not */
+    /* Refined verification badges */
     .profile-badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      font-size: 10.5px;
+      gap: 5px;
+      font-size: 11px;
       font-weight: 700;
-      padding: 3px 8px;
+      padding: 5px 11px;
       border-radius: 999px;
       line-height: 1;
-      letter-spacing: 0.01em;
+      letter-spacing: 0.02em;
       text-transform: uppercase;
     }
     .profile-badge::before {
       content: '';
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: currentColor;
       flex-shrink: 0;
     }
     .profile-badge.verified {
-      background: rgba(202, 255, 4, 0.18);
-      color: #4d6b00;
+      background: rgba(202, 255, 4, 0.15);
+      color: #5a7a00;
     }
     .profile-badge.unverified {
-      background: rgba(245, 158, 11, 0.12);
-      color: #b45309;
+      background: rgba(245, 158, 11, 0.1);
+      color: #c2710c;
     }
 
-    /* Small dark pill copy button */
+    /* Sleek slim copy button */
     .profile-copy-btn {
       background: #111111;
       border: none;
       color: var(--green, #caff04);
       cursor: pointer;
-      padding: 4px 12px;
+      padding: 4px 10px;
       font-family: 'DM Sans', sans-serif;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 600;
       border-radius: 999px;
-      transition: background 0.15s, transform 0.1s;
-      line-height: 1.4;
+      transition: all 0.2s ease;
+      line-height: 1.3;
     }
-    .profile-copy-btn:hover  { background: #222; }
-    .profile-copy-btn:active { transform: translateY(0.5px); }
+    .profile-copy-btn:hover  { 
+      background: #2a2a2a;
+      transform: translateY(-1px);
+    }
+    .profile-copy-btn:active { 
+      transform: translateY(0);
+    }
 
-    /* Footer action row — pill buttons, side-by-side on desktop */
+    /* Refined footer actions */
     .profile-actions {
-      padding: 16px 26px 22px;
+      padding: 20px 32px 26px;
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
       justify-content: flex-end;
-      background: #ffffff;
-      border-top: 1px solid #f1f3f5;
+      background: #fafafa;
     }
     .profile-action-btn {
       flex: 0 0 auto;
-      padding: 11px 22px;
+      padding: 12px 24px;
       border-radius: 999px;
       font-family: 'DM Sans', sans-serif;
       font-weight: 600;
@@ -1039,16 +1053,22 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      transition: all 0.2s ease;
       text-decoration: none;
     }
+    .profile-action-btn svg {
+      width: 16px;
+      height: 16px;
+    }
     .profile-action-btn.secondary {
-      background: #f0f0ee;
+      background: #ffffff;
       color: #111111;
-      border-color: transparent;
+      border: 1px solid #e0e0e0;
     }
     .profile-action-btn.secondary:hover {
-      background: #e5e5e2;
+      background: #f5f5f5;
+      border-color: #d0d0d0;
+      transform: translateY(-1px);
     }
     .profile-action-btn.danger {
       background: #111111;
@@ -1056,18 +1076,44 @@
       border-color: transparent;
     }
     .profile-action-btn.danger:hover {
-      background: #2a0d0d;
-      color: #ff8585;
+      background: #ff6b6b;
+      color: #ffffff;
+      transform: translateY(-1px);
     }
-    .profile-action-btn:active { transform: translateY(0.5px); }
+    .profile-action-btn:active { 
+      transform: translateY(0);
+    }
 
-    /* Mobile: single column, stacked actions */
+    /* Mobile: single column, adjusted spacing */
     @media (max-width: 640px) {
-      #profile-modal .modal-content { width: 95%; max-height: 92vh; overflow-y: auto; }
-      .profile-body { grid-template-columns: 1fr; }
-      .profile-body > .profile-section:nth-child(odd) { border-right: none; }
-      .profile-body > .profile-section + .profile-section { border-top: 1px solid #f1f3f5; }
-      .profile-header { padding: 18px 20px; gap: 14px; }
+      #profile-modal .modal-content { 
+        width: 96%; 
+        max-height: 92vh; 
+        overflow-y: auto;
+        border-radius: 20px;
+      }
+      .profile-body { 
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 20px 20px;
+      }
+      .profile-section {
+        padding: 20px 18px;
+      }
+      .profile-header { 
+        padding: 24px 20px 20px;
+        gap: 16px;
+      }
+      .profile-header-name {
+        font-size: 20px;
+      }
+      .profile-actions {
+        padding: 18px 20px 24px;
+        flex-direction: column-reverse;
+      }
+      .profile-action-btn {
+        width: 100%;
+      }
       .profile-header-name { font-size: 17px; }
       .profile-section, .profile-section.profile-section-wide { padding: 14px 20px; }
       .profile-actions { flex-direction: column-reverse; padding: 14px 20px 18px; }
@@ -2253,12 +2299,12 @@
                  in the integrity-check handler (see openJoinTransactionFlow). -->
             <div
               id="join-trust-verdict"
-              style="display:none; margin-top: 14px; padding: 12px 14px; border-radius: 12px; border-left: 4px solid transparent; gap: 10px; align-items: flex-start;"
+              style="display:none; margin-top: 14px; padding: 14px 16px; border-radius: 16px; border: 1px solid #e5e7eb; background: #fff; gap: 12px; align-items: flex-start;"
             >
-              <div id="join-trust-verdict-icon" style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 14px;">!</div>
+              <div id="join-trust-verdict-icon" style="flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: #1c1c1c; display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 16px; color: #caff04;">&#10003;</div>
               <div style="flex: 1; min-width: 0;">
-                <div id="join-trust-verdict-label" style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.3;">—</div>
-                <div id="join-trust-verdict-message" style="font-size: 12px; line-height: 1.5; margin-top: 2px; color: #555;">—</div>
+                <div id="join-trust-verdict-label" style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.3; color: #1c1c1c;">—</div>
+                <div id="join-trust-verdict-message" style="font-size: 12px; line-height: 1.5; margin-top: 4px; color: #6b7280;">—</div>
               </div>
             </div>
           </div>
@@ -2563,7 +2609,7 @@
         </div>
         
         <p class="text-brand-subtext mb-6">
-          Are you sure you want to mark this transaction as shipped? This will start the inspection window countdown for the buyer.
+          Are you sure you want to mark this transaction as shipped? This will start the delivery window countdown for the buyer.
         </p>
         
         <div class="bg-brand-gray rounded-xl p-4 mb-6">
@@ -2856,14 +2902,12 @@
             <span class="profile-row-label">Email</span>
             <span class="profile-row-value">
               <span id="profile-row-email">—</span>
-              <span id="profile-row-email-badge" class="profile-badge unverified" style="display:none;">Unverified</span>
             </span>
           </div>
           <div class="profile-row">
             <span class="profile-row-label">Phone</span>
             <span class="profile-row-value">
               <span id="profile-row-phone">—</span>
-              <span class="profile-badge verified">Verified</span>
             </span>
           </div>
           <div class="profile-row">
@@ -3240,9 +3284,8 @@
                 style="padding: 22px 16px 22px 44px; font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--dark); background: #fafafa; letter-spacing: -0.5px;"
               />
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+            <div style="margin-top: 8px;">
               <p id="error-withdraw-amount" class="error-text hidden" style="margin: 0;"></p>
-              <button type="button" id="btn-withdraw-max" style="margin-left: auto; font-size: 12px; font-weight: 700; color: var(--dark); background: var(--green); border: none; padding: 6px 12px; border-radius: 999px; cursor: pointer; letter-spacing: 0.05em;">MAX</button>
             </div>
           </div>
 
@@ -4430,13 +4473,13 @@
         if (!txn) return;
         const buyerId = txn.buyer_id;
         const item = txn.item_description || 'your order';
-        const days = Number(txn.inspection_window_days) > 0 ? Number(txn.inspection_window_days) : 7;
+        const inspectionDays = txn.delivery_timeline_days + 7; // delivery timeline + 7 days
 
         await _push({
           userId: buyerId,
           type: 'shipment.created',
           title: 'Item shipped',
-          message: `The seller marked "${item}" as shipped. You have ${days} day${days === 1 ? '' : 's'} from delivery to inspect and accept.`,
+          message: `The seller marked "${item}" as shipped. You have ${inspectionDays} days from now to inspect and accept.`,
           category: 'transactions',
           severity: 'info',
           transactionId
@@ -4816,28 +4859,9 @@
         $('profile-modal-name').textContent  = fullName;
         $('profile-modal-phone').textContent = user.phone_number || '—';
 
-        // Email row + verified badge.
-        // user.email can sometimes arrive as a Turso typed cell
-        // ({type:'text', value:'...'}) when the row wasn't unwrapped
-        // upstream, which renders as "[object Object]". cellText
-        // collapses either shape to a plain string.
+        // Email row
         const emailStr = cellText(user.email);
         $('profile-row-email').textContent = emailStr || 'Not added';
-        const emailBadge = $('profile-row-email-badge');
-        if (emailStr) {
-          emailBadge.style.display = '';
-          if (Number(user.email_verified) === 1) {
-            emailBadge.textContent = 'Verified';
-            emailBadge.classList.add('verified');
-            emailBadge.classList.remove('unverified');
-          } else {
-            emailBadge.textContent = 'Unverified';
-            emailBadge.classList.add('unverified');
-            emailBadge.classList.remove('verified');
-          }
-        } else {
-          emailBadge.style.display = 'none';
-        }
 
         $('profile-row-phone').textContent = user.phone_number || '—';
         $('profile-row-vacc').textContent  = user.virtual_account_number || 'Not assigned';
@@ -5265,6 +5289,14 @@
       // if needed, and returns a promise that resolves with the
       // outcome.
       async function requireVerification(ctx = {}) {
+        // ──────────────────────────────────────────────────────────
+        // FACE RE-VERIFICATION DISABLED
+        // Face gate is temporarily deactivated across the entire
+        // app. Remove or comment-out this early return to
+        // reactivate it later.
+        // ──────────────────────────────────────────────────────────
+        return { ok: true, skipped: 'disabled' };
+
         const trigger = ctx.trigger || 'manual';
         const transactionId = ctx.transactionId || null;
         const user = window.currentUserData || {};
@@ -5981,6 +6013,14 @@
         }
         console.log('Dispute service initialized');
 
+        // ----- DisputeAgentService (Gemini-powered dispute resolution) ---
+        try {
+          window.disputeAgentService = new DisputeAgentService();
+          console.log('[Dashboard] ✅ DisputeAgentService ready (available =', window.disputeAgentService.available, ')');
+        } catch (e) {
+          console.warn('[Dashboard] DisputeAgentService init failed (non-fatal):', e.message);
+        }
+
         // ----- Phase F: FaceVerificationService -----------------------
         // Best-effort init. If the Gemini key is missing the service
         // still constructs cleanly — its .available getter goes false
@@ -6372,7 +6412,6 @@
           itemDescription: document.getElementById('item-description').value,
           price: document.getElementById('price').value,
           deliveryTimelineDays: document.getElementById('delivery-timeline').value,
-          inspectionWindowDays: '0',
           proofUrls: createEscrowState.proofFiles.map(f => f.dataUrl)
         };
         
@@ -6835,17 +6874,6 @@
       // WITHDRAW: MAX shortcut + account name resolution
       // ========================================
       (function setupWithdrawExtras() {
-        const maxBtn = document.getElementById('btn-withdraw-max');
-        if (maxBtn) {
-          maxBtn.addEventListener('click', () => {
-            const balText = document.getElementById('withdraw-available-balance').textContent;
-            const bal = parseFloat(balText.replace(/[₦,]/g, ''));
-            if (!isNaN(bal) && bal > 0) {
-              document.getElementById('withdraw-amount').value = bal.toFixed(2);
-              clearFieldError('withdraw-amount');
-            }
-          });
-        }
         // Real account-name resolver via Squad Account Lookup API.
         // Debounced: waits 400ms after last keystroke before calling the API.
         let _resolveTimer = null;
@@ -7033,30 +7061,24 @@
             const msgEl = document.getElementById('join-trust-verdict-message');
             if (!wrap || !icon || !labelEl || !msgEl) return;
 
-            let label, message, bg, border, iconBg, iconColor, iconChar;
+            let label, message, iconColor, iconChar;
             if (counterpartyTrust < 40) {
               label = 'High Risk';
               message = 'This user has limited history or past issues. Proceed only if you fully trust them — consider asking for extra verification before funding.';
-              bg = 'rgba(255, 107, 107, 0.08)';
-              border = '#ff6b6b';
-              iconBg = '#ff6b6b'; iconColor = '#fff'; iconChar = '!';
+              iconColor = '#f87171'; iconChar = '!';
             } else if (counterpartyTrust < 70) {
               label = 'Proceed with Caution';
               message = 'Trust score is moderate. Double-check the terms, agree on milestones, and keep all communication on-platform.';
-              bg = 'rgba(245, 180, 0, 0.10)';
-              border = '#f5b400';
-              iconBg = '#f5b400'; iconColor = '#1c1c1c'; iconChar = '!';
+              iconColor = '#facc15'; iconChar = '!';
             } else {
               label = 'Safe to Proceed';
               message = 'This user has a strong track record on ScrowPay. Funds stay locked in escrow until you confirm the deal — you\'re well protected.';
-              bg = 'rgba(202, 255, 4, 0.18)';
-              border = 'var(--green)';
-              iconBg = 'var(--green)'; iconColor = '#1c1c1c'; iconChar = '\u2713';
+              iconColor = '#caff04'; iconChar = '\u2713';
             }
             wrap.style.display = 'flex';
-            wrap.style.background = bg;
-            wrap.style.borderLeftColor = border;
-            icon.style.background = iconBg;
+            wrap.style.background = '#fff';
+            wrap.style.border = '1px solid #e5e7eb';
+            icon.style.background = '#1c1c1c';
             icon.style.color = iconColor;
             icon.textContent = iconChar;
             labelEl.textContent = label;
@@ -7376,6 +7398,34 @@
           NotifyFlow.fundingConfirmed(currentTransaction.transaction_id, currentUserId)
             .catch(err => console.warn('[Dashboard] funding notify failed:', err));
 
+          // ---- AI anomaly → unified trust score (non-blocking) ----
+          // Run the anomaly engine in the background and pipe its
+          // composite score into the TrustEngine so it becomes one
+          // more factor in the unified trust score instead of a
+          // standalone blocker in the funding flow.
+          if (anomalyEngine && trustEngine) {
+            (async () => {
+              try {
+                const verdict = await anomalyEngine.evaluate({
+                  transaction: currentTransaction,
+                  actor: { id: currentUserId },
+                  counterparty: { id: currentTransaction.seller_id },
+                  userContext: { userId: currentUserId }
+                });
+                console.log('[Dashboard] Post-fund anomaly evaluation:', verdict.decision, verdict.compositeScore);
+                await trustEngine.onAnomalyEvaluated({
+                  userId: currentUserId,
+                  compositeScore: verdict.compositeScore,
+                  transactionId: currentTransaction.transaction_id,
+                  decision: verdict.decision,
+                  metadata: { trigger: 'post_fund', subScores: verdict.subScores }
+                });
+              } catch (e) {
+                console.warn('[Dashboard] Post-fund anomaly→trust pipeline failed (non-fatal):', e);
+              }
+            })();
+          }
+
           // Optimistic balance update (Requirement 11.5)
           await optimisticBalanceUpdate();
           
@@ -7566,9 +7616,11 @@
         // Calculate time remaining for In_Transit transactions (Requirement 8.3)
         let timeRemainingText = '';
         if (state === 'In_Transit' && txn.shipped_at) {
+          // Auto-release period = delivery_timeline_days + 7 days
+          const autoReleaseDays = txn.delivery_timeline_days + 7;
           const shippedDate = new Date(txn.shipped_at);
           const expiryDate = new Date(shippedDate);
-          expiryDate.setDate(expiryDate.getDate() + txn.inspection_window_days);
+          expiryDate.setDate(expiryDate.getDate() + autoReleaseDays);
           
           const now = new Date();
           const timeRemaining = expiryDate.getTime() - now.getTime();
@@ -7578,7 +7630,7 @@
             const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             timeRemainingText = `${daysRemaining}d ${hoursRemaining}h remaining`;
           } else {
-            timeRemainingText = 'Inspection window expired';
+            timeRemainingText = 'Auto-release period expired';
           }
         }
         

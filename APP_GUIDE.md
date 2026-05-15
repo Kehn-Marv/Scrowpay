@@ -67,7 +67,7 @@ The whole frontend is **vanilla JS + HTML + Tailwind** (no React, no build step)
 | File | What it does |
 |---|---|
 | `frontend/web.html` | Landing page. Has "Create Account" / "Sign In" buttons. |
-| `frontend/account-creation.html` | The 9-stage signup flow (phone → OTP → BVN/NIN → name → Squad verify → face intro → blink liveness → address → PIN). |
+| `frontend/account-creation.html` | The 9-stage signup flow (phone → OTP → BVN → name → Squad verify → face intro → blink liveness → address → PIN). |
 | `frontend/sign-in.html` | Phone + 6-digit PIN login. Hashes PIN with SHA-256 + phone-as-salt and compares to DB. |
 | `frontend/dashboard.html` | The main app. Lists transactions, lets users create/join/fund/ship/accept/dispute, shows trust score, balance, etc. **All escrow logic lives here.** |
 
@@ -81,9 +81,9 @@ File: `frontend/account-creation.html` (orchestrator) + the services it calls.
 |---|---|---|---|
 | 1 | **Phone Number** | User enters Nigerian phone. Format-validated. | `InputValidationService.js` |
 | 2 | **OTP** | 6-digit OTP. **Currently hardcoded to `123456`** for the hackathon. | `otp-service.js` |
-| 3 | **ID Type + Number** | BVN or NIN (11 digits). | `id-validation-service.js` |
+| 3 | **ID Type + Number** | BVN (11 digits). | `id-validation-service.js` |
 | 4 | **Name** | First / Middle / Last name. |  |
-| 5 | **Squad Verification** | Calls Squad's BVN/NIN endpoint to confirm the ID matches the name + DOB + gender. | `squad-api-service.js` |
+| 5 | **Squad Verification** | Calls Squad's BVN endpoint to confirm the ID matches the name + DOB + gender. | `squad-api-service.js` |
 | 6 | **Face Verification Intro** | "Get ready to blink" screen. |  |
 | 7 | **Blink Liveness** | MediaPipe Face Mesh runs in the browser, computes Eye Aspect Ratio (EAR), watches for a real blink. Proves user is a live human, not a photo. | `mediapipe-service.js` |
 | 8 | **Address** | Cascading dropdowns: 36 states → 774 LGAs → wards. Data is bundled in `state-lga-area.json` (~350 KB). | `address-data-service.js` |
@@ -94,7 +94,7 @@ On success, the user row is inserted into the `users` table in Turso, a Squad **
 ### What is NOT implemented yet at signup
 - **Face image is never persisted.** MediaPipe just confirms a blink happened in-browser. The face image / face embedding is never uploaded or stored. (See section 12 for the planned image DB.)
 - **OTP is fake** — there is no SMS provider wired up.
-- **BVN/NIN photo from Squad** is fetched but not saved anywhere.
+- **BVN photo from Squad** is fetched but not saved anywhere.
 
 ---
 
@@ -174,12 +174,14 @@ Created  ─────►  Funded_Locked  ─────►  In_Transit  ─�
 - `transactions.buyer_id`, `funded_at`, `risk_score`, `ai_verdict` are all set.
 - An entry is added to `transaction_state_history`.
 - Toast: "Funds locked".
+- **Delivery deadline timer starts**: Seller has `delivery_timeline_days` to ship, or funds auto-refund to buyer and transaction is cancelled.
 
 #### Step D — Seller ships (Funded_Locked → In_Transit)
 - Seller clicks "Mark as Shipped".
 - `StateMachineService` validates: only the seller can do this, only when state is `Funded_Locked`.
 - `shipped_at` is stamped.
-- An **auto-release timer** is started: `inspection_window_days` after `shipped_at`, the funds auto-release to the seller (handled in `StateMachineService.autoReleaseTimers`).
+- **Delivery deadline timer is cancelled** (seller shipped on time).
+- **Auto-release timer starts**: `delivery_timeline_days + 7 days` after `shipped_at`, the funds auto-release to the seller (handled in `StateMachineService.autoReleaseTimers`).
 
 #### Step E — Buyer accepts (In_Transit → Completed)
 - Buyer clicks "I received my item, release funds".
@@ -189,8 +191,14 @@ Created  ─────►  Funded_Locked  ─────►  In_Transit  ─�
 - Auto-release timer is cancelled.
 
 #### Step F — Auto-release (alternative to E)
-- If the buyer never accepts, the timer fires after the inspection window.
+- If the buyer never accepts, the timer fires after `delivery_timeline_days + 7 days` from shipment.
 - Same money movement and trust signals as E.
+- Both parties get a notification.
+
+#### Step G — Auto-refund (if seller doesn't ship)
+- If seller doesn't mark as shipped within `delivery_timeline_days` after funding.
+- Squad API refunds from holding account → buyer's virtual account.
+- Transaction state changes to `Cancelled`.
 - Both parties get a notification.
 
 #### Step G — Disputes (any state with locked funds → Disputed)
@@ -390,7 +398,7 @@ Single Turso database. Schema is in `frontend/escrow-schema.sql` for the escrow 
 
 | Table | Purpose |
 |---|---|
-| `users` | Identity (phone, BVN/NIN, name, address, hashed_pin, virtual account) **plus** trust counters (`successful_deliveries`, `disputes_lost`, `total_volume_ngn`, `trust_score`, etc.) |
+| `users` | Identity (phone, BVN, name, address, hashed_pin, virtual account) **plus** trust counters (`successful_deliveries`, `disputes_lost`, `total_volume_ngn`, `trust_score`, etc.) |
 | `transactions` | One row per escrow. Holds state, parties, price, timeline, `risk_score`, `ai_verdict`, timestamps. |
 | `transaction_state_history` | Append-only audit log. Every state change writes a row here. |
 | `disputes` | One row per dispute. Description, `photo_urls` (JSON), AI resolution, manual resolution, confidence. |
@@ -408,7 +416,7 @@ Talks to Turso over **HTTP** (`/v2/pipeline` endpoint) via `turso-db-service.js`
 
 ### 11.1 Squad API (`squad-api-service.js`)
 Used for:
-- BVN/NIN identity verification at signup
+- BVN identity verification at signup
 - Creating a **virtual account number** for each user (so they can receive payments)
 - Moving money between virtual accounts and the central holding account
 - Handling the actual ₦ transfers when escrow funds/releases

@@ -416,13 +416,6 @@ class InputValidationService {
     }
     sanitized.deliveryTimelineDays = deliveryResult.value;
     
-    // Validate inspection window
-    const inspectionResult = this.validateInspectionWindow(formData.inspectionWindowDays);
-    if (!inspectionResult.valid) {
-      errors.inspectionWindowDays = inspectionResult.errors;
-    }
-    sanitized.inspectionWindowDays = inspectionResult.value;
-    
     // Add seller ID (no validation needed, comes from session)
     sanitized.sellerId = formData.sellerId;
 

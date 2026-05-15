@@ -15,7 +15,7 @@
 const CONFIG = {
   // Turso Database Configuration
   turso: {
-    databaseUrl: window.ENV?.TURSO_DATABASE_URL || 'libsql://scrowpay-db-scrop.aws-ap-northeast-1.turso.io',
+    databaseUrl: window.ENV?.TURSO_DATABASE_URL || '',
     authToken: window.ENV?.TURSO_AUTH_TOKEN || ''
   },
   

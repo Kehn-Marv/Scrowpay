@@ -170,7 +170,6 @@ class DisputeAgentService {
         price_ngn: Number(txn.price) || 0,
         listing_description: txn.item_description,
         delivery_timeline_days: txn.delivery_timeline_days,
-        inspection_window_days: txn.inspection_window_days,
         created_at: txn.created_at,
         funded_at: txn.funded_at,
         shipped_at: txn.shipped_at,

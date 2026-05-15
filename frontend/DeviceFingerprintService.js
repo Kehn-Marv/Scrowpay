@@ -145,32 +145,25 @@
       try {
         await this._connect();
         const fp = await this.identify();
-        // UPSERT pattern: try INSERT first; if it conflicts on the
-        // UNIQUE(fingerprint_id, user_id), update last_seen_at + count.
-        try {
-          await this.dbService._executeHttp(
-            `INSERT INTO device_fingerprints
-               (fingerprint_id, user_id, confidence, components, user_agent)
-             VALUES (?, ?, ?, ?, ?)`,
-            [
-              visitorId,
-              userId,
-              fp.confidence,
-              JSON.stringify(fp.components || {}),
-              (typeof navigator !== 'undefined' ? navigator.userAgent : null)
-            ]
-          );
-        } catch (insertErr) {
-          // Probably the UNIQUE constraint — bump last_seen instead.
-          await this.dbService._executeHttp(
-            `UPDATE device_fingerprints
-                SET last_seen_at = CURRENT_TIMESTAMP,
-                    seen_count  = COALESCE(seen_count, 0) + 1,
-                    confidence  = ?
-              WHERE fingerprint_id = ? AND user_id = ?`,
-            [fp.confidence, visitorId, userId]
-          );
-        }
+        // Use SQLite's native UPSERT (INSERT OR REPLACE) to avoid constraint errors
+        // This will insert if new, or update if the fingerprint_id + user_id combo already exists
+        await this.dbService._executeHttp(
+          `INSERT INTO device_fingerprints
+             (fingerprint_id, user_id, confidence, components, user_agent, last_seen_at, seen_count)
+           VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
+           ON CONFLICT(fingerprint_id, user_id) 
+           DO UPDATE SET 
+             last_seen_at = CURRENT_TIMESTAMP,
+             seen_count = COALESCE(seen_count, 0) + 1,
+             confidence = excluded.confidence`,
+          [
+            visitorId,
+            userId,
+            fp.confidence,
+            JSON.stringify(fp.components || {}),
+            (typeof navigator !== 'undefined' ? navigator.userAgent : null)
+          ]
+        );
       } catch (e) {
         console.warn('[DeviceFingerprint] recordForUser failed (non-fatal):', e.message);
       }

@@ -132,6 +132,16 @@ class TrustEngineService {
       score += Math.max(0, onTimeRate * 5);
     }
 
+    // ---- AI / Anomaly risk factor ----
+    // The AnomalyDetectionEngine (rules + ML + behavioral) produces a
+    // composite 0–100 risk score. We fold it in as a negative factor:
+    // a score of 0 means the engine sees nothing unusual (no penalty);
+    // a score of 100 means full-spectrum red flags (up to -20).
+    // This makes the anomaly engine one more piece of the unified trust
+    // umbrella instead of a standalone blocker.
+    const anomalyRisk = Math.max(0, Math.min(100, Number(c.last_anomaly_score) || 0));
+    score -= (anomalyRisk / 100) * 20;
+
     // ---- Negative contributions ----
     // Losing a dispute is the single most damning signal — scammer-shaped.
     score -= disputes_lost * 15;
@@ -176,7 +186,7 @@ class TrustEngineService {
         color: '#92400e',         // amber-800 text
         bg: '#fef3c7',            // amber-100 bg
         border: '#f59e0b',        // amber-500 border
-        icon: '⚡'
+        icon: 'star'
       };
     }
     if (score >= 70) {
@@ -186,7 +196,7 @@ class TrustEngineService {
         color: '#15803d',
         bg: '#dcfce7',
         border: '#16a34a',
-        icon: '✓'
+        icon: 'check'
       };
     }
     if (score >= 40) {
@@ -196,7 +206,7 @@ class TrustEngineService {
         color: '#854d0e',
         bg: '#fef9c3',
         border: '#ca8a04',
-        icon: '○'
+        icon: 'circle'
       };
     }
     return {
@@ -205,7 +215,7 @@ class TrustEngineService {
       color: '#b91c1c',
       bg: '#fee2e2',
       border: '#dc2626',
-      icon: '!'
+      icon: 'alert'
     };
   }
 
@@ -250,7 +260,8 @@ class TrustEngineService {
         failed_join_attempts,
         total_volume_ngn,
         avg_fulfillment_hours,
-        created_at
+        created_at,
+        last_anomaly_score
       FROM users WHERE id = ? LIMIT 1
     `;
     const result = await this.dbService._executeHttp(sql, [userId]);
@@ -314,7 +325,8 @@ class TrustEngineService {
         'late_deliveries',
         'failed_join_attempts',
         'total_volume_ngn',
-        'distinct_dispute_losers'
+        'distinct_dispute_losers',
+        'last_anomaly_score'
       ]);
 
       const setClauses = [];
@@ -576,6 +588,40 @@ class TrustEngineService {
         metadata: { resolution, counterpartyId: winnerId, isNewLoserEdge }
       });
     }
+  }
+
+  /**
+   * Called after AnomalyDetectionEngine.evaluate() produces a composite
+   * score for a user action. We store the latest composite score on
+   * the user row so computeScore() can factor it in, then recalc.
+   *
+   * NOTE: Unlike the other deltas which are cumulative (+1 each time),
+   * last_anomaly_score is an ABSOLUTE overwrite — we always want the
+   * most recent evaluation, not a running sum. applySignal uses
+   * `COALESCE(col,0) + ?` for deltas, so we first zero out the column
+   * and set the delta to the new value.
+   */
+  async onAnomalyEvaluated({ userId, compositeScore, transactionId = null, decision = null, metadata = null }) {
+    if (!userId) return null;
+    const score = Math.max(0, Math.min(100, Number(compositeScore) || 0));
+    try {
+      await this.connect();
+      // Absolute overwrite: set last_anomaly_score directly.
+      await this.dbService._executeHttp(
+        'UPDATE users SET last_anomaly_score = ? WHERE id = ?',
+        [score, userId]
+      );
+    } catch (e) {
+      console.warn('[TrustEngine] onAnomalyEvaluated overwrite failed:', e.message);
+    }
+    // Now recalc the trust score with the updated anomaly input.
+    return this.applySignal({
+      userId,
+      deltas: {},
+      reason: 'anomaly_evaluation',
+      transactionId,
+      metadata: { compositeScore: score, decision, ...(metadata || {}) }
+    });
   }
 
   /** User typed wrong shortcode / failed to join an existing txn. */

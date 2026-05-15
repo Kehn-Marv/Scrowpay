@@ -137,7 +137,7 @@ A step-by-step walkthrough of the complete product experience:
 ### Account Creation (9 stages)
 1. **Phone number** — Enter Nigerian mobile number
 2. **OTP verification** — Confirm ownership
-3. **Identity document** — BVN or NIN entry
+3. **Identity document** — BVN entry
 4. **Personal details** — Name, DOB, gender (must match BVN via Squad NIBSS validation)
 5. **Liveness check** — MediaPipe blink detection captures a face reference photo
 6. **Address** — State, LGA, area selection from Nigerian geo-data
@@ -297,7 +297,7 @@ That's it. Create an account, fund a transaction, raise a dispute, watch the AI 
 This is the path to take to see everything working in ~5 minutes:
 
 1. **Sign up two accounts** (use two browsers / incognito windows).
-   - Both go through phone → OTP (`123456`) → BVN/NIN → name → liveness blink → address → PIN
+   - Both go through phone → OTP (`123456`) → BVN → name → liveness blink → address → PIN
    - Both end up with a Squad virtual account
 2. **Seller** creates an escrow listing (₦10,000 iPhone case), copies the transaction ID.
 3. **Buyer** joins the transaction with the ID.
@@ -373,7 +373,7 @@ For a top-to-bottom walkthrough of every service, table, and flow, see **[APP_GU
 ## ✨ Features
 
 ### Core escrow flow
-- 9-stage account creation with BVN/NIN verification via Squad
+- 9-stage account creation with BVN verification via Squad
 - MediaPipe blink liveness check, with the captured frame uploaded to Cloudinary as a face reference
 - Buyer-funded transactions held in a Squad virtual holding account
 - Deterministic state machine: `Created → Funded_Locked → In_Transit → Completed` (plus `Disputed`, `Cancelled`, `Refunded`)
@@ -407,7 +407,7 @@ For a top-to-bottom walkthrough of every service, table, and flow, see **[APP_GU
 |---|---|---|
 | Frontend | Vanilla JS, HTML5, Tailwind CSS (CDN) | Zero build step, deploys anywhere static |
 | Database | [Turso](https://turso.tech) (libSQL over HTTP) | Distributed SQLite; free tier is generous; HTTP API works from the browser without a backend |
-| Payments | [Squad API](https://squadco.com) | Nigerian payment rails; virtual accounts; BVN/NIN verification |
+| Payments | [Squad API](https://squadco.com) | Nigerian payment rails; virtual accounts; BVN verification |
 | Risk ML | Python 3.11, Flask, scikit-learn (Isolation Forest) | Industry-standard unsupervised anomaly detection |
 | Dispute AI | [Google Gemini 2.0 Flash](https://aistudio.google.com) | Multimodal (text + image), JSON-mode output, low latency |
 | Image storage | [Cloudinary](https://cloudinary.com) | Unsigned upload presets — no backend needed |

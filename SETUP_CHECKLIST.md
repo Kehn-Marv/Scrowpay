@@ -450,9 +450,9 @@ Open the browser network tab and find the request to `https://api.cloudinary.com
 
 ---
 
-### Squad sandbox returns 404 for virtual account / BVN / NIN
+### Squad sandbox returns 404 for virtual account / BVN
 
-- Squad's sandbox only honours specific test BVNs/NINs — see Squad docs for valid test values. **Real BVNs/NINs do not work** in sandbox mode.
+- Squad's sandbox only honours specific test BVNs — see Squad docs for valid test values. **Real BVNs do not work** in sandbox mode.
 - If `getCustomerByVirtualAccount` 404s, that's expected for newly-signed-up users who don't have a Squad virtual account provisioned yet. The dashboard handles this gracefully and shows a zero balance with the label "Virtual account not provisioned yet".
 
 ---

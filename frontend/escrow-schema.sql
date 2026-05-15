@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   item_description TEXT NOT NULL,
   price REAL NOT NULL CHECK(price >= 100 AND price <= 10000000),
   delivery_timeline_days INTEGER NOT NULL CHECK(delivery_timeline_days BETWEEN 1 AND 90),
-  inspection_window_days INTEGER NOT NULL CHECK(inspection_window_days BETWEEN 1 AND 14),
   state TEXT NOT NULL CHECK(state IN ('Created', 'Funded_Locked', 'In_Transit', 'Disputed', 'Completed')),
   risk_score REAL,
   ai_verdict TEXT CHECK(ai_verdict IN ('pass', 'fail')),

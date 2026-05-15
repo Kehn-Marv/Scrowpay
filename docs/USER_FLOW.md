@@ -29,8 +29,8 @@ A 9-stage wizard that onboards users with full identity verification:
 - 3 attempts before lockout
 
 ### Stage 3: Identity Document
-- User chooses BVN or NIN
-- 11-digit BVN / NIN entry with format validation
+- User enters BVN
+- 11-digit BVN entry with format validation
 
 ### Stage 4: Personal Details
 - First name, last name, middle name (optional)

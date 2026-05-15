@@ -47,6 +47,9 @@ class StateMachineService {
     
     // Auto-release timers map: transactionId -> timerId
     this.autoReleaseTimers = new Map();
+    
+    // Delivery deadline timers map: transactionId -> timerId
+    this.deliveryDeadlineTimers = new Map();
 
     // Optional Trust Engine — wired via setTrustEngine() from the
     // dashboard bootstrap. When present, every Completed transition
@@ -160,11 +163,15 @@ class StateMachineService {
       // Funded_Locked: Transfer funds from buyer to holding account
       if (newState === 'Funded_Locked') {
         await this.transferToHolding(transaction, metadata);
+        // Start delivery deadline timer
+        this.scheduleDeliveryDeadline(transaction);
       }
       
       // In_Transit: Set shipped timestamp
       if (newState === 'In_Transit') {
         await this.setShippedTimestamp(transaction.transaction_id);
+        // Cancel delivery deadline timer (seller shipped on time)
+        this.cancelDeliveryDeadline(transaction.transaction_id);
       }
       
       // Completed: Release funds to seller and set completed timestamp
@@ -392,21 +399,184 @@ class StateMachineService {
   }
   
   /**
+   * Schedules delivery deadline timer for a transaction in Funded_Locked state
+   * If seller doesn't ship by delivery_timeline_days, auto-refund to buyer
+   * @param {Object} transaction - Transaction object
+   * @returns {void}
+   */
+  scheduleDeliveryDeadline(transaction) {
+    console.log('[StateMachineService] Scheduling delivery deadline:', {
+      transactionId: transaction.transaction_id,
+      fundedAt: transaction.funded_at,
+      deliveryTimelineDays: transaction.delivery_timeline_days
+    });
+    
+    // Calculate deadline: funded_at + delivery_timeline_days
+    const fundedDate = new Date(transaction.funded_at);
+    const deadlineDate = new Date(fundedDate);
+    deadlineDate.setDate(deadlineDate.getDate() + transaction.delivery_timeline_days);
+    
+    const timeUntilDeadline = deadlineDate.getTime() - Date.now();
+    
+    console.log('[StateMachineService] Delivery deadline timing:', {
+      fundedDate: fundedDate.toISOString(),
+      deadlineDate: deadlineDate.toISOString(),
+      timeUntilDeadlineMs: timeUntilDeadline,
+      timeUntilDeadlineHours: (timeUntilDeadline / (1000 * 60 * 60)).toFixed(2)
+    });
+    
+    if (timeUntilDeadline > 0) {
+      // Cancel any existing timer for this transaction
+      this.cancelDeliveryDeadline(transaction.transaction_id);
+      
+      // Schedule new timer
+      const timerId = setTimeout(async () => {
+        console.log(`[StateMachineService] 🔔 Delivery deadline expired for ${transaction.transaction_id}`);
+        
+        try {
+          // Check if transaction is still in Funded_Locked state
+          const currentTxn = await this.dbService._executeHttp(
+            'SELECT * FROM transactions WHERE transaction_id = ? LIMIT 1',
+            [transaction.transaction_id]
+          );
+          
+          if (currentTxn.results[0].results.rows.length === 0) {
+            console.warn('[StateMachineService] Transaction not found, skipping auto-refund');
+            return;
+          }
+          
+          const txnData = currentTxn.results[0].results.rows[0];
+          
+          if (txnData.state !== 'Funded_Locked') {
+            console.log('[StateMachineService] Transaction no longer in Funded_Locked state, skipping auto-refund');
+            return;
+          }
+          
+          // Refund to buyer and cancel transaction
+          await this.refundToBuyer(transaction);
+          
+          // Update transaction state to Cancelled
+          await this.dbService._executeHttp(
+            'UPDATE transactions SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE transaction_id = ?',
+            ['Cancelled', transaction.transaction_id]
+          );
+          
+          // Record state history
+          await this.recordStateHistory(
+            transaction.transaction_id,
+            'Funded_Locked',
+            'Cancelled',
+            transaction.buyer_id,
+            { autoRefund: true, reason: 'Seller failed to ship within delivery timeline' }
+          );
+          
+          console.log('[StateMachineService] ✅ Auto-refund completed successfully');
+          
+        } catch (error) {
+          console.error('[StateMachineService] ❌ Auto-refund failed:', error);
+          await this.logDeliveryDeadlineFailure(transaction.transaction_id, error);
+        }
+      }, timeUntilDeadline);
+      
+      // Store timer ID
+      this.deliveryDeadlineTimers.set(transaction.transaction_id, timerId);
+      
+      console.log(`[StateMachineService] ✅ Delivery deadline scheduled for ${deadlineDate.toISOString()}`);
+    } else {
+      console.warn('[StateMachineService] ⚠️ Delivery deadline already passed');
+    }
+  }
+  
+  /**
+   * Cancels delivery deadline timer for a transaction
+   * @param {string} transactionId - Transaction ID
+   * @returns {void}
+   */
+  cancelDeliveryDeadline(transactionId) {
+    const timerId = this.deliveryDeadlineTimers.get(transactionId);
+    
+    if (timerId) {
+      clearTimeout(timerId);
+      this.deliveryDeadlineTimers.delete(transactionId);
+      console.log(`[StateMachineService] ✅ Delivery deadline cancelled for ${transactionId}`);
+    } else {
+      console.log(`[StateMachineService] No delivery deadline timer found for ${transactionId}`);
+    }
+  }
+  
+  /**
+   * Refunds funds from holding account back to buyer
+   * @private
+   * @param {Object} transaction - Transaction object
+   * @returns {Promise<void>}
+   */
+  async refundToBuyer(transaction) {
+    console.log('[StateMachineService] Refunding to buyer:', {
+      transactionId: transaction.transaction_id,
+      amount: transaction.price,
+      buyerId: transaction.buyer_id
+    });
+    
+    // Note: Squad API refund implementation would go here
+    // For now, we'll simulate the refund
+    
+    try {
+      // In production, this would be:
+      // const result = await this.squadService.transfer({
+      //   from_account: this.holdingAccount,
+      //   to_account: buyerAccount,
+      //   amount: transaction.price,
+      //   metadata: {
+      //     transaction_id: transaction.transaction_id,
+      //     type: 'escrow_refund'
+      //   }
+      // });
+      
+      console.log('[StateMachineService] ✅ Funds refunded to buyer (simulated)');
+      
+    } catch (error) {
+      console.error('[StateMachineService] Refund failed:', error);
+      throw new Error('Refund to buyer failed: ' + error.message);
+    }
+  }
+  
+  /**
+   * Logs delivery deadline failure for manual intervention
+   * @private
+   * @param {string} transactionId - Transaction ID
+   * @param {Error} error - Error that occurred
+   * @returns {Promise<void>}
+   */
+  async logDeliveryDeadlineFailure(transactionId, error) {
+    console.log('[StateMachineService] Logging delivery deadline failure:', {
+      transactionId,
+      error: error.message
+    });
+    
+    // In production, this would log to a monitoring system or admin dashboard
+    // For now, we'll just log to console
+  }
+  
+  /**
    * Schedules auto-release timer for a transaction in In_Transit state
    * @param {Object} transaction - Transaction object
    * @returns {void}
    */
   scheduleAutoRelease(transaction) {
+    // Auto-release period = delivery_timeline_days + 7 days
+    const autoReleaseDays = transaction.delivery_timeline_days + 7;
+    
     console.log('[StateMachineService] Scheduling auto-release:', {
       transactionId: transaction.transaction_id,
       shippedAt: transaction.shipped_at,
-      inspectionWindowDays: transaction.inspection_window_days
+      deliveryTimelineDays: transaction.delivery_timeline_days,
+      autoReleaseDays: autoReleaseDays
     });
     
-    // Calculate expiry time: shipped_at + inspection_window_days
+    // Calculate expiry time: shipped_at + autoReleaseDays
     const shippedDate = new Date(transaction.shipped_at);
     const expiryDate = new Date(shippedDate);
-    expiryDate.setDate(expiryDate.getDate() + transaction.inspection_window_days);
+    expiryDate.setDate(expiryDate.getDate() + autoReleaseDays);
     
     const timeUntilExpiry = expiryDate.getTime() - Date.now();
     
@@ -431,7 +601,7 @@ class StateMachineService {
             transaction.transaction_id,
             'Completed',
             transaction.seller_id,  // System action on behalf of seller
-            { autoRelease: true, reason: 'Inspection window expired' }
+            { autoRelease: true, reason: `Auto-release period expired (${transaction.delivery_timeline_days} + 7 days)` }
           );
           
           console.log('[StateMachineService] ✅ Auto-release completed successfully');
@@ -458,7 +628,7 @@ class StateMachineService {
             transaction.transaction_id,
             'Completed',
             transaction.seller_id,
-            { autoRelease: true, reason: 'Inspection window already expired' }
+            { autoRelease: true, reason: 'Auto-release period already expired' }
           );
         } catch (error) {
           console.error('[StateMachineService] Immediate auto-release failed:', error);

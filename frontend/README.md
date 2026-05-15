@@ -11,7 +11,7 @@ For the system-wide overview, see the [root README](../README.md). For an exhaus
 | File | Purpose |
 |---|---|
 | `web.html` | Landing page. Hero + feature highlights + Create Account / Sign In CTAs. |
-| `account-creation.html` | 9-stage signup: phone → OTP → BVN/NIN → name → Squad verify → liveness blink → email + email OTP → address → PIN. Captures and uploads the face reference to Cloudinary. |
+| `account-creation.html` | 9-stage signup: phone → OTP → BVN → name → Squad verify → liveness blink → email + email OTP → address → PIN. Captures and uploads the face reference to Cloudinary. |
 | `sign-in.html` | Phone + 6-digit PIN authentication. SHA-256 hash with phone as salt. |
 | `dashboard.html` | The main app. ~9,000 lines of HTML + inline JS that orchestrates all services. Lists transactions, lets users create/join/fund/ship/accept/dispute, shows trust score, balance, notifications bell, profile panel. |
 | `admin.html` | Phase G admin console. Gated by `users.is_admin = 1`. Pending dispute queue, face verification audit, risky transaction monitor, user directory. |
@@ -35,7 +35,7 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 | `DisputeService.js` | `DisputeService` | Dispute persistence, photo upload (Cloudinary), `applyResolution`, `resolveManually` (admin override), Trust Engine attribution. |
 | `EmailOTPService.js` | `EmailOTPService` | Generate/send/verify 6-digit email OTPs via the AI-engine Resend proxy. Validates against `email_otps`. |
 | `FaceVerificationService.js` | `FaceVerificationService` | Gemini multimodal face re-verification (Phase F). `shouldReverify()` decision function + `verify()` Gemini call. Persists every attempt to `face_verifications`. |
-| `InputValidationService.js` | `InputValidationService` | Format validators for phone, BVN/NIN, email, PIN, amounts. |
+| `InputValidationService.js` | `InputValidationService` | Format validators for phone, BVN, email, PIN, amounts. |
 | `NotificationService.js` | `NotificationService` | Per-user notification persistence + Resend email proxy. Powers the dashboard bell icon. |
 | `RiskProfilingService.js` | `RiskProfilingService` | Deterministic rule-based risk weights (new account, off-hours, large amount, etc.). |
 | `SessionService.js` | `SessionService` | localStorage-backed session with 24h expiry + 30min inactivity timeout. |
@@ -46,12 +46,12 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 | `TrustScoreService.js` | `TrustScoreService` | **Legacy.** Old hand-rolled score. Still written to for back-compat but the engine doesn't read it. |
 | `address-data-service.js` | `AddressDataService` | Cascading state → LGA → ward dropdowns from `state-lga-area.json` (~350KB). |
 | `error-handler-service.js` | `ErrorHandlerService` | Standardised error shapes, retry classification, user-friendly messages. |
-| `id-validation-service.js` | `IDValidationService` | BVN / NIN format checks. |
+| `id-validation-service.js` | `IDValidationService` | BVN format checks. |
 | `mediapipe-service.js` | `MediaPipeService` | MediaPipe Face Mesh wrapper; computes Eye Aspect Ratio (EAR) for blink liveness. Runs entirely in-browser. |
 | `otp-service.js` | `OTPService` | Hardcoded `123456` phone OTP (placeholder; not a real SMS provider). |
 | `pin-service.js` | `PINService` | PIN validation (blocks weak patterns), SHA-256 hashing with phone-as-salt. |
 | `security-logger.js` | `SecurityLogger` | Rate-limit hits, blocked transactions, unauthorized access attempts → `security_logs`. |
-| `squad-api-service.js` | `SquadVirtualAccountService` | Squad API client: BVN/NIN verification, virtual account creation, account-name resolution, transfers. |
+| `squad-api-service.js` | `SquadVirtualAccountService` | Squad API client: BVN verification, virtual account creation, account-name resolution, transfers. |
 | `turso-db-service.js` | `TursoDBService` | libSQL HTTP client. Owns schema creation + idempotent migrations. The only thing that talks to Turso directly. |
 
 ### Configuration files

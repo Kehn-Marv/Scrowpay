@@ -1,8 +1,7 @@
 /**
  * IDValidationService - ID validation service for ScrowPay Account Creation
  * 
- * This service provides validation functionality for BVN (Bank Verification Number)
- * and NIN (National Identification Number) format validation.
+ * This service provides validation functionality for BVN (Bank Verification Number).
  * 
  * Requirements: 3.6, 3.7
  */
@@ -57,45 +56,6 @@ class IDValidationService {
     };
   }
   
-  /**
-   * Validates a NIN (National Identification Number)
-   * NIN must be exactly 11 digits (no specific starting digit requirement)
-   * 
-   * @param {string} nin - The NIN to validate
-   * @returns {Object} Validation result with isValid boolean and error message
-   * 
-   * @example
-   * IDValidationService.validateNIN("12345678901"); // returns { isValid: true, error: null }
-   * IDValidationService.validateNIN("98765432109"); // returns { isValid: true, error: null }
-   * IDValidationService.validateNIN("1234567890");  // returns { isValid: false, error: "NIN must be exactly 11 digits" }
-   * IDValidationService.validateNIN("123456789ab"); // returns { isValid: false, error: "NIN must be exactly 11 digits" }
-   */
-  static validateNIN(nin) {
-    // Validate input exists and is a string
-    if (!nin || typeof nin !== 'string') {
-      return {
-        isValid: false,
-        error: 'NIN is required'
-      };
-    }
-    
-    // Remove any whitespace
-    const cleanNIN = nin.trim();
-    
-    // Check if it's exactly 11 digits
-    if (!/^\d{11}$/.test(cleanNIN)) {
-      return {
-        isValid: false,
-        error: 'NIN must be exactly 11 digits'
-      };
-    }
-    
-    // All validations passed
-    return {
-      isValid: true,
-      error: null
-    };
-  }
 }
 
 // Export for use in browser

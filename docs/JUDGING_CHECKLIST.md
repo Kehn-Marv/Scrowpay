@@ -32,7 +32,7 @@ Yes. We talked to sellers on Twitter who use "payment before delivery" and lose 
 NOIPolls says 67% of Nigerian online shoppers cite fraud fear as their top concern. NIBSS reports ₦9.5 billion lost to electronic fraud in 2022. FCCPC's #1 complaint category is "non-delivery after payment." The trust gap isn't theoretical — it's the thing killing informal e-commerce growth.
 
 **Does our product feel built for someone, not just about someone?**
-The signup flow uses Nigerian phone formats, BVN/NIN (not SSN or passport), State → LGA → Area selection from real Nigerian geo-data, and Naira formatting throughout. The bank dropdown has 21 Nigerian banks with correct NIP codes. The Trust Score tiers use language that makes sense in this context ("Proceed with Caution" not "Medium Risk Level 2").
+The signup flow uses Nigerian phone formats, BVN (not SSN or passport), State → LGA → Area selection from real Nigerian geo-data, and Naira formatting throughout. The bank dropdown has 21 Nigerian banks with correct NIP codes. The Trust Score tiers use language that makes sense in this context ("Proceed with Caution" not "Medium Risk Level 2").
 
 ---
 
