@@ -548,6 +548,7 @@
         try {
           // Automatically initialize all schemas
           await dbService.initializeAllSchemas();
+          sessionStorage.setItem('scrowpay_schemas_ready', '1');
           console.log('[Sign In] ✅ All database schemas ready');
         } catch (schemaError) {
           console.error('[Sign In] ⚠️ Schema initialization warning:', schemaError);

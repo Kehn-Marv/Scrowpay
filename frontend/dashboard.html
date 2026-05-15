@@ -653,129 +653,569 @@
       color: white;
     }
 
-    /* List container — scrolls when many notifications stack up. */
+    /* Notification messages — grouped list rows (matches profile sheet) */
     .notif-list {
       max-height: 60vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding-right: 2px;
+      gap: 10px;
+      padding: 2px 4px 2px 0;
+      -webkit-overflow-scrolling: touch;
     }
-    .notif-list::-webkit-scrollbar { width: 6px; }
+    .notif-list::-webkit-scrollbar { width: 5px; }
     .notif-list::-webkit-scrollbar-thumb {
-      background: #d1d5db;
-      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 999px;
     }
 
-    /* Single notification row. Subtle left border tinted by severity. */
     .notif-card {
       display: flex;
+      align-items: flex-start;
       gap: 12px;
-      padding: 12px 14px;
-      background: #fafafa;
-      border-radius: 12px;
-      border: 1px solid #eef0f2;
-      border-left: 3px solid #9ca3af;
+      padding: 14px 14px 14px 16px;
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
       cursor: default;
-      transition: background-color 0.15s, transform 0.15s;
+      transition: background 0.15s, border-color 0.15s;
       position: relative;
     }
-    .notif-card.clickable { cursor: pointer; }
+    .notif-card.clickable {
+      cursor: pointer;
+      padding-right: 12px;
+    }
     .notif-card.clickable:hover {
-      background: #f3f4f6;
-      transform: translateY(-1px);
+      background: #fafafa;
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+    .notif-card.clickable:active {
+      background: #f5f5f3;
     }
     .notif-card.unread {
-      background: #ecfdf5; /* very light brand-green tint */
-      border-color: #d1fae5;
+      border-color: rgba(202, 255, 4, 0.45);
+      box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05);
     }
-    .notif-card.unread:hover { background: #d1fae5; }
-    .notif-card.severity-info    { border-left-color: #3b82f6; }
-    .notif-card.severity-success { border-left-color: #10b981; }
-    .notif-card.severity-warning { border-left-color: #f59e0b; }
-    .notif-card.severity-danger  { border-left-color: #ef4444; }
 
     .notif-card-icon {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
-      background: white;
-      border: 1px solid #e5e7eb;
+      background: #f5f5f3;
+      border: none;
+      color: var(--text);
     }
-    .notif-card-icon svg { width: 18px; height: 18px; }
-    .severity-info    .notif-card-icon { color: #3b82f6; }
-    .severity-success .notif-card-icon { color: #10b981; }
-    .severity-warning .notif-card-icon { color: #f59e0b; }
-    .severity-danger  .notif-card-icon { color: #ef4444; }
+    .notif-card-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 1.75;
+    }
+    .severity-info    .notif-card-icon { background: rgba(59, 130, 246, 0.1);  color: #2563eb; }
+    .severity-success .notif-card-icon { background: rgba(202, 255, 4, 0.22); color: #4a6600; }
+    .severity-warning .notif-card-icon { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+    .severity-danger  .notif-card-icon { background: rgba(239, 68, 68, 0.1);  color: #dc2626; }
 
     .notif-card-body {
       flex: 1;
       min-width: 0;
+      padding-top: 1px;
+    }
+    .notif-card-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 4px;
     }
     .notif-card-title {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
-      color: var(--dark, #111111);
-      line-height: 1.35;
-      margin-bottom: 2px;
+      color: var(--text);
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+    .notif-card.unread .notif-card-title {
+      font-weight: 700;
+    }
+    .notif-card-time {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .notif-card-msg {
-      font-size: 13px;
-      color: #4b5563;
+      font-size: 14px;
+      color: var(--muted);
       line-height: 1.45;
       word-wrap: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
-    .notif-card-meta {
+    .notif-card.unread .notif-card-msg {
+      color: #666;
+    }
+
+    .notif-card-chevron {
+      flex-shrink: 0;
+      align-self: center;
+      width: 28px;
+      height: 28px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-top: 8px;
-      font-size: 11px;
-      color: #6b7280;
+      justify-content: center;
+      color: #c8c8c4;
+      margin-left: -4px;
     }
-    .notif-card-meta .notif-action {
-      color: var(--green, #10b981);
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
+    .notif-card-chevron svg {
+      width: 16px;
+      height: 16px;
     }
-    .notif-card-meta .notif-action svg { width: 12px; height: 12px; }
+    .notif-card.clickable:hover .notif-card-chevron {
+      color: var(--text);
+    }
 
-    /* Dot for unread cards — top-right pill. */
-    .notif-card.unread::after {
-      content: '';
+    .notif-unread-dot {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 8px;
-      height: 8px;
+      top: 16px;
+      left: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: #10b981;
+      background: var(--green);
+      box-shadow: 0 0 0 2px var(--card-bg);
+    }
+    .notif-card.unread {
+      padding-left: 22px;
     }
 
-    /* Empty state. */
+    /* Empty state */
     .notif-empty {
-      padding: 36px 20px;
+      padding: 40px 20px;
       text-align: center;
-      color: #9ca3af;
     }
     .notif-empty svg {
-      width: 44px; height: 44px;
-      margin: 0 auto 12px;
-      color: #d1d5db;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 14px;
+      color: #d8d8d4;
     }
     .notif-empty p {
-      font-size: 15px;
-      color: var(--dark, #111111);
-      font-weight: 600;
-      margin: 0 0 4px;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 700;
+      margin: 0 0 6px;
+      letter-spacing: -0.02em;
     }
     .notif-empty small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Transaction details — state history timeline */
+    .txn-history-list {
+      display: flex;
+      flex-direction: column;
+    }
+    .txn-history-item {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .txn-history-rail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 18px;
+      flex-shrink: 0;
+      padding-top: 18px;
+    }
+    .txn-history-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #c8c8c4;
+      flex-shrink: 0;
+    }
+    .txn-history-item.is-latest .txn-history-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(202, 255, 4, 0.35);
+    }
+    .txn-history-item.state-disputed .txn-history-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+    .txn-history-item.state-completed .txn-history-dot,
+    .txn-history-item.state-refunded .txn-history-dot {
+      background: #4a6600;
+    }
+    .txn-history-line {
+      flex: 1;
+      width: 2px;
+      min-height: 16px;
+      margin: 6px 0 0;
+      background: var(--border);
+      border-radius: 1px;
+    }
+    .txn-history-item:last-child .txn-history-line {
+      display: none;
+    }
+    .txn-history-card {
+      flex: 1;
+      min-width: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+    }
+    .txn-history-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .txn-history-state {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .txn-history-time {
       font-size: 12px;
-      color: #9ca3af;
+      font-weight: 500;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .txn-history-from {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .txn-history-details {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .txn-history-detail {
+      font-size: 14px;
+      line-height: 1.45;
+      color: #555;
+    }
+    .txn-history-detail-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+    .txn-history-detail-value {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .txn-history-detail-value.is-body {
+      white-space: pre-wrap;
+      font-weight: 400;
+      color: #444;
+    }
+    .txn-history-empty {
+      text-align: center;
+      padding: 24px 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Transaction details modal — refined sheet */
+    #transaction-details-modal .modal-content.txn-details-sheet {
+      max-width: 480px;
+      width: calc(100% - 24px);
+      padding: 0;
+      max-height: min(92vh, 780px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+    }
+    .txn-details-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+      max-height: min(92vh, 780px);
+    }
+    .txn-details-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .txn-details-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin: 0;
+    }
+    .txn-details-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--page-bg);
+      -webkit-overflow-scrolling: touch;
+    }
+    .txn-details-section {
+      margin-bottom: 20px;
+    }
+    .txn-details-section:last-child {
+      margin-bottom: 0;
+    }
+    .txn-details-section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      margin: 0 0 8px 4px;
+    }
+    .txn-details-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .txn-details-cell {
+      padding: 14px 16px;
+    }
+    .txn-details-cell--row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .txn-details-cell--row .txn-details-k {
+      margin-bottom: 0;
+    }
+    .txn-details-k {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .txn-details-divider {
+      height: 1px;
+      background: var(--border);
+    }
+    .txn-details-id-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .txn-details-id-text {
+      flex: 1;
+      min-width: 0;
+      display: block;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--text);
+      padding: 10px 12px;
+      background: #f5f5f3;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    .txn-details-copy-btn {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 10px;
+      background: #f0f0ee;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .txn-details-copy-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+    }
+    .txn-details-copy-btn:hover {
+      background: var(--green);
+    }
+    .txn-details-copy-btn:active {
+      transform: scale(0.96);
+    }
+    .txn-details-copy-btn.is-copied {
+      background: rgba(202, 255, 4, 0.45);
+    }
+    .txn-details-state-pill {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f5f5f3;
+      color: var(--text);
+    }
+    .txn-details-amount {
+      font-family: 'Syne', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .txn-details-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      text-align: right;
+    }
+    .txn-details-description {
+      margin: 0;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #444;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .txn-details-parties {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .txn-details-party {
+      padding: 14px 16px;
+      border-right: 1px solid var(--border);
+    }
+    .txn-details-party:last-child {
+      border-right: none;
+    }
+    .txn-details-party .txn-details-k {
+      margin-bottom: 6px;
+    }
+    .txn-details-party-value {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    @media (max-width: 520px) {
+      .txn-details-parties {
+        grid-template-columns: 1fr;
+      }
+      .txn-details-party {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .txn-details-party:last-child {
+        border-bottom: none;
+      }
+    }
+    .txn-details-trust-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+    }
+    .txn-details-trust-track {
+      flex: 1;
+      height: 8px;
+      background: #ecece8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .txn-details-trust-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.35s ease;
+      min-width: 0;
+    }
+    .txn-details-trust-fill--high {
+      background: linear-gradient(90deg, #15803d, #22c55e);
+    }
+    .txn-details-trust-fill--mid {
+      background: linear-gradient(90deg, #b45309, #eab308);
+    }
+    .txn-details-trust-fill--low {
+      background: linear-gradient(90deg, #b91c1c, #f87171);
+    }
+    .txn-details-trust-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      min-width: 56px;
+      text-align: right;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .txn-details-loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 36px;
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border);
+    }
+    .txn-details-footer {
+      flex-shrink: 0;
+      padding: 12px 16px 20px;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+    }
+    .txn-details-footer-btn {
+      width: 100%;
+      min-height: 48px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--dark);
+      color: var(--green);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .txn-details-footer-btn:hover {
+      opacity: 0.92;
+    }
+    .txn-details-footer-btn:active {
+      transform: scale(0.99);
     }
 
     /* ============================================================
@@ -847,277 +1287,305 @@
     }
 
     /* ============================================================
-       PROFILE MODAL — Refined & Sleek Design
-       ----------------------------------------------------------------
-       Modern, clean profile modal matching the app's refined aesthetic.
-       Features improved spacing, elegant typography, and card-based
-       layout similar to other modals in the app.
+       PROFILE MODAL — single sheet, grouped lists (Settings-style)
        ============================================================ */
-    #profile-modal .modal-content {
-      max-width: 780px;
-      width: 90%;
+    #profile-modal .modal-content.profile-sheet {
+      position: relative;
+      max-width: 440px;
+      width: calc(100% - 32px);
       padding: 0;
-      border-radius: 24px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 24px 70px rgba(0,0,0,0.18);
-      background: #fafafa;
+      border-radius: var(--radius);
+      max-height: min(88vh, 720px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--page-bg);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
     }
 
-    /* Elegant header with gradient background */
-    .profile-header {
-      position: relative;
+    .profile-sheet-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .profile-sheet-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 3;
+    }
+
+    /* Hero — light, centered, no dark band */
+    .profile-hero {
+      text-align: center;
+      padding: 36px 24px 20px;
+      background: var(--card-bg);
+    }
+
+    #profile-modal .profile-avatar-lg {
+      width: 80px;
+      height: 80px;
+      font-size: 28px;
+      margin: 0 auto 14px;
+      display: flex;
+      border: 2px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    #profile-row-vacc {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .profile-hero-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      color: var(--text);
+      margin: 0 32px 4px;
+      word-break: break-word;
+    }
+
+    .profile-hero-sub {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .profile-hero-trust {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 12px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3d5200;
+      background: rgba(202, 255, 4, 0.35);
+      border: 1px solid rgba(202, 255, 4, 0.5);
+    }
+    .profile-hero-trust svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* Grouped list sections */
+    .profile-sheet-body {
+      padding: 8px 16px 4px;
+    }
+
+    .profile-group {
+      margin-bottom: 22px;
+    }
+
+    .profile-group-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      margin: 0 4px 8px;
+      padding: 0 2px;
+    }
+
+    .profile-group-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .profile-cell {
       display: flex;
       align-items: center;
-      gap: 20px;
-      padding: 28px 32px 24px;
-      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-      color: #fff;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 48px;
+      padding: 11px 16px;
     }
-    .profile-header-text { min-width: 0; flex: 1; }
-    .profile-header-name {
-      font-family: 'Syne', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      margin-bottom: 5px;
+    .profile-cell + .profile-cell {
+      border-top: 1px solid var(--border);
     }
-    .profile-header-sub {
-      font-size: 14px;
-      color: rgba(255,255,255,0.7);
+
+    .profile-cell-label {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 400;
+      flex-shrink: 0;
+    }
+
+    .profile-cell-value {
+      font-size: 15px;
+      color: var(--muted);
       font-weight: 500;
-      letter-spacing: -0.01em;
+      text-align: right;
+      word-break: break-word;
+      min-width: 0;
     }
-    .profile-header-trust {
+
+    .profile-cell-value strong,
+    .profile-cell-value.is-primary {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .profile-cell-value.is-mono,
+    #profile-row-vacc {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    .profile-cell-value-row {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 7px 14px;
-      border-radius: 999px;
-      background: var(--green, #caff04);
-      color: #111111;
-      margin-top: 12px;
-      letter-spacing: 0;
-    }
-    .profile-header-trust svg { 
-      stroke: #111111;
-      width: 13px;
-      height: 13px;
-    }
-
-    /* Body: clean two-column grid layout */
-    .profile-body {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      padding: 24px 32px;
-      background: #fafafa;
-    }
-
-    /* Card-style sections with subtle shadows */
-    .profile-section {
-      background: #ffffff;
-      border-radius: 18px;
-      padding: 22px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-      border: 1px solid rgba(0,0,0,0.06);
-    }
-    
-    /* Address section spans full width */
-    .profile-section.profile-section-wide {
-      grid-column: 1 / -1;
-    }
-
-    .profile-section-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: #999999;
-      margin-bottom: 16px;
-    }
-    
-    .profile-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 11px 0;
-      border-bottom: 1px solid #f5f5f5;
-    }
-    .profile-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-    .profile-row:first-of-type {
-      padding-top: 0;
-    }
-    
-    .profile-row-label {
-      font-size: 13px;
-      color: #666666;
-      flex-shrink: 0;
-      font-weight: 500;
-      line-height: 1.5;
-    }
-    .profile-row-value {
-      font-size: 14px;
-      color: #111111;
-      font-weight: 600;
-      text-align: right;
-      word-break: break-word;
-      display: inline-flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px 10px;
       justify-content: flex-end;
-      max-width: 65%;
-      line-height: 1.5;
+      flex-wrap: wrap;
     }
 
-    /* Refined verification badges */
+    .profile-cell--stacked {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      padding: 14px 16px;
+    }
+    .profile-cell--stacked .profile-cell-value {
+      text-align: left;
+      color: var(--text);
+      font-weight: 500;
+      line-height: 1.45;
+    }
+
     .profile-badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
       border-radius: 999px;
-      line-height: 1;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
+      line-height: 1.2;
     }
     .profile-badge::before {
       content: '';
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: currentColor;
       flex-shrink: 0;
     }
     .profile-badge.verified {
-      background: rgba(202, 255, 4, 0.15);
-      color: #5a7a00;
+      background: rgba(202, 255, 4, 0.2);
+      color: #4a6600;
     }
     .profile-badge.unverified {
-      background: rgba(245, 158, 11, 0.1);
-      color: #c2710c;
+      background: #f5f5f3;
+      color: #888;
     }
 
-    /* Sleek slim copy button */
     .profile-copy-btn {
-      background: #111111;
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      padding: 0;
       border: none;
-      color: var(--green, #caff04);
+      border-radius: 8px;
+      background: #f0f0ee;
+      color: var(--text);
       cursor: pointer;
-      padding: 4px 10px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 999px;
-      transition: all 0.2s ease;
-      line-height: 1.3;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
     }
-    .profile-copy-btn:hover  { 
-      background: #2a2a2a;
-      transform: translateY(-1px);
+    .profile-copy-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
     }
-    .profile-copy-btn:active { 
-      transform: translateY(0);
+    .profile-copy-btn:hover {
+      background: var(--green);
+    }
+    .profile-copy-btn:active {
+      transform: scale(0.94);
+    }
+    .profile-copy-btn.is-copied {
+      background: rgba(202, 255, 4, 0.45);
     }
 
-    /* Refined footer actions */
-    .profile-actions {
-      padding: 20px 32px 26px;
+    .profile-sheet-footer {
+      padding: 8px 16px 22px;
+      background: var(--page-bg);
       display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: flex-end;
-      background: #fafafa;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      flex-shrink: 0;
     }
+
     .profile-action-btn {
-      flex: 0 0 auto;
-      padding: 12px 24px;
-      border-radius: 999px;
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
       font-family: 'DM Sans', sans-serif;
       font-weight: 600;
-      font-size: 13.5px;
+      font-size: 15px;
       cursor: pointer;
-      border: 1px solid transparent;
+      border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: all 0.2s ease;
+      transition: background 0.15s, transform 0.1s;
       text-decoration: none;
+      background: var(--card-bg);
+      color: var(--text);
+      box-shadow: var(--shadow);
     }
     .profile-action-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
     }
-    .profile-action-btn.secondary {
-      background: #ffffff;
-      color: #111111;
-      border: 1px solid #e0e0e0;
+    .profile-action-btn:hover {
+      background: #fafafa;
     }
-    .profile-action-btn.secondary:hover {
-      background: #f5f5f5;
-      border-color: #d0d0d0;
-      transform: translateY(-1px);
-    }
-    .profile-action-btn.danger {
-      background: #111111;
-      color: #ff6b6b;
-      border-color: transparent;
-    }
-    .profile-action-btn.danger:hover {
-      background: #ff6b6b;
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
-    .profile-action-btn:active { 
-      transform: translateY(0);
+    .profile-action-btn:active {
+      transform: scale(0.98);
     }
 
-    /* Mobile: single column, adjusted spacing */
-    @media (max-width: 640px) {
-      #profile-modal .modal-content { 
-        width: 96%; 
-        max-height: 92vh; 
-        overflow-y: auto;
-        border-radius: 20px;
+    .profile-action-btn.danger {
+      background: transparent;
+      box-shadow: none;
+      color: #d64545;
+      font-weight: 600;
+    }
+    .profile-action-btn.danger:hover {
+      background: rgba(214, 69, 69, 0.08);
+    }
+
+    @media (max-width: 480px) {
+      #profile-modal .modal-content.profile-sheet {
+        width: calc(100% - 20px);
+        max-height: 92vh;
+        border-radius: 18px;
       }
-      .profile-body { 
-        grid-template-columns: 1fr;
-        gap: 14px;
-        padding: 20px 20px;
+      .profile-hero {
+        padding-top: 32px;
       }
-      .profile-section {
-        padding: 20px 18px;
+      .profile-hero-name {
+        font-size: 18px;
+        margin-left: 20px;
+        margin-right: 20px;
       }
-      .profile-header { 
-        padding: 24px 20px 20px;
-        gap: 16px;
-      }
-      .profile-header-name {
-        font-size: 20px;
-      }
-      .profile-actions {
-        padding: 18px 20px 24px;
-        flex-direction: column-reverse;
-      }
-      .profile-action-btn {
-        width: 100%;
-      }
-      .profile-header-name { font-size: 17px; }
-      .profile-section, .profile-section.profile-section-wide { padding: 14px 20px; }
-      .profile-actions { flex-direction: column-reverse; padding: 14px 20px 18px; }
-      .profile-action-btn { width: 100%; }
     }
 
     /* ============================================================
@@ -2866,122 +3334,105 @@
     The shell here just establishes the layout / class hooks.
   -->
   <div id="profile-modal" class="modal">
-    <div class="modal-content">
-      <!-- Close button (absolutely positioned over the dark header) -->
-      <button class="modal-close-btn" onclick="closeModal('profile-modal')"
-              aria-label="Close"
-              style="position: absolute; top: 14px; right: 14px; z-index: 2; background: rgba(255,255,255,0.10); color: #fff; border: 1px solid rgba(255,255,255,0.14);">
+    <div class="modal-content profile-sheet">
+      <button class="modal-close-btn profile-sheet-close" onclick="closeModal('profile-modal')" aria-label="Close">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
 
-      <!-- Dark header — avatar, name, phone, trust pill -->
-      <div class="profile-header">
-        <span id="profile-modal-avatar" class="profile-avatar profile-avatar-lg">
-          <span class="profile-avatar-initials">U</span>
-        </span>
-        <div class="profile-header-text">
-          <div id="profile-modal-name" class="profile-header-name">—</div>
-          <div id="profile-modal-phone" class="profile-header-sub">—</div>
-          <div id="profile-modal-trust" class="profile-header-trust" style="display: none;">
-            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4">
+      <div class="profile-sheet-scroll">
+        <header class="profile-hero">
+          <span id="profile-modal-avatar" class="profile-avatar profile-avatar-lg">
+            <span class="profile-avatar-initials">U</span>
+          </span>
+          <h2 id="profile-modal-name" class="profile-hero-name">—</h2>
+          <p id="profile-modal-phone" class="profile-hero-sub">—</p>
+          <div id="profile-modal-trust" class="profile-hero-trust" style="display: none;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <span id="profile-modal-trust-value">Trust 0</span>
           </div>
+        </header>
+
+        <div class="profile-sheet-body">
+          <section class="profile-group" aria-labelledby="profile-group-account">
+            <h3 id="profile-group-account" class="profile-group-label">Account</h3>
+            <div class="profile-group-card">
+              <div class="profile-cell">
+                <span class="profile-cell-label">Email</span>
+                <span id="profile-row-email" class="profile-cell-value">—</span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Phone</span>
+                <span id="profile-row-phone" class="profile-cell-value is-primary">—</span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Virtual account</span>
+                <span class="profile-cell-value-row">
+                  <span id="profile-row-vacc">—</span>
+                  <button id="profile-copy-vacc" class="profile-copy-btn" type="button" aria-label="Copy account number" title="Copy">
+                    <svg viewBox="0 0 24 24" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" fill="none"/>
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" fill="none"/>
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Member since</span>
+                <span id="profile-row-since" class="profile-cell-value is-primary">—</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="profile-group" aria-labelledby="profile-group-kyc">
+            <h3 id="profile-group-kyc" class="profile-group-label">Identity</h3>
+            <div class="profile-group-card">
+              <div class="profile-cell">
+                <span class="profile-cell-label" id="profile-row-id-label">BVN</span>
+                <span id="profile-row-id" class="profile-cell-value is-mono is-primary">—</span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Date of birth</span>
+                <span id="profile-row-dob" class="profile-cell-value is-primary">—</span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Gender</span>
+                <span id="profile-row-gender" class="profile-cell-value is-primary">—</span>
+              </div>
+              <div class="profile-cell">
+                <span class="profile-cell-label">Face verification</span>
+                <span id="profile-row-face-badge" class="profile-badge unverified">Not captured</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="profile-group" aria-labelledby="profile-group-address">
+            <h3 id="profile-group-address" class="profile-group-label">Address</h3>
+            <div class="profile-group-card">
+              <div class="profile-cell profile-cell--stacked">
+                <span class="profile-cell-label">Current</span>
+                <span id="profile-row-address" class="profile-cell-value">—</span>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
-      <!-- Two-column body: Account on left, KYC on right, Address full-width below -->
-      <div class="profile-body">
-        <!-- Account section -->
-        <div class="profile-section">
-          <div class="profile-section-title">Account</div>
-          <div class="profile-row">
-            <span class="profile-row-label">Email</span>
-            <span class="profile-row-value">
-              <span id="profile-row-email">—</span>
-            </span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Phone</span>
-            <span class="profile-row-value">
-              <span id="profile-row-phone">—</span>
-            </span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Virtual account</span>
-            <span class="profile-row-value">
-              <span id="profile-row-vacc">—</span>
-              <button id="profile-copy-vacc" class="profile-copy-btn" type="button">Copy</button>
-            </span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Member since</span>
-            <span id="profile-row-since" class="profile-row-value">—</span>
-          </div>
-          <div class="profile-row" style="border-top: 1px solid #f1f3f5; margin-top: 4px; padding-top: 10px;">
-            <span class="profile-row-label">Demo balance</span>
-            <span id="profile-row-balance" class="profile-row-value" style="color: #00a341; font-weight: 700;">—</span>
-          </div>
-        </div>
-
-        <!-- KYC section -->
-        <div class="profile-section">
-          <div class="profile-section-title">KYC details</div>
-          <div class="profile-row">
-            <span class="profile-row-label" id="profile-row-id-label">BVN</span>
-            <span id="profile-row-id" class="profile-row-value">—</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Date of birth</span>
-            <span id="profile-row-dob" class="profile-row-value">—</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Gender</span>
-            <span id="profile-row-gender" class="profile-row-value">—</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-row-label">Face verification</span>
-            <span class="profile-row-value">
-              <span id="profile-row-face-badge" class="profile-badge unverified">Not captured</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- Address section spans full width -->
-        <div class="profile-section profile-section-wide">
-          <div class="profile-section-title">Address</div>
-          <div class="profile-row">
-            <span class="profile-row-label">Current</span>
-            <span id="profile-row-address" class="profile-row-value" style="text-align:right; max-width: 75%;">—</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer actions -->
-      <div class="profile-actions">
-        <!--
-          Admin Console link (Phase G).
-          Hidden by default; the profile panel's open() reveals it
-          only when window.currentUserData.is_admin === 1. This keeps
-          the link out of regular users' UI without needing a server
-          round-trip to check permissions.
-        -->
-        <a id="profile-link-admin" href="admin.html" class="profile-action-btn secondary" style="display:none;">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      <footer class="profile-sheet-footer">
+        <a id="profile-link-admin" href="admin.html" class="profile-action-btn" style="display:none;">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
-          Admin Console
+          Admin console
         </a>
         <button id="profile-btn-logout" type="button" class="profile-action-btn danger">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
           Sign out
         </button>
-      </div>
+      </footer>
     </div>
   </div>
 
@@ -3082,102 +3533,121 @@
   
   <!-- Transaction Details Modal -->
   <div id="transaction-details-modal" class="modal">
-    <div class="modal-content">
-      <div class="p-8">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-2xl font-bold text-brand-dark">Transaction Details</h2>
-          <button id="btn-close-details-modal" class="text-brand-subtext hover:text-brand-dark transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+    <div class="modal-content txn-details-sheet">
+      <div class="txn-details-shell">
+        <header class="txn-details-header">
+          <h2 class="txn-details-title">Transaction details</h2>
+          <button type="button" id="btn-close-details-modal" class="modal-close-btn" aria-label="Close">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
-        </div>
-        
-        <!-- Transaction Information -->
-        <div class="bg-brand-gray rounded-xl p-6 mb-6">
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Transaction ID</p>
-              <p id="details-transaction-id" class="font-mono font-semibold text-brand-dark">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Current State</p>
-              <p id="details-state" class="font-semibold text-brand-dark">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Price</p>
-              <p id="details-price" class="font-semibold text-brand-dark">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Created</p>
-              <p id="details-created-at" class="text-brand-dark">-</p>
-            </div>
-          </div>
-          
-          <div class="mb-4">
-            <p class="text-sm text-brand-subtext mb-1">Item Description</p>
-            <p id="details-item-description" class="text-brand-dark break-words whitespace-pre-wrap leading-relaxed">-</p>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Seller</p>
-              <p id="details-seller-name" class="text-brand-dark font-medium">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Buyer</p>
-              <p id="details-buyer-name" class="text-brand-dark font-medium">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Delivery Timeline</p>
-              <p id="details-delivery-timeline" class="text-brand-dark">-</p>
-            </div>
-          </div>
+        </header>
 
-          <div class="grid grid-cols-2 gap-4 mb-4" id="details-trust-section" style="display:none;">
-            <div>
-              <p class="text-sm text-brand-subtext mb-1" id="details-trust-label">Counterparty Trust Score</p>
-              <div class="flex items-center gap-2">
-                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div id="details-trust-fill" class="h-full bg-green-500 transition-all" style="width: 0%"></div>
+        <div class="txn-details-scroll">
+          <section class="txn-details-section">
+            <h3 class="txn-details-section-label">Summary</h3>
+            <div class="txn-details-card">
+              <div class="txn-details-cell">
+                <span class="txn-details-k">Reference</span>
+                <div class="txn-details-id-row">
+                  <span id="details-transaction-id" class="txn-details-id-text">-</span>
+                  <button type="button" id="btn-copy-details-txn-id" class="txn-details-copy-btn" aria-label="Copy transaction ID" title="Copy">
+                    <svg viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/>
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                  </button>
                 </div>
-                <span id="details-trust-value" class="font-semibold text-brand-dark">-</span>
+              </div>
+              <div class="txn-details-divider"></div>
+              <div class="txn-details-cell txn-details-cell--row">
+                <span class="txn-details-k">Status</span>
+                <span id="details-state" class="txn-details-state-pill">-</span>
+              </div>
+              <div class="txn-details-divider"></div>
+              <div class="txn-details-cell txn-details-cell--row">
+                <span class="txn-details-k">Amount</span>
+                <span id="details-price" class="txn-details-amount">-</span>
+              </div>
+              <div class="txn-details-divider"></div>
+              <div class="txn-details-cell txn-details-cell--row">
+                <span class="txn-details-k">Created</span>
+                <span id="details-created-at" class="txn-details-value">-</span>
               </div>
             </div>
-          </div>
-          
-          <div id="details-risk-section" class="hidden grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">Risk Score</p>
-              <p id="details-risk-score" class="text-brand-dark font-medium">-</p>
+          </section>
+
+          <section class="txn-details-section">
+            <h3 class="txn-details-section-label">Item</h3>
+            <div class="txn-details-card">
+              <p id="details-item-description" class="txn-details-description">-</p>
             </div>
-            <div>
-              <p class="text-sm text-brand-subtext mb-1">AI Verdict</p>
-              <p id="details-ai-verdict" class="text-brand-dark font-medium">-</p>
+          </section>
+
+          <section class="txn-details-section">
+            <h3 class="txn-details-section-label">People &amp; delivery</h3>
+            <div class="txn-details-card">
+              <div class="txn-details-parties">
+                <div class="txn-details-party">
+                  <span class="txn-details-k">Seller</span>
+                  <p id="details-seller-name" class="txn-details-party-value">-</p>
+                </div>
+                <div class="txn-details-party">
+                  <span class="txn-details-k">Buyer</span>
+                  <p id="details-buyer-name" class="txn-details-party-value">-</p>
+                </div>
+                <div class="txn-details-party">
+                  <span class="txn-details-k">Delivery</span>
+                  <p id="details-delivery-timeline" class="txn-details-party-value">-</p>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section id="details-trust-section" class="txn-details-section" style="display:none;">
+            <h3 class="txn-details-section-label" id="details-trust-label">Trust score</h3>
+            <div class="txn-details-card">
+              <div class="txn-details-trust-row">
+                <div class="txn-details-trust-track">
+                  <div id="details-trust-fill" class="txn-details-trust-fill txn-details-trust-fill--mid" style="width: 0%"></div>
+                </div>
+                <span id="details-trust-value" class="txn-details-trust-num">-</span>
+              </div>
+            </div>
+          </section>
+
+          <section id="details-risk-section" class="txn-details-section hidden">
+            <h3 class="txn-details-section-label">Risk review</h3>
+            <div class="txn-details-card">
+              <div class="txn-details-cell txn-details-cell--row">
+                <span class="txn-details-k">Risk score</span>
+                <span id="details-risk-score" class="txn-details-value">-</span>
+              </div>
+              <div class="txn-details-divider"></div>
+              <div class="txn-details-cell txn-details-cell--row">
+                <span class="txn-details-k">AI verdict</span>
+                <span id="details-ai-verdict" class="txn-details-value">-</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="txn-details-section">
+            <h3 class="txn-details-section-label">State history</h3>
+            <div id="state-history-container" class="txn-history-list">
+              <div class="txn-details-loading">
+                <svg class="animate-spin h-8 w-8 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            </div>
+          </section>
         </div>
-        
-        <!-- State History -->
-        <div class="mb-6">
-          <h3 class="text-lg font-semibold text-brand-dark mb-3">State History</h3>
-          <div id="state-history-container" class="space-y-2">
-            <div class="flex items-center justify-center py-8">
-              <svg class="animate-spin h-8 w-8 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <button
-          id="btn-close-details"
-          class="w-full px-6 py-3 bg-brand-green text-brand-dark font-semibold rounded-lg hover:bg-opacity-90 transition-colors"
-        >
-          Close
-        </button>
+
+        <footer class="txn-details-footer">
+          <button type="button" id="btn-close-details" class="txn-details-footer-btn">Close</button>
+        </footer>
       </div>
     </div>
   </div>
@@ -4229,23 +4699,24 @@
         const html = filtered.map(n => {
           const sev = ['info','success','warning','danger'].includes(n.severity) ? n.severity : 'info';
           const clickable = n.actionUrl || n.transactionId;
-          const meta = `
-            <div class="notif-card-meta">
-              <span>${escape(relativeTime(n.createdAt))}</span>
-              ${clickable
-                ? `<span class="notif-action">View<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>`
-                : ''}
-            </div>`;
+          const unreadDot = n.isRead ? '' : '<span class="notif-unread-dot" aria-hidden="true"></span>';
+          const chevron = clickable
+            ? `<span class="notif-card-chevron" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>`
+            : '';
           return `
             <div class="notif-card severity-${sev} ${n.isRead ? '' : 'unread'} ${clickable ? 'clickable' : ''}"
                  role="listitem" data-id="${n.id}" data-txn="${escape(n.transactionId || '')}"
                  data-url="${escape(n.actionUrl || '')}">
+              ${unreadDot}
               <div class="notif-card-icon">${iconFor(n.type)}</div>
               <div class="notif-card-body">
-                <div class="notif-card-title">${escape(n.title)}</div>
-                <div class="notif-card-msg">${escape(n.message)}</div>
-                ${meta}
+                <div class="notif-card-head">
+                  <div class="notif-card-title">${escape(n.title)}</div>
+                  <span class="notif-card-time">${escape(relativeTime(n.createdAt))}</span>
+                </div>
+                <p class="notif-card-msg">${escape(n.message)}</p>
               </div>
+              ${chevron}
             </div>`;
         }).join('');
         el.innerHTML = html;
@@ -4894,23 +5365,6 @@
         ].filter(Boolean).join(', ');
         $('profile-row-address').textContent = addr || '—';
 
-        // Demo balance — read from DB and display in profile
-        try {
-          const dbSvc = (typeof transactionService !== 'undefined' && transactionService) ? transactionService.dbService : null;
-          if (dbSvc && currentUserId) {
-            const balRes = await dbSvc._executeHttp(
-              'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
-              [currentUserId]
-            );
-            const bRows = balRes?.results?.[0]?.response?.result?.rows;
-            if (bRows && bRows.length > 0) {
-              const v = bRows[0][0];
-              const bal = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
-              $('profile-row-balance').textContent = isNaN(bal) ? '—' : `₦${bal.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-            }
-          }
-        } catch (e) { console.warn('[ProfilePanel] demo_balance fetch failed:', e); }
-
         // Trust score — best-effort. Failures here just hide the pill.
         const trustEl  = $('profile-modal-trust');
         const trustVal = $('profile-modal-trust-value');
@@ -5000,9 +5454,12 @@
             try { document.execCommand('copy'); } catch (__) {}
             document.body.removeChild(ta);
           }
-          const original = copyVacc.textContent;
-          copyVacc.textContent = 'Copied!';
-          setTimeout(() => { copyVacc.textContent = original; }, 1400);
+          copyVacc.classList.add('is-copied');
+          copyVacc.setAttribute('aria-label', 'Copied');
+          setTimeout(() => {
+            copyVacc.classList.remove('is-copied');
+            copyVacc.setAttribute('aria-label', 'Copy account number');
+          }, 1400);
         });
 
         // Backdrop click closes the modal. Mirrors the pattern used by
@@ -5855,75 +6312,61 @@
       });
       
       // ========================================
-      // INITIALIZE DATABASE SCHEMAS
+      // INITIALIZE DATABASE SCHEMAS (skip if sign-in already ran)
       // ========================================
-      console.log('[Dashboard] Initializing database schemas...');
-      try {
-        const tempDbService = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
-        await tempDbService.connect();
-        await tempDbService.initializeAllSchemas();
-        await tempDbService.disconnect();
-        console.log('[Dashboard] ✅ All database schemas ready');
-      } catch (schemaError) {
-        console.error('[Dashboard] ⚠️ Schema initialization warning:', schemaError);
-      }
-      
-      // HACKATHON DEMO: Seed demo_balance for existing users who
-      // don't have one yet (accounts created before this feature).
-      try {
-        const seedDb = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
-        await seedDb.connect();
-        const checkBal = await seedDb._executeHttp(
-          'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
-          [currentUserId]
-        );
-        const bRows = checkBal?.results?.[0]?.response?.result?.rows;
-        if (bRows && bRows.length > 0) {
-          const v = bRows[0][0];
-          const bal = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
-          if (!bal || bal <= 0) {
-            const seedAmount = Math.floor(Math.random() * 350001) + 150000;
-            await seedDb._executeHttp(
-              'UPDATE users SET demo_balance = ? WHERE id = ?',
-              [seedAmount, currentUserId]
-            );
-            console.log('[Dashboard] Seeded demo_balance:', seedAmount);
-          }
+      const schemasReady = sessionStorage.getItem('scrowpay_schemas_ready') === '1';
+      if (!schemasReady) {
+        console.log('[Dashboard] Initializing database schemas...');
+        try {
+          const tempDbService = new TursoDBService(CONFIG.turso.databaseUrl, CONFIG.turso.authToken);
+          await tempDbService.connect();
+          await tempDbService.initializeAllSchemas();
+          await tempDbService.disconnect();
+          sessionStorage.setItem('scrowpay_schemas_ready', '1');
+          console.log('[Dashboard] ✅ All database schemas ready');
+        } catch (schemaError) {
+          console.error('[Dashboard] ⚠️ Schema initialization warning:', schemaError);
         }
-        await seedDb.disconnect();
-      } catch (e) { console.warn('[Dashboard] demo_balance seed skipped:', e); }
+      } else {
+        console.log('[Dashboard] ✅ Schemas already initialized this session — skipping');
+      }
 
-      // ========================================
-      // INITIALIZE SERVICES
-      // ========================================
-      try {
-        transactionService = new TransactionService(CONFIG);
-        await transactionService.connect();
-        console.log('Transaction service initialized');
-        
-        trustScoreService = new TrustScoreService(CONFIG);
-        await trustScoreService.connect();
-        console.log('Trust score service initialized');
-        
+      async function seedDemoBalanceIfNeeded(dbSvc) {
+        if (!dbSvc || !currentUserId) return;
+        try {
+          const checkBal = await dbSvc._executeHttp(
+            'SELECT demo_balance FROM users WHERE id = ? LIMIT 1',
+            [currentUserId]
+          );
+          const bRows = checkBal?.results?.[0]?.response?.result?.rows;
+          if (bRows && bRows.length > 0) {
+            const v = bRows[0][0];
+            const bal = typeof v === 'object' ? parseFloat(v.value) : parseFloat(v);
+            if (!bal || bal <= 0) {
+              const seedAmount = Math.floor(Math.random() * 350001) + 150000;
+              await dbSvc._executeHttp(
+                'UPDATE users SET demo_balance = ? WHERE id = ?',
+                [seedAmount, currentUserId]
+              );
+              console.log('[Dashboard] Seeded demo_balance:', seedAmount);
+            }
+          }
+        } catch (e) {
+          console.warn('[Dashboard] demo_balance seed skipped:', e);
+        }
+      }
+
+      async function initDeferredDashboardServices() {
         aiRiskService = new AIRiskService(CONFIG);
         await aiRiskService.connect();
         console.log('AI risk service initialized');
 
-        // ========================================
-        // AI ANOMALY DETECTION ENGINE v2.0
-        // ========================================
-        // Build the umbrella engine with all sub-detectors. Order
-        // matters: fingerprint feeds behavioral; behavioral + rules +
-        // ML feed the engine.
         try {
           trustEngine = new TrustEngineService(CONFIG);
           await trustEngine.connect();
           console.log('Trust engine v2 initialized');
 
           deviceFingerprint = new DeviceFingerprintService(CONFIG);
-          // Kick off the FingerprintJS CDN load in the background; we
-          // don't await it because the engine handles fallback if it's
-          // not ready by the time evaluate() runs.
           deviceFingerprint.ready();
 
           behavioralSignals = new BehavioralSignalsService(CONFIG, {
@@ -5944,8 +6387,6 @@
           });
           console.log('[Dashboard] ✅ AnomalyDetectionEngine v' + anomalyEngine.version + ' ready');
 
-          // Persist this device for the current user (sock-puppet
-          // detection later relies on this row existing).
           deviceFingerprint.identify().then(fp => {
             if (fp && fp.visitorId) {
               deviceFingerprint.recordForUser(currentUserId, fp.visitorId);
@@ -5955,57 +6396,19 @@
           console.error('[Dashboard] AnomalyDetectionEngine init failed (will fall back to legacy AIRiskService):', engineErr);
         }
 
-        stateMachineService = new StateMachineService(CONFIG);
-        await stateMachineService.connect();
-        console.log('State machine service initialized');
-        
-        balanceService = new BalanceService(CONFIG);
-        await balanceService.connect();
-        console.log('Balance service initialized');
-
-        // -------------------------------------------------------------
-        // Phase A v3 — Storage + Notifications
-        // -------------------------------------------------------------
-        // CloudinaryService is constructed unconditionally; its
-        // `available` property tells callers whether to use Cloudinary
-        // or fall back to base64. No async connect step.
-        try {
-          cloudinaryService = new CloudinaryService();
-          // Expose on `window` so services that don't receive the
-          // dashboard's local references (e.g. DisputeService.uploadPhotos)
-          // can still discover it. Same pattern we use for
-          // disputeAgentService.
-          if (typeof window !== 'undefined') {
-            window.cloudinaryService = cloudinaryService;
-          }
-          console.log('[Dashboard] Cloudinary',
-            cloudinaryService.available ? '✅ ready' : '⚠️ not configured (base64 fallback)');
-        } catch (e) {
-          console.error('[Dashboard] CloudinaryService init failed:', e);
-        }
-
-        // NotificationService talks to BOTH Turso (in-app rows) and
-        // the Python AI engine's /api/v1/notify/email proxy. The
-        // service URL is taken from CONFIG.aiEngine.url, falling back
-        // to localhost:5000 if not set.
         try {
           notificationService = new NotificationService(CONFIG);
           await notificationService.connect();
           if (typeof window !== 'undefined') {
             window.notificationService = notificationService;
           }
-          // Wire the bell + panel UI now that the backend service is
-          // up. We bind exactly once (idempotent — bind() doesn't
-          // double-register). Initial badge count is fetched after
-          // currentUserId is set lower in the init flow; we kick it
-          // off here as a no-op-safe call.
           NotifPanel.bind();
           NotifPanel.refreshBadge();
           console.log('[Dashboard] ✅ NotificationService ready');
         } catch (e) {
           console.error('[Dashboard] NotificationService init failed:', e);
         }
-        
+
         disputeService = new DisputeService(CONFIG);
         await disputeService.connect();
         if (typeof window !== 'undefined') {
@@ -6013,7 +6416,6 @@
         }
         console.log('Dispute service initialized');
 
-        // ----- DisputeAgentService (Gemini-powered dispute resolution) ---
         try {
           window.disputeAgentService = new DisputeAgentService();
           console.log('[Dashboard] ✅ DisputeAgentService ready (available =', window.disputeAgentService.available, ')');
@@ -6021,10 +6423,6 @@
           console.warn('[Dashboard] DisputeAgentService init failed (non-fatal):', e.message);
         }
 
-        // ----- Phase F: FaceVerificationService -----------------------
-        // Best-effort init. If the Gemini key is missing the service
-        // still constructs cleanly — its .available getter goes false
-        // and the FaceGate UI module below skips the check entirely.
         try {
           faceVerificationService = new FaceVerificationService({ turso: CONFIG.turso });
           await faceVerificationService.connect();
@@ -6034,12 +6432,49 @@
         } catch (e) {
           console.warn('[Dashboard] FaceVerificationService init failed (non-fatal):', e.message);
         }
-        
-        // Initialize balance display
-        await refreshBalanceDisplay();
-        
-        // Initialize trust score display (Requirement 2.1)
-        await refreshTrustScoreDisplay();
+      }
+
+      // ========================================
+      // INITIALIZE SERVICES (core path first, rest in background)
+      // ========================================
+      try {
+        transactionService = new TransactionService(CONFIG);
+        trustScoreService = new TrustScoreService(CONFIG);
+        balanceService = new BalanceService(CONFIG);
+        stateMachineService = new StateMachineService(CONFIG);
+
+        try {
+          cloudinaryService = new CloudinaryService();
+          if (typeof window !== 'undefined') {
+            window.cloudinaryService = cloudinaryService;
+          }
+          console.log('[Dashboard] Cloudinary',
+            cloudinaryService.available ? '✅ ready' : '⚠️ not configured (base64 fallback)');
+        } catch (e) {
+          console.error('[Dashboard] CloudinaryService init failed:', e);
+        }
+
+        await Promise.all([
+          transactionService.connect(),
+          trustScoreService.connect(),
+          balanceService.connect(),
+          stateMachineService.connect(),
+          seedDemoBalanceIfNeeded(transactionService.dbService)
+        ]);
+        console.log('[Dashboard] ✅ Core services connected');
+
+        await Promise.all([
+          refreshBalanceDisplay(),
+          refreshTrustScoreDisplay()
+        ]);
+
+        loadActiveTransactions().catch(err => {
+          console.warn('[Dashboard] Initial transaction load failed:', err);
+        });
+
+        initDeferredDashboardServices().catch(err => {
+          console.error('[Dashboard] Deferred service init failed:', err);
+        });
         
         // ========================================
         // INITIALIZE TRUST SCORE FOR NEW USERS (Requirement 20.6)
@@ -7905,6 +8340,116 @@
         return stateMap[state] || state;
       }
 
+      function parseStateHistoryNotes(notes) {
+        if (notes == null || notes === '') return null;
+        const raw = String(notes).trim();
+        if (!raw) return null;
+        if (raw.startsWith('{') || raw.startsWith('[')) {
+          try { return JSON.parse(raw); } catch (_) { /* fall through */ }
+        }
+        return { _plain: raw };
+      }
+
+      function stateHistoryPartyLabel(userId, transaction, currentUserId) {
+        if (userId == null || userId === '') return 'Someone';
+        if (String(userId) === String(currentUserId)) return 'You';
+        if (transaction && String(userId) === String(transaction.seller_id)) return 'Seller';
+        if (transaction && String(userId) === String(transaction.buyer_id)) return 'Buyer';
+        return 'Participant';
+      }
+
+      function formatStateHistoryDetails(meta, entry, transaction, currentUserId) {
+        if (!meta) return [];
+        if (meta._plain) return [{ kind: 'text', text: meta._plain }];
+
+        const lines = [];
+        const push = (label, value, opts = {}) => {
+          if (value == null || value === '') return;
+          lines.push({ kind: 'pair', label, value: String(value), multiline: Boolean(opts.multiline) });
+        };
+        const say = (text) => {
+          if (text) lines.push({ kind: 'text', text });
+        };
+
+        if (meta.buyerAccount) {
+          say('Payment secured in escrow');
+        }
+        if (meta.shippedBy != null) {
+          say(`${stateHistoryPartyLabel(meta.shippedBy, transaction, currentUserId)} marked the item as shipped`);
+        }
+        if (meta.acceptedBy != null) {
+          say(`${stateHistoryPartyLabel(meta.acceptedBy, transaction, currentUserId)} confirmed delivery — funds released to seller`);
+        }
+        if (meta.instantRelease) {
+          say(meta.reason || 'Instant release for a trusted seller');
+        } else if (meta.autoRelease) {
+          say(meta.reason || 'Funds released automatically after the inspection period');
+        }
+        if (meta.disputedBy != null || meta.raisedBy || meta.description) {
+          if (meta.raisedBy) {
+            const who = String(meta.raisedBy).toLowerCase() === 'buyer' ? 'Buyer'
+              : String(meta.raisedBy).toLowerCase() === 'seller' ? 'Seller'
+              : stateHistoryPartyLabel(meta.raisedBy, transaction, currentUserId);
+            push('Opened by', who);
+          } else if (meta.disputedBy != null) {
+            push('Opened by', stateHistoryPartyLabel(meta.disputedBy, transaction, currentUserId));
+          }
+          if (meta.description) {
+            push('Reason', String(meta.description).replace(/\\n/g, '\n'), { multiline: true });
+          }
+          if (meta.photoCount != null && Number(meta.photoCount) > 0) {
+            const n = Number(meta.photoCount);
+            push('Evidence', `${n} photo${n === 1 ? '' : 's'} attached`);
+          }
+          if (meta.aiConfidence != null && meta.aiConfidence !== '' && !Number.isNaN(Number(meta.aiConfidence))) {
+            push('AI review', `${Math.round(Number(meta.aiConfidence))}% confidence`);
+          }
+          if (meta.favoredParty) {
+            const fp = String(meta.favoredParty).toLowerCase();
+            const label = fp === 'buyer' ? 'Buyer favored'
+              : fp === 'seller' ? 'Seller favored'
+              : fp === 'split' ? 'Split between both parties'
+              : meta.favoredParty;
+            push('Outcome', label);
+          }
+          if (meta.resolutionType) {
+            const rt = String(meta.resolutionType).replace(/_/g, ' ');
+            push('Resolution', rt.charAt(0).toUpperCase() + rt.slice(1));
+          }
+        }
+        if (meta.reason && !meta.autoRelease && !meta.instantRelease && !meta.description) {
+          say(String(meta.reason));
+        }
+        if (meta.trigger === 'post_fund') {
+          say('Automated risk review completed after funding');
+        }
+
+        return lines;
+      }
+
+      function renderStateHistoryDetailsHtml(lines) {
+        if (!lines || !lines.length) return '';
+        const items = lines.map((line) => {
+          if (line.kind === 'text') {
+            return `<li class="txn-history-detail"><span class="txn-history-detail-value is-body">${escapeHtml(line.text)}</span></li>`;
+          }
+          const valClass = line.multiline ? 'txn-history-detail-value is-body' : 'txn-history-detail-value';
+          return `<li class="txn-history-detail">
+            <span class="txn-history-detail-label">${escapeHtml(line.label)}</span>
+            <span class="${valClass}">${escapeHtml(line.value)}</span>
+          </li>`;
+        }).join('');
+        return `<ul class="txn-history-details">${items}</ul>`;
+      }
+
+      function stateHistoryItemClass(entry, isLatest) {
+        const state = String(entry.to_state || '').toLowerCase().replace(/_/g, '-');
+        const classes = ['txn-history-item'];
+        if (isLatest) classes.push('is-latest');
+        if (state) classes.push(`state-${state}`);
+        return classes.join(' ');
+      }
+
       // ========================================
       // CANCELLATION MODAL (Created / Funded_Locked)
       //
@@ -8881,11 +9426,6 @@
         }
       });
       
-      // Load active transactions on page load
-      setTimeout(() => {
-        loadActiveTransactions();
-      }, 1000);
-      
       // Refresh transactions every 10 seconds (Task 7.3 - auto-release support)
       setInterval(() => {
         loadActiveTransactions();
@@ -8996,7 +9536,7 @@
           
           // Show loading state
           document.getElementById('state-history-container').innerHTML = `
-            <div class="flex items-center justify-center py-8">
+            <div class="txn-details-loading">
               <svg class="animate-spin h-8 w-8 text-brand-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -9015,6 +9555,7 @@
           
           // Populate transaction details
           document.getElementById('details-transaction-id').textContent = transaction.transaction_id;
+          document.getElementById('details-transaction-id').title = transaction.transaction_id || '';
           document.getElementById('details-state').textContent = formatState(transaction.state);
           document.getElementById('details-price').textContent = `₦${transaction.price.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
           document.getElementById('details-item-description').textContent = transaction.item_description;
@@ -9055,8 +9596,8 @@
                 trustLabel.textContent = isSeller ? "Buyer's Trust Score" : "Seller's Trust Score";
                 trustValue.textContent = tsResult.score + '/100';
                 trustFill.style.width = tsResult.score + '%';
-                trustFill.className = 'h-full transition-all rounded-full ' +
-                  (tsResult.score >= 70 ? 'bg-green-500' : tsResult.score >= 40 ? 'bg-yellow-500' : 'bg-red-500');
+                const tier = tsResult.score >= 70 ? 'high' : tsResult.score >= 40 ? 'mid' : 'low';
+                trustFill.className = 'txn-details-trust-fill txn-details-trust-fill--' + tier;
                 trustSection.style.display = '';
               } else {
                 trustSection.style.display = 'none';
@@ -9097,33 +9638,19 @@
             stateHistory = await stateMachineService.getStateHistory(transactionId);
           } catch (historyErr) {
             console.warn('[Dashboard] State history unavailable:', historyErr);
-            historyContainer.innerHTML = `
-              <div class="text-center py-4 text-brand-subtext">
-                <p>State history unavailable right now</p>
-              </div>
-            `;
+            historyContainer.innerHTML = '<div class="txn-history-empty">State history unavailable right now</div>';
             console.log('Transaction details loaded (without state history)');
             return;
           }
 
           if (!stateHistory || stateHistory.length === 0) {
-            historyContainer.innerHTML = `
-              <div class="text-center py-4 text-brand-subtext">
-                <p>No state history available</p>
-              </div>
-            `;
+            historyContainer.innerHTML = '<div class="txn-history-empty">No state history yet</div>';
           } else {
-            historyContainer.innerHTML = '';
-            
-            // Sort by timestamp (newest first)
-            const sortedHistory = [...stateHistory].sort((a, b) => 
+            const sortedHistory = [...stateHistory].sort((a, b) =>
               new Date(b.changed_at) - new Date(a.changed_at)
             );
-            
-            sortedHistory.forEach((entry, index) => {
-              const historyItem = document.createElement('div');
-              historyItem.className = 'flex items-start gap-3 p-4 bg-brand-gray rounded-lg';
-              
+
+            historyContainer.innerHTML = sortedHistory.map((entry, index) => {
               const timestamp = new Date(entry.changed_at);
               const formattedTime = timestamp.toLocaleString('en-NG', {
                 year: 'numeric',
@@ -9132,32 +9659,32 @@
                 hour: '2-digit',
                 minute: '2-digit'
               });
-              
-              const isFirst = index === 0;
-              const stateColor = isFirst ? 'text-brand-green' : 'text-brand-dark';
-              
-              historyItem.innerHTML = `
-                <div class="flex-shrink-0 mt-1">
-                  <div class="w-3 h-3 rounded-full ${isFirst ? 'bg-brand-green' : 'bg-brand-dark'}"></div>
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center justify-between mb-1">
-                    <p class="font-semibold ${stateColor}">${formatState(entry.to_state)}</p>
-                    <p class="text-xs text-brand-subtext">${formattedTime}</p>
+              const isLatest = index === 0;
+              const meta = parseStateHistoryNotes(entry.notes);
+              const details = formatStateHistoryDetails(meta, entry, transaction, currentUserId);
+              const detailsHtml = renderStateHistoryDetailsHtml(details);
+              const fromHtml = entry.from_state
+                ? `<p class="txn-history-from">Previously · ${escapeHtml(formatState(entry.from_state))}</p>`
+                : '';
+
+              return `
+                <div class="${stateHistoryItemClass(entry, isLatest)}">
+                  <div class="txn-history-rail" aria-hidden="true">
+                    <span class="txn-history-dot"></span>
+                    <span class="txn-history-line"></span>
                   </div>
-                  ${entry.from_state ? `
-                    <p class="text-sm text-brand-subtext">From: ${formatState(entry.from_state)}</p>
-                  ` : ''}
-                  ${entry.notes ? `
-                    <p class="text-sm text-brand-subtext mt-1">${entry.notes}</p>
-                  ` : ''}
-                </div>
-              `;
-              
-              historyContainer.appendChild(historyItem);
-            });
+                  <div class="txn-history-card">
+                    <div class="txn-history-head">
+                      <span class="txn-history-state">${escapeHtml(formatState(entry.to_state))}</span>
+                      <time class="txn-history-time" datetime="${escapeAttr(entry.changed_at || '')}">${escapeHtml(formattedTime)}</time>
+                    </div>
+                    ${fromHtml}
+                    ${detailsHtml}
+                  </div>
+                </div>`;
+            }).join('');
           }
-          
+
           console.log('Transaction details loaded successfully');
           
         } catch (error) {
@@ -9172,11 +9699,7 @@
           // to a flash-and-close that the user can't read.
           const container = document.getElementById('state-history-container');
           if (container) {
-            container.innerHTML = `
-              <div class="text-center py-4 text-brand-subtext">
-                <p>Unable to load transaction details. Please close and try again.</p>
-              </div>
-            `;
+            container.innerHTML = '<div class="txn-history-empty">Unable to load this section. Please close and try again.</div>';
           }
         }
       }
@@ -9189,6 +9712,31 @@
       document.getElementById('btn-close-details').addEventListener('click', () => {
         closeModal('transaction-details-modal');
       });
+
+      const btnCopyTxnId = document.getElementById('btn-copy-details-txn-id');
+      if (btnCopyTxnId) {
+        btnCopyTxnId.addEventListener('click', async () => {
+          const idEl = document.getElementById('details-transaction-id');
+          const value = (idEl && idEl.textContent || '').trim();
+          if (!value || value === '-') return;
+          try {
+            await navigator.clipboard.writeText(value);
+          } catch (_) {
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (__) {}
+            document.body.removeChild(ta);
+          }
+          btnCopyTxnId.classList.add('is-copied');
+          btnCopyTxnId.setAttribute('aria-label', 'Copied');
+          setTimeout(() => {
+            btnCopyTxnId.classList.remove('is-copied');
+            btnCopyTxnId.setAttribute('aria-label', 'Copy transaction ID');
+          }, 1400);
+        });
+      }
       
       document.getElementById('transaction-details-modal').addEventListener('click', (e) => {
         if (e.target.id === 'transaction-details-modal') {

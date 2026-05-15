@@ -676,6 +676,7 @@
         try {
           // Automatically initialize all schemas (users + escrow)
           await dbService.initializeAllSchemas();
+          sessionStorage.setItem('scrowpay_schemas_ready', '1');
           console.log('[App] ✅ All database schemas ready');
         } catch (schemaError) {
           console.error('[App] ⚠️ Schema initialization warning:', schemaError);
