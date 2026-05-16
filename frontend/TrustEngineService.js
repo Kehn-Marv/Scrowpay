@@ -133,7 +133,7 @@ class TrustEngineService {
     }
 
     // ---- AI / Anomaly risk factor ----
-    // The AnomalyDetectionEngine (rules + ML + behavioral) produces a
+    // The AnomalyDetectionEngine (rules + ML) produces a
     // composite 0–100 risk score. We fold it in as a negative factor:
     // a score of 0 means the engine sees nothing unusual (no penalty);
     // a score of 100 means full-spectrum red flags (up to -20).

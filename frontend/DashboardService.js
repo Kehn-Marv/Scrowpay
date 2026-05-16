@@ -6,7 +6,7 @@
  * - Balance refresh (available and locked)
  * - Transaction list refresh
  * - Polling for real-time updates (30s Squad API, 10s Turso DB)
- * - Service coordination (TransactionService, BalanceService, TrustScoreService, AIRiskService, StateMachineService)
+ * - Service coordination (TransactionService, BalanceService, TrustScoreService, IsolationForestService, StateMachineService)
  * - Optimistic UI updates
  * - Error handling and recovery
  * 
@@ -34,8 +34,8 @@ class DashboardService {
     this.trustScoreService = new TrustScoreService(config);
     this.stateMachineService = new StateMachineService(config);
     
-    // AIRiskService is optional (may not be implemented yet)
-    this.aiRiskService = config.aiEngine ? new AIRiskService(config) : null;
+    // IsolationForestService is optional (Python engine may be offline in dev)
+    this.isolationForestService = config.aiEngine ? new IsolationForestService(config) : null;
     
     // Polling configuration (Requirement 11.3, 11.4)
     this.pollingIntervals = {

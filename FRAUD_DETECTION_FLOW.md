@@ -50,33 +50,27 @@ if (anomalyEngine && trustEngine) {
 
 ## What Gets Evaluated?
 
-### The **AnomalyDetectionEngine** runs 3 sub-detectors in parallel:
+### The **AnomalyDetectionEngine** runs **2** sub-detectors in parallel:
 
-1. **RiskProfilingService** (Rules Engine)
+1. **RiskEngineService** (Rules Engine)
    - Deterministic, in-browser checks
    - Checks counterparty trust score
    - Checks transaction amount vs. account age
    - Checks time of day patterns
    - Returns: 0-100 risk score + flags
 
-2. **AIRiskService** (ML Engine)
+2. **IsolationForestService** (ML Engine)
    - Calls Python Isolation Forest model at `localhost:5000`
    - Extracts features: amount, velocity, account age, device fingerprint, time of day
    - Returns: 0-100 risk score + anomaly indicators
    - **Fail-OPEN**: If the Python engine is offline, it returns score=0 (pass)
 
-3. **BehavioralSignalsService** (Behavioral Engine)
-   - Session-based behavioral analysis
-   - Device fingerprinting (FingerprintJS)
-   - PIN paste detection
-   - Shared device detection
-   - Returns: 0-100 risk score + behavioral flags
-
 ### Composite Score Calculation
-The engine combines all three scores with weighted averages:
-- **Rules**: 45% weight
-- **ML**: 30% weight  
-- **Behavioral**: 25% weight
+The engine combines both scores with weighted averages (weights re-normalize if one layer is offline):
+- **Rules**: 60% weight
+- **ML**: 40% weight
+
+`behavioral_score` in `anomaly_decisions` remains **NULL** for new rows (column kept for older data / schema compatibility).
 
 **Decision Thresholds:**
 - `composite_score >= 75` → **BLOCK**
@@ -100,10 +94,9 @@ trustEngine.onAnomalyEvaluated({
 ```
 
 The **TrustEngineService** then:
-1. Records the anomaly evaluation in the database
-2. Updates the user's trust score based on the composite score
-3. Applies penalties/boosts based on the decision (block/review/pass)
-4. Recalculates the overall trust score using the **TrustScoreService**
+1. Writes **`last_anomaly_score`** on the user row (overwrite)
+2. Calls **`applySignal`** so `computeScore` runs with the new anomaly input
+3. Persists the updated **`trust_score`** and **`trust_score_history`**
 
 ---
 
@@ -158,7 +151,7 @@ Updated trust scores:
 The system used to fail-CLOSED (block funding if AI engine was offline), but this caused problems:
 - During development, the Python AI engine at `localhost:5000` is often offline
 - This would brick ALL funding operations
-- The **RiskProfilingService** (deterministic rules) already runs in-browser and shows risk warnings
+- The **RiskEngineService** (deterministic rules) already runs in-browser and shows risk warnings
 
 **Current Approach:**
 - Funding proceeds immediately (better UX)

@@ -1,9 +1,9 @@
 /**
- * RiskProfilingService - Predictive Risk Profiling (Pre-Transaction Intervention)
+ * RiskEngineService — Deterministic risk engine (pre-transaction)
  *
  * Deterministic, browser-side rules engine that produces a risk profile
  * for a transaction BEFORE money is committed. The score is independent
- * of the legacy `AIRiskService` (which calls an external Python engine).
+ * of `IsolationForestService` (which calls the external Python engine).
  *
  * OUTPUT
  * ------
@@ -36,7 +36,7 @@
  * rules below carry the entire pre-fund risk evaluation.
  */
 
-class RiskProfilingService {
+class RiskEngineService {
   /**
    * @param {Object} config
    * @param {Object} config.turso
@@ -228,7 +228,7 @@ class RiskProfilingService {
         ]
       );
     } catch (e) {
-      console.warn('[RiskProfiling] cache write failed (non-fatal):', e.message);
+      console.warn('[RiskEngine] cache write failed (non-fatal):', e.message);
     }
   }
 
@@ -277,7 +277,7 @@ class RiskProfilingService {
         evaluatedAt
       };
     } catch (e) {
-      console.warn('[RiskProfiling] getCached failed:', e.message);
+      console.warn('[RiskEngine] getCached failed:', e.message);
       return null;
     }
   }
@@ -319,7 +319,7 @@ class RiskProfilingService {
         totalTxns: Number(cell(2)) || 0
       };
     } catch (e) {
-      console.warn('[RiskProfiling] _fetchCounterpartyStats failed:', e.message);
+      console.warn('[RiskEngine] _fetchCounterpartyStats failed:', e.message);
       return fallback;
     }
   }
@@ -345,5 +345,5 @@ class RiskProfilingService {
 }
 
 if (typeof window !== 'undefined') {
-  window.RiskProfilingService = RiskProfilingService;
+  window.RiskEngineService = RiskEngineService;
 }

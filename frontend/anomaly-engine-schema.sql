@@ -78,8 +78,8 @@ ALTER TABLE ai_risk_logs ADD COLUMN sub_scores TEXT;               -- JSON: {rul
 
 -- ----------------------------------------------------------------------------
 -- 5. DEVICE FINGERPRINTS
---    Tracks which fingerprints have been seen by which users. Used by the
---    BehavioralSignalsService to detect multi-account-from-device patterns.
+--    Tracks which fingerprints have been seen by which users (device ↔ user
+--    link for audit and downstream risk features).
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS device_fingerprints (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

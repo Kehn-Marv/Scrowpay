@@ -155,10 +155,9 @@
       } catch (_) {}
 
       // 3. Decide whether to email.
-      // DISABLED: Resend free tier only supports sending to the owner
-      // email (kehnmarvv@gmail.com) which is reserved for signup OTP.
-      // All other notification emails are disabled until a domain is
-      // verified on Resend. In-app notifications still work normally.
+      // DISABLED: Until a sending domain is verified on Resend, outbound
+      // notification email is off (free-tier limits). In-app notifications
+      // still work normally.
       const shouldEmail = false;
       let emailed = false;
       if (shouldEmail) {

@@ -1,226 +1,162 @@
 # User Flow — Step-by-Step Product Walkthrough
 
-This document walks through every screen and interaction in ScrowPay, from first visit to completed transaction.
+This document walks through every screen and interaction in ScrowPay, from first visit to completed transaction. It is kept aligned with the **current** frontend (`web.html`, `account-creation.html`, `sign-in.html`, `dashboard.html`, `admin.html`) and services.
 
 ---
 
 ## 1. Landing Page (`web.html`)
 
 The user arrives at the ScrowPay landing page which explains:
-- **Hero section** — "Don't pay strangers. Pay through ScrowPay." with a clear CTA
-- **How it works** — 4-step visual: Create → Inspect & Fund → Deliver → Release
-- **Trust Score explained** — Three-tier breakdown (Safe / Caution / High Risk)
-- **Why ScrowPay** — Speed, security, AI protection, simplicity
+
+- **Hero section** — Value proposition with CTAs to create an account or sign in
+- **How it works** — **Four** steps: **Create or Join** → **Inspect & Fund** → **Deliver & Inspect** → **Release or Dispute**
+- **Trust Score explained** — 0–100 score with plain-language bands (**Safe to Proceed**, **Proceed with Caution**, **High Risk**) that map to the dashboard’s underlying tiers (**Trusted / Elite**, **Building**, **Low** — see `TrustEngineService.tierFor()`)
+- **Why ScrowPay** — Speed, security, AI-assisted flows, simplicity
 - **Get Started CTA** — Routes to account creation
 
 ---
 
 ## 2. Account Creation (`account-creation.html`)
 
-A 9-stage wizard that onboards users with full identity verification:
+A **10-stage** wizard (`StageManager.totalStages = 10`). Order in code:
 
-### Stage 1: Phone Number
-- User enters Nigerian mobile number (+234 format)
-- Input validation ensures correct format
+| Stage | What the user does |
+|------|---------------------|
+| **1** | **Phone + email** — Nigerian mobile (+234…) and email; duplicates checked against Turso when online |
+| **2** | **Email OTP** — 6-digit code (`DigitInputBox(6)`). Intended path: `EmailOTPService` + Resend via AI-engine proxy. **Resend** in demo shows a toast to use test code **`123456`** if the email engine was unreachable at stage 1 |
+| **3** | **BVN** — 11 digits, format validation + duplicate check |
+| **4** | **Personal details** — First / middle / last name, gender, DOB (must match BVN for Squad/NIBSS) |
+| **5** | **Virtual account creation** — Squad `createVirtualAccount`; BVN matched to NIBSS; NUBAN returned on success |
+| **6** | **Face verification intro** — Explains why liveness runs next |
+| **7** | **Blink liveness** — MediaPipe Face Mesh; on success a reference frame may upload to **Cloudinary** (non-blocking; signup still completes if upload fails) |
+| **8** | **Address** — State → LGA → ward from `state-lga-area.json` (current + optional permanent address) |
+| **9** | **PIN setup** — **6-digit** PIN (`PINService.validatePIN`), confirm on-device; **SHA-256** hash with phone as salt before `saveUser()` |
+| **10** | **Success** — Account created; link to sign in / dashboard |
 
-### Stage 2: OTP Verification
-- 6-digit OTP sent to phone (dev mode: `123456`)
-- 60-second cooldown between resends
-- 3 attempts before lockout
-
-### Stage 3: Identity Document
-- User enters BVN
-- 11-digit BVN entry with format validation
-
-### Stage 4: Personal Details
-- First name, last name, middle name (optional)
-- Date of birth (date picker)
-- Gender selection
-- **Critical:** These must match BVN records — Squad validates against NIBSS
-
-### Stage 5: Liveness Check
-- Camera activates for MediaPipe Face Mesh blink detection
-- User must blink naturally to prove liveness
-- Captured frame is uploaded to Cloudinary as face reference photo
-- This photo is later used for face re-verification on high-risk actions
-
-### Stage 6: Address
-- State selection (all 36 Nigerian states + FCT)
-- LGA selection (filtered by state)
-- Area/ward selection (filtered by LGA)
-- Data sourced from `state-lga-area.json`
-
-### Stage 7: PIN Setup
-- 4-digit transaction PIN
-- Confirmation re-entry
-- PIN is hashed before storage
-
-### Stage 8: Virtual Account Creation
-- Squad API is called with all collected data
-- BVN is validated against NIBSS (name, DOB, gender, phone)
-- On success: a real NUBAN account number is created
-- On BVN mismatch: user is informed which field doesn't match
-- Progress indicator shows the API call is in progress (up to 45s)
-
-### Stage 9: Welcome
-- Success confirmation with account number displayed
-- "Go to Dashboard" button
+**Not in this flow:** separate “phone SMS OTP” stage — phone ownership is implied via BVN + Squad; email OTP is the primary second factor on device.
 
 ---
 
 ## 3. Sign In (`sign-in.html`)
 
-- Phone number + 4-digit PIN
-- Session created with device fingerprint
-- Redirects to dashboard on success
+- **Phone** + **6-digit PIN** (same rules as signup; hashed with phone-as-salt server-side compare)
+- **`SessionService`** — session blob in `localStorage` (`scrowpay_session`), expiry / inactivity rules as implemented in `SessionService.js`
+- Redirect to **`dashboard.html`** on success (dashboard `<head>` may bounce unauthenticated users back to sign-in)
 
 ---
 
 ## 4. Dashboard (`dashboard.html`)
 
-The main application interface with multiple tabs/sections:
+Main SPA: vanilla JS + Tailwind, no bundler. Heavy inline script orchestrates services loaded in a fixed order (see `frontend/README.md`).
 
-### 4a. Balance Panel
-- **Available balance** — Fetched from Squad API (30s polling with cache)
-- **Locked balance** — Calculated from active escrow transactions in Turso DB
-- **Total balance** — Available + Locked (with invariant validation)
-- Balance formatted as ₦X,XXX.XX
+### 4a. Balance panel
 
-### 4b. Create Transaction (Seller)
-1. Enter item description (10-500 characters)
-2. Set price (₦100 – ₦10,000,000)
-3. Set delivery timeline (1-90 days)
-4. Set inspection period (1-14 days)
-5. Submit → Transaction ID generated (`TXN-{uuid}`)
-6. Share Transaction ID with buyer (copy button provided)
+- **Available / locked / total** — `BalanceService` + Turso; merchant balance from Squad where configured
+- **Hackathon / demo path:** funding path may use per-user **`demo_balance`** (see fund handler) while Squad remains the real rail for VA creation, payouts, and releases elsewhere
 
-### 4c. Join Transaction (Buyer)
-1. Enter Transaction ID received from seller
-2. System displays:
-   - Item description and price
-   - Seller's Trust Score with tier badge (Safe / Caution / High Risk)
-   - AI risk assessment of the transaction
-3. If risk score is acceptable, buyer confirms to join
+### 4b. Create transaction (seller)
 
-### 4d. Fund Escrow (Buyer)
-1. Buyer clicks "Fund" on a joined transaction
-2. Money transfers to the Squad holding virtual account
-3. Transaction state changes: `Created → Funded_Locked`
-4. Both parties receive notifications (bell + email)
+1. Item description (**10–500** characters) — `TransactionService.validateTransactionData`
+2. Price (**₦100 – ₦10,000,000**)
+3. Delivery timeline (**1–90** days)
+4. Submit → `TransactionService.generateTransactionId()` → IDs look like **`TXN-{uuid}`** (not `SCR-…`)
+5. Share **transaction ID** with the buyer (copy affordances in UI)
 
-### 4e. Mark as Shipped (Seller)
-1. Seller clicks "Mark Shipped" after sending the item
-2. Transaction state: `Funded_Locked → In_Transit`
-3. Both parties notified
-4. Delivery countdown timer starts
+**Inspection window:** validated in `InputValidationService` (0–14 days) for legacy/API compatibility; the **create UI may not collect it** (field retired from UX — see comment in `InputValidationService.validateInspectionWindow`).
 
-### 4f. Confirm Receipt (Buyer)
-1. Buyer inspects the received item
-2. Clicks "Confirm Receipt"
-3. Transaction state: `In_Transit → Completed`
-4. Money releases from holding account to seller via Squad NIP transfer
-5. Trust scores updated for both parties
+### 4c. Join transaction (buyer)
 
-### 4g. Raise Dispute (Buyer)
-1. Instead of confirming, buyer clicks "Raise Dispute"
-2. Enters dispute description (free text)
-3. Uploads up to 4 photos as evidence
-4. Transaction state: `In_Transit → Disputed`
-5. AI Dispute Agent (Gemini) analyzes the case:
-   - **High confidence (>90%)** → Auto-resolved, funds move immediately
-   - **Medium confidence (50-90%)** → Routed to admin with AI recommendation
-   - **Low confidence (<50%)** → Routed to admin without recommendation
-6. Both parties notified of resolution
+1. Enter **transaction ID** (`TXN-…`)
+2. Sees item, price, proof thumbnails if present, and seller **trust score / tier** (from `TrustEngineService` with legacy fallback where wired)
+3. Accept terms → if joining as **buyer** on a seller-created escrow, flow opens **Fund** modal  
+   **Note:** Full **AnomalyDetectionEngine** scoring is **not** wired to block this step in the current build; the fund modal’s risk block is often **hidden**, and **`anomalyEngine.evaluate()`** runs **after** a successful fund (post-fund, non-blocking) — see `FRAUD_DETECTION_FLOW.md`
 
-### 4h. Withdraw Funds
-1. Select bank from dropdown (21 Nigerian banks)
-2. Enter account number (10 digits)
-3. System verifies account name via Squad lookup
-4. Enter amount and PIN
-5. **If amount ≥ ₦500,000:** Face re-verification modal opens
-   - Live camera capture
-   - Gemini compares with signup reference photo
-   - Only proceeds on "same person" verdict
-6. Transfer initiated via Squad NIP payout
-7. Confirmation with transaction reference
+### 4d. Fund escrow (buyer)
 
-### 4i. Notification Feed
-- Bell icon with unread count
-- Per-user notification feed
-- Categories: transaction updates, disputes, security alerts
-- Each state transition fires a notification + optional email
+1. Buyer confirms amount and counterparty trust display
+2. **Current implementation:** validates **`demo_balance` ≥ price**, debits buyer, `transactionService.updateBuyer`, then `stateMachineService.transitionState(…, 'Funded_Locked', …)` with `buyerAccount: 'DEMO_BALANCE'`
+3. **After success:** background `anomalyEngine.evaluate` + `trustEngine.onAnomalyEvaluated` when those services initialized (`post_fund` metadata)
+4. Notifications / toasts as wired
 
-### 4j. Trust Score Display
-- Current score (0-100) with tier badge
-- Score history sparkline
-- "What changed?" tooltip showing recent events
+### 4e. Mark as shipped (seller)
+
+- `Funded_Locked → In_Transit`; notifications; delivery / auto-release timers per `StateMachineService`
+
+### 4f. Confirm receipt (buyer)
+
+- `In_Transit → Completed`; payout side effects via Squad transfer service where configured; **trust** updates via `TrustEngineService` hooks on terminal events
+
+### 4g. Raise dispute (buyer)
+
+1. Dispute description + up to **4** photos (Cloudinary)
+2. `In_Transit → Disputed`
+3. **`DisputeAgentService`** (Gemini multimodal) produces a structured verdict  
+4. **`DisputeService.resolveWithAgentVerdict`:** **`confidence > 90`** (same threshold as **> 90%**, i.e. `AUTO_RESOLUTION_THRESHOLD = 90` on 0–100 scale) → **auto** resolution path; **71–90** → `ai_assisted`; **≤ 90** for auto — lower scores go to **manual / admin** handling as implemented
+
+### 4h. Withdraw funds
+
+- Bank list, account lookup, amount + **6-digit PIN** confirmation  
+- **Large withdrawals:** face re-verification (`FaceVerificationService` + Gemini vs. signup reference) when the dashboard threshold is met (e.g. **≥ ₦500,000**)
+
+### 4i. Notification feed
+
+- Bell + `NotificationService`; optional email via AI-engine proxy when configured
+
+### 4j. Trust score display
+
+- **0–100** with tier from **`TrustEngineService`**: **Low** (0–39), **Building** (40–69), **Trusted** (70–94), **Elite** (95–100)  
+- History / tooltips from `trust_score_history` where implemented
+
+### 4k. First dashboard visit
+
+- **`TrustScoreService.initializeTrustScore(userId, 50)`** for brand-new users (legacy table / compatibility)  
+- Optional **onboarding tooltips** controlled by `localStorage` flag `scrowpay_first_time_user`
 
 ---
 
 ## 5. Admin Console (`admin.html`)
 
-Accessible only to users with `is_admin = 1` in the database.
+Only if **`users.is_admin = 1`**.
 
-### 5a. Pending Dispute Queue
-- List of all transactions in `Disputed` state
-- Each shows: transaction details, buyer complaint, photo evidence, AI agent's recommendation + confidence
-- Admin can: Refund buyer / Release to seller / Split 50-50
-- Resolution notes field for audit trail
-
-### 5b. Face Verification Audit
-- Log of all face re-verification attempts
-- Filterable by verdict: `same_person` / `different_person` / `inconclusive`
-- Shows timestamp, user, action attempted, and result
-
-### 5c. Risky Transaction Monitor
-- Transactions with risk score ≥ 50
-- Sorted by risk level
-- Quick view of risk factors and current state
-
-### 5d. User Directory
-- Searchable list of all users
-- Trust scores, account status, transaction counts
+- Pending disputes, face verification audit, risky transaction views, user directory — as implemented in `admin.html` + services
 
 ---
 
-## 6. State Machine
+## 6. State machine (transactions)
 
-The complete transaction lifecycle follows a deterministic state machine:
+Runtime schema (see `turso-db-service.js` / migrations) allows:
+
+**`Created` · `Funded_Locked` · `In_Transit` · `Disputed` · `Completed` · `Cancelled` · `Refunded`**
+
+`StateMachineService.validTransitions` encodes the happy-path graph among the first five; **cancel / refund** paths may be performed via **`TransactionService`** and DB updates (e.g. initiator cancel, mutual cancellation). Treat **Cancelled** / **Refunded** as **terminal** bookkeeping states when present.
+
+High-level diagram (simplified):
 
 ```
-                    ┌─────────────┐
-                    │   Created   │
-                    └──────┬──────┘
-                           │ Buyer funds
-                    ┌──────▼──────┐
-             ┌──────│ Funded_Locked│──────┐
-             │      └──────┬──────┘      │
-         Cancel            │ Seller      Cancel
-             │             │ ships       │
-             ▼             ▼             ▼
-       ┌──────────┐ ┌──────────┐  ┌──────────┐
-       │Cancelled │ │In_Transit│  │ Refunded │
-       └──────────┘ └─────┬────┘  └──────────┘
-                          │
-                   ┌──────┴──────┐
-                   │             │
-            Confirm│         Dispute
-                   ▼             ▼
-            ┌──────────┐  ┌──────────┐
-            │Completed │  │ Disputed │
-            └──────────┘  └─────┬────┘
-                                │
-                         AI / Admin resolves
-                                │
-                     ┌──────────┴──────────┐
-                     ▼                     ▼
-              ┌──────────┐          ┌──────────┐
-              │ Refunded │          │Completed │
-              └──────────┘          └──────────┘
+                         Created
+                           │
+                    (buyer funds)
+                           ▼
+                    Funded_Locked
+                     /    |     \
+         (cancel) /      |      \ (ship)
+                 /       |       \
+                ▼        ▼        ▼
+          Cancelled  In_Transit  (rare direct paths per code)
+                       /    \
+            (confirm) /      \ (dispute)
+                     ▼        ▼
+               Completed   Disputed
+                              │
+                     (AI / admin resolution)
+                              ▼
+                    Completed / Refunded
 ```
 
-Each state transition:
-- Is logged to `transaction_state_history`
-- Fires a notification to both parties
-- Sends an email (if Resend is configured)
-- Updates trust scores (on terminal states)
+Each successful **`StateMachineService.transitionState`** logs **`transaction_state_history`** and runs side effects (notifications, trust hooks, timers) as coded.
+
+---
+
+## 7. Accuracy note (docs vs product ambition)
+
+Some **marketing** and **hackathon** copy still describes “block before fund” and a third **Gemini** layer on pre-fund risk. **Today’s dashboard wiring** runs **`AnomalyDetectionEngine.evaluate()` after a successful fund** and does **not** re-enable the old Gemini-on-listing path inside **`RiskEngineService`** (removed by design). For the **canonical** behaviour of the anomaly + trust pipeline, prefer **`FRAUD_DETECTION_FLOW.md`** and **`AnomalyDetectionEngine.js`** comments alongside this file.

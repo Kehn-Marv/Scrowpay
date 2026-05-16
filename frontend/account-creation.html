@@ -724,7 +724,6 @@
         this.inputType = inputType;
         this.inputs = [];
         this.container = null;
-        this.actualValues = [];
       }
       
       render() {
@@ -733,26 +732,17 @@
         
         for (let i = 0; i < this.maxDigits; i++) {
           const input = document.createElement('input');
-          input.type = 'text';
+          input.type = this.inputType === 'masked' ? 'password' : 'text';
           input.maxLength = 1;
           input.className = 'digit-input';
-          
-          if (this.inputType === 'masked') this.actualValues[i] = '';
+          if (this.inputType === 'masked') {
+            input.inputMode = 'numeric';
+            input.autocomplete = 'off';
+          }
           
           input.addEventListener('input', (e) => {
             const digitValue = e.target.value.replace(/\D/g, '');
-            
-            if (this.inputType === 'masked') {
-              if (digitValue) {
-                this.actualValues[i] = digitValue.charAt(0);
-                e.target.value = '•';
-              } else {
-                this.actualValues[i] = '';
-                e.target.value = '';
-              }
-            } else {
-              e.target.value = digitValue;
-            }
+            e.target.value = digitValue ? digitValue.charAt(0) : '';
             
             if (e.target.value && i < this.maxDigits - 1) {
               this.inputs[i + 1].focus();
@@ -775,19 +765,13 @@
       }
       
       getValue() {
-        if (this.inputType === 'masked') return this.actualValues.join('');
         return this.inputs.map(input => input.value).join('');
       }
       
       setValue(value) {
         const digits = value.toString().split('');
         this.inputs.forEach((input, index) => {
-          if (this.inputType === 'masked') {
-            this.actualValues[index] = digits[index] || '';
-            input.value = digits[index] ? '•' : '';
-          } else {
-            input.value = digits[index] || '';
-          }
+          input.value = digits[index] || '';
         });
       }
       
@@ -797,7 +781,6 @@
       
       clear() {
         this.inputs.forEach(input => { input.value = ''; });
-        if (this.inputType === 'masked') this.actualValues = [];
       }
     }
 
@@ -981,8 +964,6 @@
         }
         if (registrationState.email) {
           emailInput.value = registrationState.email;
-        } else {
-          emailInput.value = 'kehnmarvv@gmail.com';
         }
         
         phoneInput.addEventListener('input', (e) => {
@@ -1156,7 +1137,7 @@
         
         document.getElementById('back-btn').addEventListener('click', () => this.goToPreviousStage());
         
-        const otpInputBox = new DigitInputBox(6);
+        const otpInputBox = new DigitInputBox(6, null, 'masked');
         const otpContainer = document.getElementById('otp-input-container');
         otpContainer.appendChild(otpInputBox.render());
         otpInputBox.focus();

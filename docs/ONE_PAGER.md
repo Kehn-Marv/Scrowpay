@@ -16,11 +16,11 @@ There is no consumer-grade escrow in Nigeria. The existing options are either ba
 
 ScrowPay holds money in a neutral account until both sides follow through. If there's a problem, AI resolves it.
 
-**The flow:** Seller lists an item → Buyer funds escrow (money goes to a Squad holding account) → Goods are delivered → Buyer confirms → Money releases to seller.
+**The flow:** Seller lists an item → Buyer funds escrow (money is held per your payment configuration — Squad holding + NIP in production; **demo `demo_balance` path** in the hackathon dashboard) → Goods are delivered → Buyer confirms → Money releases to seller.
 
 If something goes wrong, the buyer raises a dispute. Our AI agent reviews the complaint and photo evidence and makes a ruling. High-confidence cases resolve automatically. Ambiguous ones go to a human moderator.
 
-Before any money moves, a two-stage fraud detection pipeline (rule engine + Isolation Forest ML model) scores the transaction and blocks anything suspicious.
+**Risk & trust:** Deterministic rules plus an **Isolation Forest** model (Flask) feed **`AnomalyDetectionEngine`**. In the **current** `dashboard.html` wiring, `evaluate()` runs **after** a successful fund (non-blocking) and updates **`TrustEngineService`** — it does **not** block the fund click today. See `FRAUD_DETECTION_FLOW.md` for the exact sequence.
 
 ---
 
@@ -40,9 +40,9 @@ No Squad = no accounts, no funding, no payouts. It's the entire financial layer.
 
 ## Pillars Addressed
 
-**AI Automation** — Pre-funding fraud scoring (deterministic rules + Isolation Forest) blocks risky transactions before money moves. Gemini-powered dispute agent auto-resolves high-confidence cases without human intervention.
+**AI Automation** — Post-funding anomaly scoring (deterministic rules + Isolation Forest) runs automatically and feeds the trust engine; **pre-fund blocking** is a documented next step, not the current dashboard gate. Gemini-powered dispute agent auto-resolves high-confidence cases without human intervention.
 
-**Use of Data** — Real-time behavioral signals (device fingerprint, transaction velocity, time-of-day patterns) feed into risk profiles. Trust Scores (0–100) update after every event and get smarter with usage.
+**Use of Data** — Real-time transaction and device signals (fingerprint, velocity, time-of-day patterns) feed the ML feature vector and Turso audit tables. Trust Scores (0–100) update after terminal lifecycle events **and** after post-fund anomaly evaluation.
 
 **Financial Innovation** — First consumer-grade AI-protected escrow for Nigerian informal commerce. Combines identity verification, escrow, fraud prevention, and reputation in one product — none of the existing solutions do all four.
 

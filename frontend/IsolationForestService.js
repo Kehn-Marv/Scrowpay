@@ -1,8 +1,8 @@
 /**
- * AIRiskService - AI Risk Scoring Integration for ScrowPay Escrow Dashboard
+ * IsolationForestService - Isolation Forest ML client for ScrowPay Escrow Dashboard
  * 
- * This service provides AI-powered risk scoring operations including:
- * - Transaction risk scoring via AI Engine HTTP API
+ * This service provides Isolation Forest risk scoring operations including:
+ * - Transaction risk scoring via Isolation Forest engine HTTP API
  * - Feature extraction and formatting
  * - Timeout handling (5 seconds)
  * - Fallback to "fail" verdict on errors
@@ -11,12 +11,12 @@
  * Requirements: 5.1, 5.2, 5.3, 5.6, 5.7, 5.8, 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7
  */
 
-class AIRiskService {
+class IsolationForestService {
   /**
-   * Creates a new AIRiskService instance
+   * Creates a new IsolationForestService instance
    * @param {Object} config - Configuration object
-   * @param {Object} config.aiEngine - AI Engine configuration
-   * @param {string} config.aiEngine.url - AI Engine base URL
+   * @param {Object} config.aiEngine - Isolation Forest engine configuration
+   * @param {string} config.aiEngine.url - Isolation Forest engine base URL
    * @param {Object} config.turso - Turso DB configuration
    * @param {string} config.turso.databaseUrl - Turso database URL
    * @param {string} config.turso.authToken - Turso authentication token
@@ -27,7 +27,7 @@ class AIRiskService {
     this.dbService = new TursoDBService(config.turso.databaseUrl, config.turso.authToken);
     this.connected = false;
     
-    console.log('[AIRiskService] Service initialized with AI Engine URL:', this.aiEngineUrl);
+    console.log('[IsolationForestService] Service initialized with Isolation Forest engine URL:', this.aiEngineUrl);
   }
   
   /**
@@ -38,7 +38,7 @@ class AIRiskService {
     if (!this.connected) {
       await this.dbService.connect();
       this.connected = true;
-      console.log('[AIRiskService] Connected to database');
+      console.log('[IsolationForestService] Connected to database');
     }
   }
   
@@ -47,10 +47,10 @@ class AIRiskService {
    * @private
    * @param {Object} transactionData - Transaction data
    * @param {Object} userContext - User context data
-   * @returns {Object} Feature object for AI engine
+   * @returns {Object} Feature object for Isolation Forest engine
    */
   extractFeatures(transactionData, userContext) {
-    console.log('[AIRiskService] Extracting features:', { transactionData, userContext });
+    console.log('[IsolationForestService] Extracting features:', { transactionData, userContext });
     
     // Calculate transaction velocity (transactions in last 24 hours)
     const transactionVelocity = userContext.transactionVelocity || 0;
@@ -90,7 +90,7 @@ class AIRiskService {
       features.behavioral_signals = userContext.behavioralSignals;
     }
     
-    console.log('[AIRiskService] Features extracted:', features);
+    console.log('[IsolationForestService] Features extracted:', features);
     
     return features;
   }
@@ -123,7 +123,7 @@ class AIRiskService {
   }
   
   /**
-   * Scores a transaction for risk using the AI Engine
+   * Scores a transaction for risk using the Isolation Forest engine
    * @param {Object} transactionData - Transaction data
    * @param {Object} userContext - User context data
    * @returns {Promise<Object>} { success: boolean, risk_score: number, verdict: string, anomaly_indicators: Array, fallback?: boolean, message?: string }
@@ -132,8 +132,8 @@ class AIRiskService {
     const startTime = Date.now();
     
     try {
-      console.log('[AIRiskService] ========================================');
-      console.log('[AIRiskService] Scoring transaction:', transactionData.transaction_id || 'NEW');
+      console.log('[IsolationForestService] ========================================');
+      console.log('[IsolationForestService] Scoring transaction:', transactionData.transaction_id || 'NEW');
       
       // Extract features (Requirement 5.2)
       const features = this.extractFeatures(transactionData, userContext);
@@ -143,7 +143,7 @@ class AIRiskService {
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);
       
       try {
-        // POST to AI engine (Requirement 14.1)
+        // POST to Isolation Forest engine (Requirement 14.1)
         const response = await fetch(`${this.aiEngineUrl}/api/v1/score`, {
           method: 'POST',
           headers: {
@@ -156,7 +156,7 @@ class AIRiskService {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          throw new Error(`AI Engine returned status ${response.status}`);
+          throw new Error(`Isolation Forest engine returned status ${response.status}`);
         }
         
         // Parse response (Requirement 5.3, 14.3)
@@ -164,7 +164,7 @@ class AIRiskService {
         
         const responseTime = Date.now() - startTime;
         
-        console.log('[AIRiskService] ✅ AI Engine response received:', {
+        console.log('[IsolationForestService] ✅ Isolation Forest engine response received:', {
           risk_score: result.risk_score,
           verdict: result.verdict,
           anomaly_indicators: result.anomaly_indicators,
@@ -185,7 +185,7 @@ class AIRiskService {
         
         // Log failed risk check to security logs (Requirement 19.7)
         if (result.verdict === 'fail') {
-          console.log('[AIRiskService] ⚠️ Failed risk check - logging security event');
+          console.log('[IsolationForestService] ⚠️ Failed risk check - logging security event');
           await this.logFailedRiskCheck(
             userContext.userId,
             transactionData.transaction_id || null,
@@ -194,7 +194,7 @@ class AIRiskService {
           );
         }
         
-        console.log('[AIRiskService] ========================================');
+        console.log('[IsolationForestService] ========================================');
         
         return {
           success: true,
@@ -214,11 +214,11 @@ class AIRiskService {
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
-      console.error('[AIRiskService] ❌ AI scoring failed:', error);
+      console.error('[IsolationForestService] ❌ Isolation Forest scoring failed:', error);
       
       // Handle timeout (Requirement 14.5)
       if (error.name === 'AbortError') {
-        console.warn('[AIRiskService] ⚠️ AI Engine timeout - defaulting to "fail" verdict');
+        console.warn('[IsolationForestService] ⚠️ Isolation Forest engine timeout - defaulting to "fail" verdict');
         
         // Log timeout failure
         await this.logRiskScore(
@@ -226,20 +226,20 @@ class AIRiskService {
           userContext.userId,
           100,  // Maximum risk score
           'fail',
-          ['AI engine timeout'],
+          ['Isolation Forest engine timeout'],
           this.extractFeatures(transactionData, userContext),
           'timeout',
           responseTime
         );
         
-        console.log('[AIRiskService] ========================================');
+        console.log('[IsolationForestService] ========================================');
         
         return {
           success: true,
           risk_score: 100,
           risk_flag: true,
           verdict: 'fail',
-          anomaly_indicators: ['AI engine timeout'],
+          anomaly_indicators: ['Isolation Forest engine timeout'],
           fallback: true,
           message: 'Risk scoring timed out. Transaction blocked for security.'
         };
@@ -248,29 +248,29 @@ class AIRiskService {
       // Handle network errors.
       //
       // NOTE: This service used to fail-CLOSED on network errors,
-      // which bricked funding whenever the external Python AI engine
+      // which bricked funding whenever the external Python Isolation Forest engine
       // at localhost:5000 was offline (the typical state during
       // development). We now fail-OPEN here because the new
-      // RiskProfilingService runs deterministically in-browser and
+      // RiskEngineService runs deterministically in-browser and
       // already surfaces a risk banner / acknowledgement checkbox to
-      // the user when warranted. The legacy AI engine, when present,
+      // the user when warranted. The legacy Isolation Forest engine, when present,
       // adds an extra layer but is no longer the only line of
       // defense.
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        console.warn('[AIRiskService] ⚠️ Network error - failing OPEN (RiskProfilingService still active)');
+        console.warn('[IsolationForestService] ⚠️ Network error - failing OPEN (RiskEngineService still active)');
 
         await this.logRiskScore(
           transactionData.transaction_id || null,
           userContext.userId,
           0,
           'pass',
-          ['AI engine unreachable; fallback pass'],
+          ['Isolation Forest engine unreachable; fallback pass'],
           this.extractFeatures(transactionData, userContext),
           'network_error_fallback_pass',
           responseTime
         );
 
-        console.log('[AIRiskService] ========================================');
+        console.log('[IsolationForestService] ========================================');
 
         return {
           success: true,
@@ -279,26 +279,26 @@ class AIRiskService {
           verdict: 'pass',
           anomaly_indicators: [],
           fallback: true,
-          message: 'External AI engine unreachable. In-browser risk profiling is active.'
+          message: 'External Isolation Forest engine unreachable. In-browser risk engine is active.'
         };
       }
 
       // Other unexpected errors (parsing, non-200, etc.) — also fail
       // open for the same reason. We log enough to debug later.
-      console.warn('[AIRiskService] ⚠️ AI Engine error - failing OPEN:', error.message);
+      console.warn('[IsolationForestService] ⚠️ Isolation Forest engine error - failing OPEN:', error.message);
 
       await this.logRiskScore(
         transactionData.transaction_id || null,
         userContext.userId,
         0,
         'pass',
-        ['AI engine error (fallback pass): ' + error.message],
+        ['Isolation Forest engine error (fallback pass): ' + error.message],
         this.extractFeatures(transactionData, userContext),
         'error_fallback_pass',
         responseTime
       );
 
-      console.log('[AIRiskService] ========================================');
+      console.log('[IsolationForestService] ========================================');
 
       return {
         success: true,
@@ -307,7 +307,7 @@ class AIRiskService {
         verdict: 'pass',
         anomaly_indicators: [],
         fallback: true,
-        message: 'External AI engine unavailable. In-browser risk profiling is active.'
+        message: 'External Isolation Forest engine unavailable. In-browser risk engine is active.'
       };
     }
   }
@@ -327,7 +327,7 @@ class AIRiskService {
    */
   async logRiskScore(transactionId, userId, riskScore, verdict, anomalyIndicators, features, modelVersion, responseTimeMs) {
     try {
-      console.log('[AIRiskService] Logging risk score to database...');
+      console.log('[IsolationForestService] Logging risk score to database...');
       
       // Ensure connection
       await this.connect();
@@ -352,15 +352,15 @@ class AIRiskService {
       
       await this.dbService._executeHttp(sql, args);
       
-      console.log('[AIRiskService] ✅ Risk score logged to database');
+      console.log('[IsolationForestService] ✅ Risk score logged to database');
       
     } catch (error) {
-      console.error('[AIRiskService] Failed to log risk score:', error);
+      console.error('[IsolationForestService] Failed to log risk score:', error);
       
       // Don't throw - logging failure shouldn't block the transaction
       // If table doesn't exist, log warning
       if (error.message.includes('no such table')) {
-        console.warn('[AIRiskService] ⚠️ ai_risk_logs table does not exist yet');
+        console.warn('[IsolationForestService] ⚠️ ai_risk_logs table does not exist yet');
       }
     }
   }
@@ -372,7 +372,7 @@ class AIRiskService {
    */
   async calculateTransactionVelocity(userId) {
     try {
-      console.log('[AIRiskService] Calculating transaction velocity for user:', userId);
+      console.log('[IsolationForestService] Calculating transaction velocity for user:', userId);
       
       // Ensure connection
       await this.connect();
@@ -397,16 +397,16 @@ class AIRiskService {
       const countValue = rows[0][0];
       const velocity = typeof countValue === 'object' ? parseInt(countValue.value) : countValue;
       
-      console.log('[AIRiskService] ✅ Transaction velocity:', velocity);
+      console.log('[IsolationForestService] ✅ Transaction velocity:', velocity);
       
       return velocity;
       
     } catch (error) {
-      console.error('[AIRiskService] Calculate transaction velocity failed:', error);
+      console.error('[IsolationForestService] Calculate transaction velocity failed:', error);
       
       // If table doesn't exist, return 0
       if (error.message.includes('no such table')) {
-        console.log('[AIRiskService] Transactions table does not exist yet, velocity: 0');
+        console.log('[IsolationForestService] Transactions table does not exist yet, velocity: 0');
         return 0;
       }
       
@@ -422,7 +422,7 @@ class AIRiskService {
    */
   async getRiskScoreHistory(transactionId) {
     try {
-      console.log('[AIRiskService] Getting risk score history for transaction:', transactionId);
+      console.log('[IsolationForestService] Getting risk score history for transaction:', transactionId);
       
       // Ensure connection
       await this.connect();
@@ -451,16 +451,16 @@ class AIRiskService {
         return entry;
       });
       
-      console.log('[AIRiskService] ✅ Risk score history retrieved:', history.length, 'entries');
+      console.log('[IsolationForestService] ✅ Risk score history retrieved:', history.length, 'entries');
       
       return history;
       
     } catch (error) {
-      console.error('[AIRiskService] Get risk score history failed:', error);
+      console.error('[IsolationForestService] Get risk score history failed:', error);
       
       // If table doesn't exist, return empty array
       if (error.message.includes('no such table')) {
-        console.log('[AIRiskService] ai_risk_logs table does not exist yet, returning empty array');
+        console.log('[IsolationForestService] ai_risk_logs table does not exist yet, returning empty array');
         return [];
       }
       
@@ -469,12 +469,12 @@ class AIRiskService {
   }
   
   /**
-   * Checks AI Engine health
+   * Checks Isolation Forest engine health
    * @returns {Promise<Object>} { success: boolean, status: string, message?: string }
    */
   async checkHealth() {
     try {
-      console.log('[AIRiskService] Checking AI Engine health...');
+      console.log('[IsolationForestService] Checking Isolation Forest engine health...');
       
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -494,7 +494,7 @@ class AIRiskService {
         
         const result = await response.json();
         
-        console.log('[AIRiskService] ✅ AI Engine is healthy:', result);
+        console.log('[IsolationForestService] ✅ Isolation Forest engine is healthy:', result);
         
         return {
           success: true,
@@ -508,7 +508,7 @@ class AIRiskService {
       }
       
     } catch (error) {
-      console.error('[AIRiskService] Health check failed:', error);
+      console.error('[IsolationForestService] Health check failed:', error);
       
       if (error.name === 'AbortError') {
         return {
@@ -537,7 +537,7 @@ class AIRiskService {
    */
   async logFailedRiskCheck(userId, transactionId, riskScore, anomalyIndicators) {
     try {
-      console.log('[AIRiskService] Logging failed risk check to security logs...');
+      console.log('[IsolationForestService] Logging failed risk check to security logs...');
       
       // Ensure connection
       await this.connect();
@@ -563,10 +563,10 @@ class AIRiskService {
       
       await this.dbService._executeHttp(sql, args);
       
-      console.log('[AIRiskService] ✅ Failed risk check logged to security logs');
+      console.log('[IsolationForestService] ✅ Failed risk check logged to security logs');
       
     } catch (error) {
-      console.error('[AIRiskService] Failed to log security event:', error);
+      console.error('[IsolationForestService] Failed to log security event:', error);
       // Don't throw - logging failure shouldn't break the main flow
     }
   }
@@ -579,12 +579,12 @@ class AIRiskService {
     if (this.connected) {
       await this.dbService.disconnect();
       this.connected = false;
-      console.log('[AIRiskService] Disconnected from database');
+      console.log('[IsolationForestService] Disconnected from database');
     }
   }
 }
 
 // Export for use in browser
 if (typeof window !== 'undefined') {
-  window.AIRiskService = AIRiskService;
+  window.IsolationForestService = IsolationForestService;
 }

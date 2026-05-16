@@ -259,16 +259,18 @@ class BalanceService {
       await this.connect();
       
       // Query Turso DB for active transactions (Requirement 1.2)
-      // Locked balance = SUM of amounts WHERE state IN ('Funded_Locked', 'In_Transit')
-      // AND user is either buyer or seller
+      // Locked balance = escrow funds held from the BUYER'S balance only.
+      // Sellers must NOT see these amounts as part of wallet/total until
+      // payout (demo_balance credit on Completed / release), since the funds
+      // are not theirs while Funded_Locked/In_Transit.
       const sql = `
         SELECT COALESCE(SUM(price), 0) as locked_balance
         FROM transactions
-        WHERE (seller_id = ? OR buyer_id = ?)
+        WHERE buyer_id = ?
         AND state IN ('Funded_Locked', 'In_Transit')
       `;
       
-      const result = await this.dbService._executeHttp(sql, [userId, userId]);
+      const result = await this.dbService._executeHttp(sql, [userId]);
       
       const executeResult = result.results[0].response.result;
       const rows = executeResult.rows;

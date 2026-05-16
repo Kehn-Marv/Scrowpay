@@ -684,7 +684,6 @@
     }
     .notif-card.clickable {
       cursor: pointer;
-      padding-right: 12px;
     }
     .notif-card.clickable:hover {
       background: #fafafa;
@@ -761,25 +760,6 @@
     }
     .notif-card.unread .notif-card-msg {
       color: #666;
-    }
-
-    .notif-card-chevron {
-      flex-shrink: 0;
-      align-self: center;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #c8c8c4;
-      margin-left: -4px;
-    }
-    .notif-card-chevron svg {
-      width: 16px;
-      height: 16px;
-    }
-    .notif-card.clickable:hover .notif-card-chevron {
-      color: var(--text);
     }
 
     .notif-unread-dot {
@@ -1988,10 +1968,10 @@
        directly; we use a CSS counter-like trick: each subsequent toast is
        offset by 72px per sibling. This keeps things simple without needing
        a container. */
-    .toast:nth-of-type(2) { top: calc(24px + 72px); }
-    .toast:nth-of-type(3) { top: calc(24px + 144px); }
-    .toast:nth-of-type(4) { top: calc(24px + 216px); }
-    .toast:nth-of-type(5) { top: calc(24px + 288px); }
+    .toast:nth-of-type(2) { top: calc(24px + 104px); }
+    .toast:nth-of-type(3) { top: calc(24px + 208px); }
+    .toast:nth-of-type(4) { top: calc(24px + 312px); }
+    .toast:nth-of-type(5) { top: calc(24px + 416px); }
 
     .toast .toast-content {
       display: flex;
@@ -2041,12 +2021,196 @@
     .toast {
       border-left: 4px solid #e5e7eb;
     }
-    .toast-success { border-left-color: #16a34a; }
+    /* Brand success: lime accent to match wallet / CTAs */
+    .toast-success { border-left-color: #caff04; }
     .toast-error   { border-left-color: #dc2626; }
     .toast-warning { border-left-color: #d97706; }
     .toast-info    { border-left-color: #2563eb; }
 
-    .toast-success .toast-icon { background: #dcfce7; color: #15803d; }
+    .toast-success .toast-icon {
+      background: rgba(202, 255, 4, 0.22);
+      color: #1a1a1a;
+    }
+
+    /* First-login welcome — dark hero card, matches balance-card energy */
+    .toast-welcome {
+      min-width: 300px;
+      max-width: 400px;
+      padding: 18px 20px;
+      background: linear-gradient(155deg, #141414 0%, #0a0a0a 55%, #111 100%);
+      color: #f5f5f5;
+      border: 1px solid rgba(202, 255, 4, 0.28);
+      border-left: 4px solid #caff04;
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 16px 48px rgba(0, 0, 0, 0.45),
+        0 0 60px -20px rgba(202, 255, 4, 0.35);
+    }
+
+    .toast-welcome .toast-content,
+    .toast-welcome-content {
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .toast-welcome-icon {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #caff04;
+      color: #111111;
+      box-shadow: 0 4px 14px rgba(202, 255, 4, 0.35);
+    }
+
+    .toast-welcome-copy {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .toast-welcome-kicker {
+      margin: 0 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #caff04;
+    }
+
+    .toast-welcome-body {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .toast-welcome-body strong {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Onboarding spotlight tooltips — solid brand lime (legacy “all green” look) */
+    .onboarding-tooltip {
+      position: fixed;
+      z-index: 10000;
+      max-width: 340px;
+      border-radius: 16px;
+      background: #caff04;
+      color: #111111;
+      border: 1px solid rgba(17, 17, 17, 0.18);
+      box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.12),
+        0 18px 36px -12px rgba(0, 0, 0, 0.22);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      animation: onboarding-pop-in 0.35s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+      overflow: visible;
+    }
+
+    .onboarding-tooltip::before {
+      display: none;
+    }
+
+    .onboarding-tooltip-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px 16px;
+    }
+
+    .onboarding-tooltip-body-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .onboarding-tooltip-exit {
+      opacity: 0 !important;
+      transform: translateY(6px) scale(0.97) !important;
+      transition: opacity 0.26s ease, transform 0.26s ease !important;
+      pointer-events: none;
+      animation: none !important;
+    }
+
+    .onboarding-tooltip-title {
+      font-weight: 700;
+      font-size: 15px;
+      margin: 0 0 6px;
+      letter-spacing: -0.02em;
+      color: #111111;
+    }
+
+    .onboarding-tooltip-body {
+      font-size: 13px;
+      line-height: 1.55;
+      margin: 0;
+      color: #111111;
+    }
+
+    .onboarding-tooltip-close {
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      margin: -4px -6px 0 0;
+      border: none;
+      border-radius: 10px;
+      background: rgba(17, 17, 17, 0.12);
+      color: #111111;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .onboarding-tooltip-close:hover {
+      background: rgba(17, 17, 17, 0.2);
+    }
+
+    .onboarding-tooltip-close:active {
+      transform: scale(0.96);
+    }
+
+    .onboarding-tooltip--arrow-up::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -6px;
+      margin-left: -7px;
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 7px solid #caff04;
+      filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.08));
+    }
+
+    .onboarding-tooltip--arrow-down::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -6px;
+      margin-left: -7px;
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-top: 7px solid #caff04;
+      filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.08));
+    }
+
+    @keyframes onboarding-pop-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
     .toast-error   .toast-icon { background: #fee2e2; color: #b91c1c; }
     .toast-warning .toast-icon { background: #fef3c7; color: #b45309; }
     .toast-info    .toast-icon { background: #dbeafe; color: #1d4ed8; }
@@ -2059,10 +2223,10 @@
         min-width: 0;
         max-width: none;
       }
-      .toast:nth-of-type(2) { top: calc(16px + 72px); }
-      .toast:nth-of-type(3) { top: calc(16px + 144px); }
-      .toast:nth-of-type(4) { top: calc(16px + 216px); }
-      .toast:nth-of-type(5) { top: calc(16px + 288px); }
+      .toast:nth-of-type(2) { top: calc(16px + 104px); }
+      .toast:nth-of-type(3) { top: calc(16px + 208px); }
+      .toast:nth-of-type(4) { top: calc(16px + 312px); }
+      .toast:nth-of-type(5) { top: calc(16px + 416px); }
     }
     
     /* Prevent layout shift during loading */
@@ -2565,34 +2729,6 @@
               required
             />
             <p id="error-delivery-timeline" class="error-text hidden"></p>
-          </div>
-          
-          <!-- Transaction Type: Product vs Service.
-               Drives whether the proof-of-legitimacy uploader is required.
-               For services (e.g. graphic design, consulting) physical
-               photos rarely exist, so we mark the uploader optional. -->
-          <div class="modal-form-group">
-            <label class="modal-label">Transaction Type <span style="color: #ff6b6b;">*</span></label>
-            <div id="txn-type-toggle" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <button type="button" class="choice-card selected" data-type="product" id="txn-type-product" style="padding: 10px 12px; gap: 10px;">
-                <div class="choice-icon" style="width: 32px; height: 32px;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                </div>
-                <div style="flex: 1; text-align: left;">
-                  <div class="choice-title" style="font-size: 14px;">Product</div>
-                  <div class="choice-sub" style="margin-top: 2px;">Physical goods / items</div>
-                </div>
-              </button>
-              <button type="button" class="choice-card" data-type="service" id="txn-type-service" style="padding: 10px 12px; gap: 10px;">
-                <div class="choice-icon" style="width: 32px; height: 32px;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                </div>
-                <div style="flex: 1; text-align: left;">
-                  <div class="choice-title" style="font-size: 14px;">Service</div>
-                  <div class="choice-sub" style="margin-top: 2px;">Work, time, or expertise</div>
-                </div>
-              </button>
-            </div>
           </div>
 
           <!-- Adaptive Uploader (Proof of Legitimacy / Specs) -->
@@ -4019,10 +4155,11 @@
       }
       
       if (balanceVisible) {
-        // Show balance - get current total balance
-        const totalBalance = document.getElementById('total-balance').textContent;
-        console.log('[Balance Toggle] Showing balance:', totalBalance);
-        el.textContent = totalBalance;
+        // Spendable balance only (demo_balance); excludes buyer-escrow totals so
+        // sellers do not see a headline jump when a counterparty funds.
+        const liquid = document.getElementById('available-balance').textContent;
+        console.log('[Balance Toggle] Showing balance:', liquid);
+        el.textContent = liquid;
         el.className = 'balance-amount';
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" stroke-linecap="round"/>';
       } else {
@@ -4049,35 +4186,26 @@
     older code paths that haven't migrated yet.
   -->
   <script src="TrustEngineService.js"></script>
-  <script src="AIRiskService.js"></script>
+  <script src="IsolationForestService.js"></script>
   <script src="squad-api-service.js"></script>
   <script src="SquadTransferService.js"></script>
   <script src="StateMachineService.js"></script>
   <script src="BalanceService.js"></script>
 
   <!--
-    AI Anomaly Detection Engine v2.0 stack. Loaded in dependency order.
+    Anomaly detection stack. Loaded in dependency order.
 
-      DeviceFingerprintService  - real FingerprintJS-based device ID
-                                  (loaded from CDN at runtime). Provides
-                                  the visitorId used by behavioral
-                                  signals + the ML engine's fingerprint
-                                  feature.
-      BehavioralSignalsService  - session-scoped behavioral signals
-                                  (PIN paste detection, tab-blur,
-                                  multi-account-from-device, etc.).
-      RiskProfilingService      - deterministic in-browser rules.
+      DeviceFingerprintService  - FingerprintJS-based device ID for the
+                                  ML feature vector + audit trail.
+      RiskEngineService         - deterministic in-browser rules (risk engine).
       AnomalyDetectionEngine    - umbrella orchestrator. Composes
-                                  rules + ML (AIRiskService) + behavioral
-                                  into ONE verdict. The funding flow
-                                  calls engine.evaluate() and uses the
-                                  returned `decision` ('pass'/'review'/
-                                  'block') instead of querying any single
-                                  sub-detector.
+                                  rules + ML (IsolationForestService) into ONE
+                                  verdict. The funding flow calls
+                                  engine.evaluate() and uses the returned
+                                  `decision` ('pass'/'review'/'block').
   -->
   <script src="DeviceFingerprintService.js"></script>
-  <script src="BehavioralSignalsService.js"></script>
-  <script src="RiskProfilingService.js"></script>
+  <script src="RiskEngineService.js"></script>
   <script src="AnomalyDetectionEngine.js"></script>
 
   <!--
@@ -4195,6 +4323,41 @@
       
       setTimeout(() => toast.remove(), duration);
     }
+
+    /** First-login welcome (matches ToastNotificationService.showWelcome styling). */
+    function showWelcomeNotification(firstName) {
+      if (window.toastService && typeof window.toastService.showWelcome === 'function') {
+        window.toastService.showWelcome(firstName);
+        return;
+      }
+      const safe = (() => {
+        const d = document.createElement('div');
+        d.textContent = firstName || 'there';
+        return d.innerHTML;
+      })();
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-success toast-welcome';
+      toast.setAttribute('role', 'status');
+      toast.innerHTML = `
+        <div class="toast-content toast-welcome-content">
+          <div class="toast-welcome-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="toast-welcome-copy">
+            <p class="toast-welcome-kicker">Welcome aboard</p>
+            <p class="toast-welcome-body">Hi <strong>${safe}</strong> — you're all set on ScrowPay. Here's a quick tour of your dashboard.</p>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(420px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 6000);
+    }
     
     function showWarningNotification(message, duration = 0) {
       if (window.toastService) {
@@ -4227,6 +4390,15 @@
     }
     
     /**
+     * Escape text for safe insertion into HTML.
+     */
+    function escapeHtmlScrow(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
+    }
+
+    /**
      * Shows an onboarding tooltip for first-time users (Requirement 20.7)
      * @param {string} targetId - ID of the element to attach tooltip to
      * @param {string} title - Tooltip title
@@ -4234,7 +4406,6 @@
      * @param {number} duration - Duration to show tooltip (milliseconds)
      */
     function showOnboardingTooltip(targetId, title, message, duration = 5000) {
-      // Map target IDs to actual element IDs on the page
       const elementMap = {
         'virtual-account': 'user-phone',
         'trust-score': 'trust-score-circle',
@@ -4249,79 +4420,60 @@
         return;
       }
       
-      // Create tooltip element
       const tooltip = document.createElement('div');
       tooltip.className = 'onboarding-tooltip';
-      tooltip.style.cssText = `
-        position: fixed;
-        background: linear-gradient(135deg, #caff04 0%, #a8d604 100%);
-        color: #1c1c1c;
-        padding: 16px 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        z-index: 10000;
-        max-width: 320px;
-        animation: tooltipSlideIn 0.3s ease-out;
-      `;
-      
+      tooltip.setAttribute('role', 'dialog');
+      tooltip.setAttribute('aria-modal', 'false');
+
+      const safeTitle = escapeHtmlScrow(title);
+      const safeMessage = escapeHtmlScrow(message);
+
       tooltip.innerHTML = `
-        <div style="display: flex; align-items: start; gap: 12px;">
-          <div style="flex: 1;">
-            <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px;">${title}</div>
-            <div style="font-size: 14px; line-height: 1.5; opacity: 0.9;">${message}</div>
+        <div class="onboarding-tooltip-inner">
+          <div class="onboarding-tooltip-body-wrap">
+            <h3 class="onboarding-tooltip-title">${safeTitle}</h3>
+            <p class="onboarding-tooltip-body">${safeMessage}</p>
           </div>
-          <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; color: #1c1c1c; opacity: 0.7; line-height: 1;">×</button>
+          <button type="button" class="onboarding-tooltip-close" aria-label="Dismiss tour tip">×</button>
         </div>
       `;
+
+      function dismissTooltip() {
+        if (!tooltip.parentElement) return;
+        tooltip.classList.add('onboarding-tooltip-exit');
+        setTimeout(() => tooltip.remove(), 260);
+      }
+
+      const closeBtn = tooltip.querySelector('.onboarding-tooltip-close');
+      closeBtn.addEventListener('click', dismissTooltip);
       
-      // Position tooltip near target element
       document.body.appendChild(tooltip);
       
       const targetRect = targetElement.getBoundingClientRect();
       const tooltipRect = tooltip.getBoundingClientRect();
       
-      // Position below target element with some offset
       let top = targetRect.bottom + 12;
       let left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
       
-      // Ensure tooltip stays within viewport
       if (left < 12) left = 12;
       if (left + tooltipRect.width > window.innerWidth - 12) {
         left = window.innerWidth - tooltipRect.width - 12;
       }
       if (top + tooltipRect.height > window.innerHeight - 12) {
-        // Position above target if not enough space below
         top = targetRect.top - tooltipRect.height - 12;
       }
       
       tooltip.style.top = `${top}px`;
       tooltip.style.left = `${left}px`;
-      
-      // Add animation keyframes if not already added
-      if (!document.getElementById('onboarding-tooltip-styles')) {
-        const style = document.createElement('style');
-        style.id = 'onboarding-tooltip-styles';
-        style.textContent = `
-          @keyframes tooltipSlideIn {
-            from {
-              opacity: 0;
-              transform: translateY(-10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `;
-        document.head.appendChild(style);
+
+      if (top >= targetRect.bottom - 4) {
+        tooltip.classList.add('onboarding-tooltip--arrow-up');
+      } else {
+        tooltip.classList.add('onboarding-tooltip--arrow-down');
       }
       
-      // Auto-remove after duration
       setTimeout(() => {
-        if (tooltip.parentElement) {
-          tooltip.style.animation = 'tooltipSlideIn 0.3s ease-out reverse';
-          setTimeout(() => tooltip.remove(), 300);
-        }
+        if (tooltip.parentElement) dismissTooltip();
       }, duration);
       
       console.log(`[Onboarding] Tooltip shown: ${title}`);
@@ -4700,9 +4852,6 @@
           const sev = ['info','success','warning','danger'].includes(n.severity) ? n.severity : 'info';
           const clickable = n.actionUrl || n.transactionId;
           const unreadDot = n.isRead ? '' : '<span class="notif-unread-dot" aria-hidden="true"></span>';
-          const chevron = clickable
-            ? `<span class="notif-card-chevron" aria-hidden="true"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>`
-            : '';
           return `
             <div class="notif-card severity-${sev} ${n.isRead ? '' : 'unread'} ${clickable ? 'clickable' : ''}"
                  role="listitem" data-id="${n.id}" data-txn="${escape(n.transactionId || '')}"
@@ -4716,7 +4865,6 @@
                 </div>
                 <p class="notif-card-msg">${escape(n.message)}</p>
               </div>
-              ${chevron}
             </div>`;
         }).join('');
         el.innerHTML = html;
@@ -4944,7 +5092,8 @@
         if (!txn) return;
         const buyerId = txn.buyer_id;
         const item = txn.item_description || 'your order';
-        const inspectionDays = txn.delivery_timeline_days + 7; // delivery timeline + 7 days
+        const timelineDays = Number(txn.delivery_timeline_days) > 0 ? Number(txn.delivery_timeline_days) : 7;
+        const inspectionDays = timelineDays + 7;
 
         await _push({
           userId: buyerId,
@@ -5793,11 +5942,10 @@
     let transactionService;
     let trustScoreService;
     let trustEngine;             // Trust Engine v2 (active)
-    let aiRiskService;           // ML sub-detector (Python Isolation Forest)
-    let riskProfilingService;    // Rules sub-detector
+    let isolationForestService;  // ML sub-detector (Python Isolation Forest)
+    let riskEngineService;       // Rules sub-detector (deterministic risk engine)
     let deviceFingerprint;       // FingerprintJS-backed visitor ID
-    let behavioralSignals;       // Session-scoped behavioral collector
-    let anomalyEngine;           // Umbrella AI Anomaly Detection Engine
+    let anomalyEngine;           // Umbrella anomaly detection engine (rules + Isolation Forest)
     let stateMachineService;
     let faceVerificationService;   // Phase F: Gemini same-person check
     let balanceService;
@@ -5876,10 +6024,12 @@
         const lockedBalanceFormatted = balanceService.formatBalance(result.locked);
         const totalBalanceFormatted = balanceService.formatBalance(result.total);
         
-        // Update main balance display (new design)
+        // Main headline = spendable (demo_balance) only. Sellers must not see
+        // escrow amounts reflected here until payout credits demo_balance on
+        // release; buyers see their balance drop when they fund escrow.
         const balanceDisplayEl = document.getElementById('balance-display');
         if (balanceDisplayEl && !balanceDisplayEl.classList.contains('hidden-balance')) {
-          balanceDisplayEl.textContent = totalBalanceFormatted;
+          balanceDisplayEl.textContent = availableBalanceFormatted;
         }
         
         // Update hidden balance tracking elements
@@ -6357,9 +6507,9 @@
       }
 
       async function initDeferredDashboardServices() {
-        aiRiskService = new AIRiskService(CONFIG);
-        await aiRiskService.connect();
-        console.log('AI risk service initialized');
+        isolationForestService = new IsolationForestService(CONFIG);
+        await isolationForestService.connect();
+        console.log('[Dashboard] Isolation Forest service initialized');
 
         try {
           trustEngine = new TrustEngineService(CONFIG);
@@ -6369,20 +6519,14 @@
           deviceFingerprint = new DeviceFingerprintService(CONFIG);
           deviceFingerprint.ready();
 
-          behavioralSignals = new BehavioralSignalsService(CONFIG, {
-            fingerprint: deviceFingerprint
-          });
-          behavioralSignals.startSession(currentUserId);
-
-          riskProfilingService = new RiskProfilingService(CONFIG, {
+          riskEngineService = new RiskEngineService(CONFIG, {
             trustEngine
           });
-          await riskProfilingService.connect();
+          await riskEngineService.connect();
 
           anomalyEngine = new AnomalyDetectionEngine(CONFIG, {
-            riskProfiling: riskProfilingService,
-            aiRisk: aiRiskService,
-            behavioral: behavioralSignals,
+            riskEngine: riskEngineService,
+            isolationForest: isolationForestService,
             fingerprint: deviceFingerprint
           });
           console.log('[Dashboard] ✅ AnomalyDetectionEngine v' + anomalyEngine.version + ' ready');
@@ -6393,7 +6537,7 @@
             }
           }).catch(() => {});
         } catch (engineErr) {
-          console.error('[Dashboard] AnomalyDetectionEngine init failed (will fall back to legacy AIRiskService):', engineErr);
+          console.error('[Dashboard] AnomalyDetectionEngine init failed:', engineErr);
         }
 
         try {
@@ -6498,7 +6642,7 @@
           console.log('[Dashboard] First-time user detected, showing onboarding tooltips...');
           
           // Show welcome message with user's first name (Requirement 20.4)
-          showSuccessNotification(`Welcome to ScrowPay, ${firstName}! Let's get you started.`);
+          showWelcomeNotification(firstName);
           
           // Display virtual account number (Requirement 20.5)
           if (userData.virtual_account_number) {
@@ -6550,7 +6694,7 @@
       // initiatorRole: 'buyer' | 'seller'
       // proofFiles: [{ name, dataUrl }]
       // ========================================
-      const createEscrowState = { initiatorRole: null, action: null, proofFiles: [], transactionType: 'product' };
+      const createEscrowState = { initiatorRole: null, action: null, proofFiles: [] };
 
       function setCreateStep(stepNum) {
         for (let i = 1; i <= 3; i++) {
@@ -6582,26 +6726,15 @@
         document.getElementById('price').placeholder = isBuyer
           ? 'Your budget in ₦ (₦100 - ₦10,000,000)'
           : 'Asking price in ₦ (₦100 - ₦10,000,000)';
-        // Uploader label/text adapts to BOTH role (buyer vs seller) AND
-        // transaction type (product vs service). For services we mark the
-        // upload optional since work-in-progress photos rarely exist yet.
-        const isService = createEscrowState.transactionType === 'service';
-        const optionalSuffix = isService ? ' (Optional)' : '';
-        document.getElementById('uploader-label').textContent = (isBuyer
+        document.getElementById('uploader-label').textContent = isBuyer
           ? 'Specifications / References'
-          : 'Proof of Legitimacy') + optionalSuffix;
-        document.getElementById('uploader-text').textContent = isService
-          ? (isBuyer
-              ? 'Optional: attach briefs, references or mockups'
-              : 'Optional: portfolio samples or past work')
-          : (isBuyer
-              ? 'Add mockups, docs or references that show what you want'
-              : 'Add photos / receipts to prove legitimacy');
+          : 'Proof of Legitimacy';
+        document.getElementById('uploader-text').textContent = isBuyer
+          ? 'Add mockups, docs or references that show what you want'
+          : 'Add photos / receipts to prove legitimacy';
         const hint = document.getElementById('uploader-hint');
         if (hint) {
-          hint.textContent = isService
-            ? 'PNG, JPG · up to 5 files · max 5MB each · skip if not applicable'
-            : 'PNG, JPG · up to 5 files · max 5MB each';
+          hint.textContent = 'PNG, JPG · up to 5 files · max 5MB each';
         }
         document.getElementById('action-create-sub').textContent = isBuyer
           ? 'Define expectations, set the budget and deadline.'
@@ -6622,37 +6755,13 @@
         createEscrowState.initiatorRole = null;
         createEscrowState.action = null;
         createEscrowState.proofFiles = [];
-        createEscrowState.transactionType = 'product';
         document.getElementById('create-escrow-form').reset();
         document.getElementById('proof-thumbs').innerHTML = '';
         clearAllErrors();
         document.querySelectorAll('#create-step-1 .choice-card, #create-step-2 .choice-card').forEach(c => c.classList.remove('selected'));
-        // Reset transaction-type toggle to Product default
-        const tProduct = document.getElementById('txn-type-product');
-        const tService = document.getElementById('txn-type-service');
-        if (tProduct && tService) {
-          tProduct.classList.add('selected');
-          tService.classList.remove('selected');
-        }
         setCreateStep(1);
         document.getElementById('create-escrow-title').textContent = 'New Escrow';
       }
-
-      // Transaction-type toggle (Product / Service). Service makes the
-      // proof uploader optional via applyRoleToStep3() label changes.
-      (function setupTxnTypeToggle() {
-        const tProduct = document.getElementById('txn-type-product');
-        const tService = document.getElementById('txn-type-service');
-        if (!tProduct || !tService) return;
-        function select(type) {
-          createEscrowState.transactionType = type;
-          tProduct.classList.toggle('selected', type === 'product');
-          tService.classList.toggle('selected', type === 'service');
-          applyRoleToStep3();
-        }
-        tProduct.addEventListener('click', () => select('product'));
-        tService.addEventListener('click', () => select('service'));
-      })();
 
       // Open Create Escrow Modal
       document.getElementById('btn-create-escrow').addEventListener('click', () => {
@@ -7597,13 +7706,6 @@
           document.getElementById('risk-blocked-message').classList.add('hidden');
           document.getElementById('btn-fund-escrow').disabled = false;
 
-          // Notify the behavioral collector that the funding modal is
-          // now open. Used by AnomalyDetectionEngine to detect coaching
-          // patterns (long blur during funding, etc.).
-          if (behavioralSignals) {
-            behavioralSignals.markFundingModalOpened();
-          }
-
           openModal('fund-escrow-modal');
           return;
         }
@@ -8051,8 +8153,9 @@
         // Calculate time remaining for In_Transit transactions (Requirement 8.3)
         let timeRemainingText = '';
         if (state === 'In_Transit' && txn.shipped_at) {
-          // Auto-release period = delivery_timeline_days + 7 days
-          const autoReleaseDays = txn.delivery_timeline_days + 7;
+          // delivery_timeline_days may be a string from SQL; coerce before +7.
+          const timelineDays = Number(txn.delivery_timeline_days) > 0 ? Number(txn.delivery_timeline_days) : 7;
+          const autoReleaseDays = timelineDays + 7;
           const shippedDate = new Date(txn.shipped_at);
           const expiryDate = new Date(shippedDate);
           expiryDate.setDate(expiryDate.getDate() + autoReleaseDays);

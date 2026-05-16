@@ -39,7 +39,7 @@ The signup flow uses Nigerian phone formats, BVN (not SSN or passport), State �
 ## The Four Pillars
 
 **AI Automation — does it genuinely automate a financial process end-to-end?**
-Yes. The pre-funding risk pipeline runs automatically on every transaction — no human in the loop. Deterministic rules score in-browser, the Isolation Forest model scores server-side, and transactions above the threshold are blocked before money moves. The dispute agent reads complaints + photos and auto-resolves high-confidence cases (>90%) without admin intervention.
+Yes. **After funding succeeds**, `AnomalyDetectionEngine.evaluate()` runs automatically (rules + Isolation Forest client). The verdict updates **`TrustEngineService`** via `onAnomalyEvaluated` — **no human in the loop** for that step. **Funding is not blocked by this call in the current build** (non-blocking / trust-oriented). The dispute agent reads complaints + photos and auto-resolves cases with **confidence > 90** (on a 0–100 scale) without admin intervention; lower confidence is routed for manual review.
 
 **Use of Data — are the signals predictive, ethical, and real-time?**
 The risk model uses six real-time signals: account age, transaction velocity, amount patterns, time-of-day, device fingerprint, and counterparty trust. Trust Scores update after every completed transaction, not on a batch schedule. We don't use demographic data (age, gender, location) for risk scoring — only behavioral and transactional signals.
@@ -55,7 +55,7 @@ Nigeria has no consumer-grade AI-protected escrow for informal commerce. Existin
 ## AI & Intelligence Layer
 
 **Does the AI make the product meaningfully smarter?**
-Without the AI layer, we'd just be an escrow wallet. The risk scoring blocks fraudulent transactions before money moves — that's the difference between losing money and not. The dispute agent resolves cases in seconds that would otherwise take days of back-and-forth. The Trust Score gives users information they literally cannot get anywhere else about their counterparty.
+Without the AI layer, we'd just be an escrow wallet. **Post-fund** anomaly scoring records risk and nudges trust — moving it **before** fund is how we close the loop on “lose money vs not.” The dispute agent resolves cases in seconds that would otherwise take days of back-and-forth. The Trust Score gives users information they literally cannot get anywhere else about their counterparty.
 
 **Can we explain how the model works in plain language?**
 The Isolation Forest works by randomly splitting transaction data into trees. Normal transactions take many splits to isolate. Weird ones (unusual amount + new account + odd time) get isolated quickly — fewer splits = more anomalous = higher risk score. It's unsupervised, so it doesn't need labeled fraud examples to train.

@@ -23,36 +23,34 @@ The whole frontend is **vanilla JS + HTML + Tailwind** (no React, no build step)
 ## 2. High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          BROWSER                                │
-│                                                                 │
-│  website.html → account-creation.html → sign-in.html            │
-│                                          ↓                      │
-│                                    dashboard.html               │
-│                                          │                      │
-│                       ┌──────────────────┼──────────────────┐   │
-│                       ↓                  ↓                  ↓   │
-│            DashboardService   TransactionService   TrustEngine  │
-│            (orchestrator)     StateMachineService  RiskProfiling│
-│            BalanceService     DisputeService       AIRiskService│
-│                              DisputeAgentService                │
-└──────────────┬──────────────────┬─────────────────┬─────────────┘
-               │                  │                 │
-               ▼                  ▼                 ▼
-        ┌────────────┐    ┌──────────────┐   ┌──────────────┐
-        │  Turso DB  │    │  Squad API   │   │  AI Engine   │
-        │  (libSQL)  │    │ (payments +  │   │  (Flask +    │
-        │            │    │  virtual a/c)│   │  IsoForest)  │
-        └────────────┘    └──────────────┘   └──────────────┘
-                                                     ▲
-                                                     │
-                                              ┌──────────────┐
-                                              │  Gemini API  │
-                                              │  (dispute    │
-                                              │   resolution │
-                                              │   agent,     │
-                                              │   multimodal)│
-                                              └──────────────┘
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                                    BROWSER                                     │
+│                                                                                │
+│   web.html → account-creation.html → sign-in.html → dashboard.html             │
+│   (SPA: escrows, funding, disputes, trust, notifications)                      │
+│                                                                                │
+│   Core services (representative):                                              │
+│     DashboardService      TransactionService      TrustEngineService           │
+│     (orchestrator)        StateMachineService     RiskEngineService            │
+│     BalanceService        DisputeService          IsolationForestService       │
+│                              DisputeAgentService                               │
+│    └───────────┼───────────────┼───────────────┼───────────────┘               │
+│                                                                                │
+│                ↓                  ↓                  ↓                         │
+│                                                                                │
+│        ┌────────────┐    ┌──────────────┐   ┌──────────────────┐               │
+│        │  Turso DB  │    │  Squad API   │   │    AI engine     │               │
+│        │   libSQL   │    │   payments   │   │    Flask + IF    │               │
+│        │            │    │              │   │    Isolation     │               │
+│        │            │    │              │   │      Forest      │               │
+│        └────────────┘    └──────────────┘   └──────────────────┘               │
+│                                                                                │
+│                                           ↓                                    │
+│                                    ┌──────────────┐                            │
+│                                    │ Gemini API   │                            │
+│                                    │ (disputes)   │                            │
+│                                    └──────────────┘                            │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Three deployable units:**
@@ -67,7 +65,7 @@ The whole frontend is **vanilla JS + HTML + Tailwind** (no React, no build step)
 | File | What it does |
 |---|---|
 | `frontend/web.html` | Landing page. Has "Create Account" / "Sign In" buttons. |
-| `frontend/account-creation.html` | The 9-stage signup flow (phone → OTP → BVN → name → Squad verify → face intro → blink liveness → address → PIN). |
+| `frontend/account-creation.html` | The **10-stage** signup flow: phone **+ email** → **email OTP** → BVN → name/DOB/gender → Squad virtual account → face intro → blink liveness → address → **6-digit PIN** → success. |
 | `frontend/sign-in.html` | Phone + 6-digit PIN login. Hashes PIN with SHA-256 + phone-as-salt and compares to DB. |
 | `frontend/dashboard.html` | The main app. Lists transactions, lets users create/join/fund/ship/accept/dispute, shows trust score, balance, etc. **All escrow logic lives here.** |
 
@@ -75,26 +73,27 @@ The whole frontend is **vanilla JS + HTML + Tailwind** (no React, no build step)
 
 ## 4. Account Creation — Stage by Stage
 
-File: `frontend/account-creation.html` (orchestrator) + the services it calls.
+File: `frontend/account-creation.html` (`StageManager`, **10** stages) + the services it calls.
 
-| # | Stage | What happens | Service involved |
+| # | Stage | What happens | Service / notes |
 |---|---|---|---|
-| 1 | **Phone Number** | User enters Nigerian phone. Format-validated. | `InputValidationService.js` |
-| 2 | **OTP** | 6-digit OTP. **Currently hardcoded to `123456`** for the hackathon. | `otp-service.js` |
-| 3 | **ID Type + Number** | BVN (11 digits). | `id-validation-service.js` |
-| 4 | **Name** | First / Middle / Last name. |  |
-| 5 | **Squad Verification** | Calls Squad's BVN endpoint to confirm the ID matches the name + DOB + gender. | `squad-api-service.js` |
-| 6 | **Face Verification Intro** | "Get ready to blink" screen. |  |
-| 7 | **Blink Liveness** | MediaPipe Face Mesh runs in the browser, computes Eye Aspect Ratio (EAR), watches for a real blink. Proves user is a live human, not a photo. | `mediapipe-service.js` |
-| 8 | **Address** | Cascading dropdowns: 36 states → 774 LGAs → wards. Data is bundled in `state-lga-area.json` (~350 KB). | `address-data-service.js` |
-| 9 | **PIN Setup** | 6-digit PIN. Weak patterns blocked (`111111`, `123456`, `112233`). Hashed with SHA-256 + phone as salt. | `pin-service.js` |
+| 1 | **Phone + email** | Nigerian phone + email; duplicate checks when Turso is online. | `PhoneValidationService` / DB helpers |
+| 2 | **Email OTP** | 6-digit code; **`EmailOTPService`** + AI-engine Resend proxy. If no OTP was reachable at stage 1, verify falls back to legacy **`123456`**. Resend cooldown UX (demo toast may still mention `123456`). | `EmailOTPService.js`, `otp-service.js` (fallback) |
+| 3 | **BVN** | 11-digit BVN, format + duplicate check. | `id-validation-service.js` |
+| 4 | **Personal details** | First / middle / last name, gender, DOB — must match BVN for Squad/NIBSS. | — |
+| 5 | **Virtual account** | Squad `createVirtualAccount` — NUBAN on success. | `squad-api-service.js` |
+| 6 | **Face intro** | Explains liveness. | — |
+| 7 | **Blink liveness** | MediaPipe blink; optional **Cloudinary** upload of a reference frame (non-blocking). | `mediapipe-service.js`, Cloudinary unsigned upload |
+| 8 | **Address** | State → LGA → ward from `state-lga-area.json`. | `address-data-service.js` |
+| 9 | **PIN** | **6-digit** PIN, `PINService` validation + Web Crypto hash (phone as salt). | `pin-service.js` |
+| 10 | **Success** | Account row saved; CTA to sign in. | `turso-db-service.js` |
 
-On success, the user row is inserted into the `users` table in Turso, a Squad **virtual account** is created for them (so they have an account number people can pay into), and they're redirected to `sign-in.html`.
+On success, the user row is inserted into Turso, a Squad **virtual account** exists (from stage 5), and the user continues to **`sign-in.html`**.
 
-### What is NOT implemented yet at signup
-- **Face image is never persisted.** MediaPipe just confirms a blink happened in-browser. The face image / face embedding is never uploaded or stored. (See section 12 for the planned image DB.)
-- **OTP is fake** — there is no SMS provider wired up.
-- **BVN photo from Squad** is fetched but not saved anywhere.
+### Caveats (honest)
+- **Phone SMS OTP is not implemented** — second factor on-device is **email**, not carrier SMS.
+- **Cloudinary / Gemini keys** may be absent locally; signup still completes, but face reference URL may be null and later face re-verify will no-op.
+- **BVN photo from Squad** (if returned) is not persisted as its own artifact beyond what you store in user fields.
 
 ---
 
@@ -102,7 +101,7 @@ On success, the user row is inserted into the `users` table in Turso, a Squad **
 
 File: `frontend/sign-in.html` + `SessionService.js`.
 
-1. User enters phone + PIN.
+1. User enters phone + **6-digit PIN**.
 2. PIN is hashed (`SHA-256(pin + phone)`) and compared to `users.hashed_pin`.
 3. On match, a session blob is written to **`localStorage` under key `scrowpay_session`** (24h expiry).
 4. Redirect to `dashboard.html`.
@@ -125,7 +124,7 @@ File: `frontend/sign-in.html` + `SessionService.js`.
 | 5 | `InputValidationService.js` | Phone, amount, ID number, address validators. |
 | 6 | `transaction-service.js` | CRUD for transactions (create, join, fetch, list, store proof). |
 | 7 | `TrustScoreService.js` | **Legacy** trust score (recency-weighted, table-driven). Kept for fallback only. |
-| 8 | `AIRiskService.js` | Calls the Python AI engine over HTTP. |
+| 8 | `IsolationForestService.js` | Calls the Python Isolation Forest engine over HTTP. |
 | 9 | `squad-api-service.js` | Squad payments, virtual accounts, transfers. |
 | 10 | `StateMachineService.js` | Enforces the transaction state machine (Created → Funded_Locked → In_Transit → Completed/Disputed). Holds auto-release timers. |
 | 11 | `BalanceService.js` | Computes available vs locked balances per user. |
@@ -133,9 +132,8 @@ File: `frontend/sign-in.html` + `SessionService.js`.
 | 13 | `DisputeAgentService.js` | **The AI dispute agent.** Multimodal Gemini call — reads the user's complaint + uploaded photos + transaction context, returns a binding verdict (or one clarifying question). |
 | 14 | `TrustEngineService.js` | **Active** trust score engine (counter-based, signal-driven). Now includes temporal decay-on-inactivity and peer-graph diversity penalty. |
 | 15 | `DeviceFingerprintService.js` | FingerprintJS-OSS-backed device identity. Loaded lazily from CDN; falls back to legacy hash if blocked. |
-| 16 | `BehavioralSignalsService.js` | Session-scoped behavioral signals collector (PIN paste, tab blur, multi-account-from-device, etc.). |
-| 17 | `RiskProfilingService.js` | Deterministic in-browser rules sub-detector. |
-| 18 | `AnomalyDetectionEngine.js` | **The umbrella.** Composes rules + ML (`AIRiskService`) + behavioral into one verdict. The funding flow calls `engine.evaluate()` and uses the returned `decision`. |
+| 16 | `RiskEngineService.js` | Deterministic in-browser rules sub-detector (risk engine). |
+| 17 | `AnomalyDetectionEngine.js` | **The umbrella.** Composes rules + ML (`IsolationForestService`) into one verdict. **`evaluate()` is wired post-fund** in `dashboard.html` today (trust + audit); a pre-fund gate would call the same API earlier. |
 
 ### Why two trust services?
 `TrustScoreService.js` is the v1 design (recompute from history with exponential recency decay). `TrustEngineService.js` is the v2 (cumulative counters on the user row, O(1) updates, history table for "what changed?" tooltips). The dashboard **prefers the engine** and falls back to the legacy service only if the engine fails (`@frontend/dashboard.html:3260-3281`).
@@ -236,38 +234,27 @@ Disputes can be opened by **either party**, in three situations:
 
 ## 8. The AI Anomaly Detection Engine (Pre-Fund)
 
-> **Architecture (v2.0).** The "AI Anomaly Detection Engine" is now a real, single umbrella orchestrator (`AnomalyDetectionEngine.js`) that composes **three independent sub-detectors** — rules, ML, and behavioral — into one verdict per evaluation. The dashboard never asks any individual sub-detector; it always asks the umbrella.
+> **Architecture (v2.1).** The umbrella orchestrator (`AnomalyDetectionEngine.js`) composes **two** sub-detectors — **deterministic rules** (`RiskEngineService`) and **ML** (`IsolationForestService` → Python Isolation Forest) — into one verdict per evaluation. `DeviceFingerprintService` feeds the ML feature vector (and audit trail). The `behavioral_score` field in `anomaly_decisions` is always **NULL** for new evaluations (column retained for legacy rows).
 >
 > ```
->                    ┌──────────────────────────────────────┐
->                    │      AnomalyDetectionEngine          │
->                    │      (umbrella, v2.0)                │
->                    │                                      │
->                    │  evaluate({txn, actor, counterparty})│
->                    │   → { decision, compositeScore,      │
->                    │       subScores, flags, ... }        │
->                    └──────────────┬───────────────────────┘
->                                   │
->                ┌──────────────────┼──────────────────┐
->                ▼                  ▼                  ▼
->      ┌──────────────────┐ ┌──────────────┐ ┌────────────────────┐
->      │ RiskProfiling    │ │ AIRiskService│ │ BehavioralSignals  │
->      │ (rules, in-      │ │ → Python     │ │ (PIN paste, tab    │
->      │  browser)        │ │   Isolation  │ │  blur, multi-      │
->      │                  │ │   Forest     │ │  account-from-     │
->      │                  │ │   /score     │ │  device, etc.)     │
->      └──────────────────┘ └──────────────┘ └─────────┬──────────┘
->                                                      │
->                                                      ▼
->                                        ┌──────────────────────────┐
->                                        │ DeviceFingerprintService │
->                                        │ (FingerprintJS OSS v4    │
->                                        │  via CDN — real device   │
->                                        │  visitorId + confidence) │
->                                        └──────────────────────────┘
+>                 ┌────────────────────────────────────────────────────────┐
+>                 │        AnomalyDetectionEngine (umbrella, v2.1)         │
+>                 │     evaluate() → decision + compositeScore + flags     │
+>                 └──────────────────┼─────────────────────────────────────┘
+>                                    ↓
+>                  ┌──────────────────────────┴──────────────────────────┐
+>                  ↓                                                    ↓
+>  ┌──────────────────────────────────┐   ┌──────────────────────────────────────────────┐
+>  │ RiskEngineService                │   │ IsolationForestService                       │
+>  │ deterministic rules              │   │ HTTP → Python IF /score                      │
+>  └──────────────────────────────────┘   └──────────────────────────────────┼───────────┘
+>                                                                                ↓
+>          ┌──────────────────────────────────────────────────────────────────────┐
+>          │      DeviceFingerprintService (visitorId → ML features + Turso)      │
+>          └──────────────────────────────────────────────────────────────────────┘
 > ```
 
-When a buyer tries to join+fund a transaction, the umbrella engine runs all three sub-detectors and combines their scores with calibrated weights into a single decision.
+When a buyer tries to join+fund a transaction, the umbrella engine runs both sub-detectors and combines their scores with calibrated weights into a single decision.
 
 ### 8.1 Layer 1 — Deterministic Rules (always runs)
 Hard-coded heuristics on data we already have:
@@ -279,8 +266,8 @@ Hard-coded heuristics on data we already have:
 
 Each rule contributes a weight; weights add up to a partial risk score.
 
-### 8.2 Layer 2 — Python AI Engine (always runs if reachable)
-`AIRiskService.js` POSTs to the Flask service:
+### 8.2 Layer 2 — Python AI Engine (runs if reachable)
+`IsolationForestService.js` POSTs to the Flask service:
 
 ```
 POST http://localhost:5000/api/v1/score
@@ -289,54 +276,43 @@ POST http://localhost:5000/api/v1/score
   "transaction_amount": 50000,
   "transaction_velocity": 3,        # buyer's txns in last 24h
   "account_age_days": 45,
-  "device_fingerprint": 5432,       # hash of userAgent+screen+tz
+  "device_fingerprint": 5432,       # from DeviceFingerprintService
   "time_of_day": 14,
   "counterparty_trust_score": 75
 }
 ```
 
-The Flask app (`ai-engine/app.py`) feeds these 6 features into a pre-trained **Isolation Forest** model (`ai-engine/models/isolation_forest_model.pkl`). The model returns an anomaly score, which is mapped to **1–100**. Verdict is `fail` if score > 80.
+The Flask app (`ai-engine/app.py`) feeds these features into a pre-trained **Isolation Forest** model (`ai-engine/models/isolation_forest_model.pkl`). The model returns an anomaly score, which is mapped to **1–100**. Verdict is `fail` if score > 80.
 
 It also returns human-readable indicators like `"High transaction amount"`, `"New account"`, `"Unusual transaction time"` — these show up in the UI.
 
-**Timeout:** 5 seconds. If the engine is down or slow, `AIRiskService` returns a **fail-safe `fail` verdict** (better to block a real txn than let a fraud through silently).
+**Timeout:** 5 seconds. If the engine is down or slow, the ML layer is skipped and the umbrella **re-normalizes** weights onto the rules layer.
 
-### 8.3 Layer 3 — Behavioral Signals (always runs)
-`BehavioralSignalsService` collects passive, privacy-respecting in-session signals and turns them into a sub-score:
-- **PIN was pasted instead of typed** (+25, hard-block on high-value txns)
-- **Same device used by ≥3 different accounts** (+25, hard-block; sock-puppet pattern)
-- **Funded ≤30s after login on a high-value txn** (+20; compromised credential pattern)
-- **Repeated tab blurs while the funding modal was open** (+12; coaching pattern)
-- **Account using ≥5 different devices** (+10; device-rotation pattern)
-- **Late-night high-value funding** (+10)
+The device fingerprint is produced by `DeviceFingerprintService` using **FingerprintJS open-source v4** (Apache 2.0, loaded from `openfpcdn.io/fingerprintjs/v4/esm.min.js` at runtime — no build step). It returns a stable `visitorId` plus a confidence score. The legacy `userAgent+screen+tz` hash is kept only as a CDN-blocked fallback (marked `degraded:true` so downstream logic can de-weight it).
 
-The device fingerprint is produced by `DeviceFingerprintService` using **FingerprintJS open-source v4** (Apache 2.0, loaded from `openfpcdn.io/fingerprintjs/v4/esm.min.js` at runtime — no build step). It returns a stable `visitorId` plus a confidence score. The legacy `userAgent+screen+tz` hash is kept only as a CDN-blocked fallback (marked `degraded:true` so the engine de-weights it).
-
-### 8.4 Composite Decision (the umbrella)
+### 8.3 Composite Decision (the umbrella)
 `AnomalyDetectionEngine.evaluate()` returns:
 
 ```js
 {
   decision: 'pass' | 'review' | 'block',
   compositeScore: 0..100,
-  subScores: { rules, ml, behavioral },
+  subScores: { rules, ml, behavioral: null },
   flags: [{ code, severity, message, layer }, ...],
-  layersActive: ['rules','ml','behavioral'],
+  layersActive: ['rules','ml'],
   fingerprintId: '...',
-  engineVersion: '2.0.0'
+  engineVersion: '2.1.0'
 }
 ```
 
-**Combining rule:** weighted average — `rules×0.45 + ml×0.30 + behavioral×0.25`. If any layer is unavailable (e.g. Python ML engine is down), its weight is **redistributed** to the active layers — a missing detector doesn't soft-pass risky transactions.
+**Combining rule:** weighted average — `rules×0.6 + ml×0.4`. If the ML layer is unavailable, weight is **redistributed** entirely onto rules.
 
 **Thresholds:**
 - `compositeScore ≥ 75` → **block**
 - `compositeScore 40–74` → **review** (warning banner; user can self-confirm)
 - `compositeScore < 40` → **pass**
 
-**Hard blocks:** any single one of these flag codes forces a `block` regardless of composite score, because the false-positive cost is dominated by the fraud cost:
-- `SHARED_DEVICE_MULTI_ACCOUNT` (≥3 accounts on one device)
-- `PIN_PASTED_HIGH_VALUE` (PIN paste on a >₦200k transaction)
+**Hard blocks:** reserved for future rule-engine codes that must force `block` regardless of composite score (none active in v2.1).
 
 Every decision is persisted to **`anomaly_decisions`** (umbrella audit, runs even when ML is down) and the ML-only sub-call is also logged to **`ai_risk_logs`** as before.
 
@@ -445,7 +421,7 @@ Self-hosted Flask service in Docker. The model (`isolation_forest_model.pkl`) is
 > change log is in section 12.5 below.
 
 ### ✅ Fully implemented
-- 9-stage account creation with face liveness
+- **10-stage** account creation with face liveness
 - **Face reference photo persisted to Cloudinary at signup** (Phase B). MediaPipe liveness now captures + uploads one frame; URL stored on `users.face_reference_url`.
 - **Email field at signup with verification OTP delivered via Resend** (Phase D).
 - Phone+PIN sign-in with SHA-256 hashed PINs
@@ -468,7 +444,7 @@ Self-hosted Flask service in Docker. The model (`isolation_forest_model.pkl`) is
 - FingerprintJS-backed device IDs persisted to `device_fingerprints` for sock-puppet detection
 
 ### 🟡 Partially implemented / mocked
-- **OTP at signup (phone OTP)** — still hardcoded to `123456`. Email OTP is real (Phase D). Phone OTP is intentionally deferred because the SMS providers (Termii / Twilio) charge per message in test mode too.
+- **OTP at signup** — **Email** OTP is real (`EmailOTPService` + AI-engine Resend proxy). **Phone** SMS OTP is **not** wired; stage 2 verifies **email** with 6 digits (demo toast still references **`123456`** when Resend is unavailable).
 - **Push notifications** — only email + in-app feed today; no web-push or mobile push.
 
 ### ❌ Not implemented yet
@@ -534,34 +510,19 @@ Let's trace **one full transaction** through every system.
 
 > Alice (seller) is selling a used iPhone for ₦400,000. Bob (buyer) is paying.
 
-1. **Alice signs up** → 9 stages → row in `users` with `trust_score = NULL` (treated as 50 / Building) and a Squad virtual account number.
-2. **Alice opens the dashboard** → `dashboard.html` loads → her trust badge shows `50 / Building` (lime). The new-user notice is shown because `total_completed = 0`.
-3. **Alice clicks Create Escrow** → fills in description "iPhone 13 Pro 256GB, mint condition", price ₦400,000, delivery 5 days, inspection 3 days → `TransactionService.createTransaction` writes a row with `state = 'Created'`, `transaction_id = 'SCR-AB12CD'`.
-4. **Alice copies `SCR-AB12CD`** and texts it to Bob.
-5. **Bob signs up too**, opens dashboard, clicks Join Transaction, enters the code.
-6. The dashboard fetches the transaction → calls `RiskProfilingService.evaluate()`:
-   - **Deterministic rules**: Bob's account is 2 days old → **+15 risk weight** ("New account").
-   - **Gemini check** (if key present): description matches price → returns `{ suspicious: false }`.
-   - **Python AI engine**: features `{amount: 400000, velocity: 1, age: 2, ...}` → Isolation Forest returns risk_score `45` → verdict `pass`, indicators `["New account"]`.
-   - Final verdict: `pass with warning`.
-7. Bob sees a yellow warning ("New account — proceed with caution") and a green **Fund Now** button.
-8. **Bob clicks Fund** → `StateMachineService.transition(Created → Funded_Locked)`:
-   - `validateUserPermission`: passes (Bob ≠ seller).
-   - `SquadVirtualAccountService.transfer`: ₦400,000 from Bob's VA → holding account.
-   - DB update: `state = 'Funded_Locked'`, `buyer_id = bob.id`, `funded_at = now`, `risk_score = 45`, `ai_verdict = 'pass'`.
-   - Row added to `transaction_state_history`.
-   - Row added to `ai_risk_logs`.
-9. **Alice gets a toast** "Bob funded the escrow" and a Mark as Shipped button.
-10. **Alice clicks Mark as Shipped** → `state = 'In_Transit'`, `shipped_at = now`. An auto-release timer is scheduled for `now + 3 days` (the inspection window).
-11. **Bob receives the phone in 4 days**. He opens the dashboard, clicks **I received my item**.
-12. `StateMachineService.transition(In_Transit → Completed)`:
-    - `SquadVirtualAccountService.transfer`: ₦400,000 from holding → Alice's VA.
-    - `state = 'Completed'`, `completed_at = now`.
-    - Auto-release timer cancelled.
-    - `trustEngine.applySignal(alice, { successful_deliveries: +1, total_completed: +1, total_volume_ngn: +400000 })` → Alice's score goes from 50 → ~57.5 → still **Building**, but climbing.
-    - Same signal applied to Bob.
-    - Two rows appended to `trust_score_history` so both can see "+7.5 — successful delivery as seller" in their tooltip.
-13. Both users see green "Completed" badges. Alice's balance updates. Done.
+1. **Alice signs up** → **10** stages (see `docs/USER_FLOW.md`) → row in `users` with neutral trust (**50 / Building** once `TrustEngineService` runs) and a Squad virtual account number.
+2. **Alice opens the dashboard** → `dashboard.html` loads → trust badge shows **Building** for a new user (`total_completed = 0`).
+3. **Alice creates escrow** → `TransactionService.createTransaction` writes `state = 'Created'` with `transaction_id = 'TXN-{uuid}'`.
+4. **Alice copies the `TXN-…` code** and sends it to Bob.
+5. **Bob signs up**, opens the dashboard, **Join Transaction**, pastes the code, accepts terms → **Fund** modal.
+6. **Risk / anomaly (today):** `AnomalyDetectionEngine.evaluate()` is **not** what gates the Fund click — it runs **after** a successful fund and feeds `TrustEngineService.onAnomalyEvaluated` (see `FRAUD_DETECTION_FLOW.md`). The join/fund UI may still show trust and any inline warnings where implemented.
+7. **Bob clicks Fund** — **Hackathon path:** buyer **`demo_balance`** is debited, buyer id is written, `stateMachineService.transitionState(..., 'Funded_Locked', …)` succeeds. (A full Squad VA → holding transfer is the production-shaped path elsewhere in the services stack.)
+8. **Background:** `anomalyEngine.evaluate` + `trustEngine.onAnomalyEvaluated` may run with `trigger: 'post_fund'`; rows can be written to `anomaly_decisions` / `ai_risk_logs` when the pipeline and tables are available.
+9. **Alice gets a toast** “Bob funded the escrow” and **Mark as Shipped**.
+10. **Alice ships** → `In_Transit`; timers per `StateMachineService`.
+11. **Bob confirms receipt** → `Completed`; payout via **`SquadTransferService`** / transfer layer as configured; **`trustEngine.applySignal`** attributes successful delivery / volume to Alice (and buyer-side counters to Bob).
+12. **Trust history** rows append to `trust_score_history` for “what changed?” UI.
+13. Both parties see **Completed**; balances refresh. **Done.**
 
 ---
 
@@ -576,7 +537,7 @@ docker-compose up -d
 # AI engine → http://localhost:5000/health
 ```
 
-Or for frontend-only dev (no AI engine), `cd frontend` and run `python -m http.server 8000`, then open `http://localhost:8000/account-creation.html`. The dashboard will degrade gracefully — risk profiling will fall back to rules-only with a `fail` verdict from the AI layer.
+Or for frontend-only dev (no AI engine), `cd frontend` and run `python -m http.server 8000`, then open `http://localhost:8000/account-creation.html`. The dashboard degrades: **Isolation Forest** may be offline, so the umbrella **re-normalises** weights; trust and rules layers still run.
 
 ---
 
@@ -587,7 +548,7 @@ Or for frontend-only dev (no AI engine), `cd frontend` and run `python -m http.s
 3. **There's a separate admin page** (`admin.html`) for moderators, gated by `users.is_admin = 1`.
 4. **Money flow** is buyer → holding account → seller, gated by a state machine.
 5. **Trust score** starts at 50 ("Building") for everyone; goes up on successful deliveries, way down on lost disputes.
-6. **Three AI layers** are in play: pre-fund risk (rules + Isolation Forest + optional Gemini sanity check), post-fund dispute resolution (Gemini multimodal — reads complaint + photos), and face re-verification (Gemini multimodal — compares signup reference photo to fresh capture on high-risk actions).
+6. **AI & risk stack:** **post-fund** anomaly pipeline (**`RiskEngineService` + `IsolationForestService`** under **`AnomalyDetectionEngine`**) updates trust; **Gemini** powers **disputes** (`DisputeAgentService`) and **face re-verification** (`FaceVerificationService`). There is **no** live Gemini “stage 3” on pre-fund listings in the current codebase.
 7. **Images live in Cloudinary now** — dispute photos, fulfillment proof, and face references. Base64 fallback only kicks in if Cloudinary config is missing.
 8. **Notifications are real**: in-app bell + Resend transactional emails on every state change.
 9. **The "Building" badge is correct** — it's the default tier for any user with no completed transactions yet.

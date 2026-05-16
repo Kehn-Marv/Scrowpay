@@ -80,7 +80,9 @@ This document provides evidence and citations supporting ScrowPay's core assumpt
 - **Alibaba Trust Score studies:** Users with trust scores above 70% have 3x higher transaction completion rates than those below 40%.
 - **Academic literature (Dellarocas, 2003, "The Digitization of Word of Mouth"):** Online reputation mechanisms increase market efficiency by 20-30% in peer-to-peer markets.
 
-### Claim: Tiered trust signals (Safe / Caution / Risk) improve user decision-making
+### Claim: Tiered trust signals (plain-language “Safe / Caution / High Risk” on the landing page) improve user decision-making
+
+**Note:** The live engine exposes **Low / Building / Trusted / Elite** (`TrustEngineService.tierFor`). Marketing bands on `web.html` are three high-level labels mapped to those tiers — not a separate scoring system.
 
 **Evidence:**
 - **Behavioral economics research (Kahneman & Tversky):** Users process categorical signals (green/yellow/red) more effectively than raw numbers for quick decision-making.

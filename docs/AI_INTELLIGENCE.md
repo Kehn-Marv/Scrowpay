@@ -1,115 +1,59 @@
 # AI / Data Intelligence — Deep Dive
 
-ScrowPay addresses two AI pillars: **Fraud Prevention** (pre-funding) and **Automated Dispute Resolution** (post-transaction). This document details the architecture, models, and data flows.
+ScrowPay combines **(A) anomaly / risk scoring** (rules + classical ML) with **(B) automated dispute resolution** (Gemini multimodal). This document tracks **what the code does today** vs aspirational copy still found in some marketing surfaces.
 
 ---
 
 ## Overview
 
-| AI Feature | Technology | Where it runs | Fallback if unavailable |
+| Feature | Technology | Where it runs | Notes |
 |---|---|---|---|
-| Pre-funding risk scoring | Deterministic rules + Isolation Forest | Browser + Flask container | Rules-only (Stage 1) |
-| Dispute resolution agent | Gemini 2.0 Flash (multimodal) | Browser → Gemini API | Manual admin review |
-| Face re-verification | Gemini 2.0 Flash (multimodal) | Browser → Gemini API | Action proceeds without face check |
-| Behavioral signals | FingerprintJS + custom heuristics | Browser | Reduced signal quality |
-| Trust Score engine | Deterministic formula on counters | Browser → Turso DB | Always available (no external dependency) |
+| Anomaly umbrella | `AnomalyDetectionEngine.js` | Browser | Merges **rules + ML**; thresholds in-code (`BLOCK_THRESHOLD` / `REVIEW_THRESHOLD`) |
+| Rules layer | `RiskEngineService.js` | Browser | Deterministic heuristics; **no Gemini** in this path (legacy listing check removed) |
+| ML layer | `IsolationForestService.js` → Flask `ai-engine` | Browser + Docker | Isolation Forest **`/api/v1/score`**; fail-open if offline |
+| Device ID | `DeviceFingerprintService.js` | Browser | FingerprintJS visitor ID for ML features + audit |
+| Dispute agent | `DisputeAgentService.js` (Gemini 2.0 Flash) | Browser → Gemini | Multimodal verdict JSON |
+| Face re-verify | `FaceVerificationService.js` (Gemini) | Browser → Gemini | Large withdrawals vs optional signup reference |
+| Trust engine | `TrustEngineService.js` | Browser → Turso | Deterministic `computeScore`; ingests **`last_anomaly_score`** from post-fund evaluations |
 
 ---
 
-## Pillar 1: Pre-Funding Fraud Detection
+## Pillar 1: Anomaly detection (rules + Isolation Forest)
 
-### The Pipeline
+### Architecture
 
-Every transaction is scored **before** funds are locked in escrow. The pipeline has three stages:
+`AnomalyDetectionEngine.evaluate({ transaction, actor, counterparty, userContext })`:
 
-```
-Transaction Created
-        │
-        ▼
-┌─────────────────────┐
-│  Stage 1: Rules     │  (browser, instant)
-│  • Account age      │
-│  • Tx velocity      │
-│  • Amount outliers   │
-│  • Time of day      │
-│  • Device fingerprint│
-│  • Counterparty trust│
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Stage 2: ML Model  │  (Flask API, <3s)
-│  Isolation Forest   │
-│  trained on 10K     │
-│  synthetic Nigerian │
-│  transactions       │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Stage 3: Gemini    │  (optional, borderline cases)
-│  Contextual fraud   │
-│  hint on suspicious │
-│  descriptions       │
-└────────┬────────────┘
-         │
-         ▼
-   Combined Score 0-100
-   >80 → BLOCKED
-   50-80 → WARNING
-   <50 → PASS
-```
+1. Optionally fingerprints via **`DeviceFingerprintService`**
+2. Runs **`RiskEngineService.evaluate`** (rules) → partial score + flags
+3. Runs **`IsolationForestService.scoreTransaction`** → ML score (or null if engine down)
+4. Combines with **fixed weights** (v2.1: **0.6** rules / **0.4** ML, re-normalised if a layer is missing)
+5. Emits **`pass` / `review` / `block`** plus `compositeScore`, persists audit rows when DB is wired
 
-### Stage 1: Deterministic Rules (`AIRiskService.js`)
+### When it runs in production code today
 
-Runs entirely in the browser. Evaluates:
+**`dashboard.html` (fund success path):** `anomalyEngine.evaluate()` is invoked **after** funding succeeds, then **`trustEngine.onAnomalyEvaluated`** stores the composite and recalculates trust. This is **non-blocking** for UX — see **`FRAUD_DETECTION_FLOW.md`**.
 
-| Signal | Weight | Logic |
-|---|---|---|
-| Account age < 7 days | +20 | New accounts are higher risk |
-| Transaction velocity > 5/hour | +15 | Rapid transactions suggest automation |
-| Amount > ₦500,000 | +10 | Large amounts warrant extra scrutiny |
-| Off-hours (midnight – 5am) | +5 | Unusual transaction timing |
-| Device fingerprint mismatch | +15 | Different device from usual pattern |
-| Counterparty trust < 30 | +10 | Low-trust counterparty increases risk |
+**Roadmap / product copy:** a **pre-fund** gate (block fund click on `block`) is straightforward to add but **is not the active behaviour** at the time of this doc refresh.
 
-### Stage 2: Isolation Forest Model (`ai-engine/`)
+### No “Stage 3 Gemini” on pre-fund scoring
 
-**Model:** scikit-learn `IsolationForest`
-- **Training data:** 10,000 synthetic transactions generated to match Nigerian commerce patterns
-- **Features:** `transaction_amount`, `transaction_velocity`, `account_age_days`, `device_fingerprint`, `time_of_day`, `counterparty_trust_score`
-- **Contamination:** 0.05 (5% expected anomaly rate)
-- **Trees:** 100 estimators
-- **Performance targets:** Precision ≥ 80%, Recall ≥ 70%
+Older drafts described sending listing text to Gemini for borderline fraud hints. **`RiskEngineService`** no longer performs that call — disputes and withdrawals consume Gemini instead.
 
-**API endpoint:**
+### Isolation Forest service (`ai-engine/`)
+
+**Model:** scikit-learn `IsolationForest`  
+**Training data:** synthetic Nigerian-ish transaction generator (order of **10k** rows in project docs)  
+**Features (typical payload):** amount, velocity, account age, device token/hash, hour-of-day, counterparty trust, etc. — see `IsolationForestService.extractFeatures` + `ai-engine/app.py` for the live contract.
+
+**API endpoint**
+
 ```
 POST /api/v1/score
 Content-Type: application/json
-
-{
-  "user_id": "user_123",
-  "transaction_amount": 50000,
-  "transaction_velocity": 3,
-  "account_age_days": 45,
-  "device_fingerprint": 5432,
-  "time_of_day": 14,
-  "counterparty_trust_score": 75
-}
-
-Response:
-{
-  "risk_score": 23,
-  "verdict": "pass",
-  "anomaly_indicators": []
-}
 ```
 
-**Response time:** < 3 seconds (typically < 500ms)
-
-### Stage 3: Gemini Contextual Check (Optional)
-
-For borderline scores (50-80), the transaction description is sent to Gemini for a contextual fraud assessment. This catches social engineering patterns that statistical models miss (e.g., "urgent Western Union" descriptions).
+**Response time:** usually sub-second on a warm container; allow a few seconds under load.
 
 ---
 
@@ -157,13 +101,12 @@ Dispute Filed
        NO
        │
        ▼
-  confidence > 0.50? ──YES──► Route to admin with
-       │                       AI recommendation
+  confidence > 0.70? ──YES──► `ai_assisted` (admin path with AI rec)
        NO
        │
        ▼
-  Route to admin
-  (no recommendation)
+  Manual review
+  (low / no confidence)
 ```
 
 ### Conversation Flow
@@ -187,68 +130,49 @@ High-risk actions (withdrawals ≥ ₦500,000) trigger a face re-verification ga
 
 ## Trust Score Engine (`TrustEngineService.js`)
 
-### Formula
+`computeScore` starts from a **50** baseline and adds/subtracts using **counters on the `users` row** (deliveries, dispute wins/losses, cancellations, volume, idle decay, failed join attempts, …) plus a **penalty from `last_anomaly_score`** (composite anomaly 0–100 maps to up **-20** points). See the function body for exact coefficients — do not rely on older markdown tables that listed `identity_verified` bonuses that are not in the current formula.
 
-The Trust Score is a deterministic function of cumulative counters stored on the user row:
+### Tiers (`tierFor`)
 
-| Counter | Effect on Score |
-|---|---|
-| `successful_deliveries` | +2 per delivery (capped contribution) |
-| `disputes_won` | +1 per win |
-| `disputes_lost` | -5 per loss |
-| `cancellations` | -3 per cancellation |
-| `identity_verified` (BVN) | +15 baseline bonus |
-| `account_age_days` | +0.1 per day (capped at +10) |
-
-### Tiers
-
-| Range | Tier | Color | UI Behavior |
-|---|---|---|---|
-| 0 – 39 | Low / High Risk | Red | Warning shown to counterparty |
-| 40 – 69 | Building / Caution | Yellow | Neutral |
-| 70 – 94 | Trusted / Safe | Green | No flags |
-| 95 – 100 | Elite | Gold | Eligible for Instant Escrow Release |
+| Range | Label (engine) | Marketing mapping on `web.html` |
+|---|---|---|
+| 0 – 39 | **Low** | “High Risk” band |
+| 40 – 69 | **Building** | “Proceed with Caution” |
+| 70 – 94 | **Trusted** | “Safe to Proceed” |
+| 95 – 100 | **Elite** | “Safe to Proceed” + instant-release eligibility |
 
 ### Instant Escrow Release
 
-Users with Trust Score ≥ 95 AND ≥ 10 successful deliveries qualify for Instant Release — escrow funds release immediately upon delivery confirmation without an inspection window.
+`isInstantReleaseEligible`: score **≥ 95**, successful deliveries **≥ 10**, disputes lost **≤ 0** (constants at top of `TrustEngineService.js`).
 
 ---
 
-## Behavioral Signals
+## Risk & device signals
 
 ### Device Fingerprinting (`DeviceFingerprintService.js`)
 
-Uses FingerprintJS open-source v4 to generate stable visitor IDs. Detects:
-- Account sharing (same device, different accounts)
-- Sock puppets (same person, fake counterparty)
-- Device changes mid-transaction
+FingerprintJS OSS v4 → stable `visitorId`, persisted for audit + ML features. CDN-block fallback marks degraded fingerprints for downstream de-weighting.
 
 ### Anomaly Detection Engine (`AnomalyDetectionEngine.js`)
 
-Additional behavioral analysis layer that tracks:
-- Transaction velocity patterns
-- Amount distribution anomalies
-- Geographic consistency (based on address data)
-- Session timing patterns
+Orchestrates **`RiskEngineService`** + **`IsolationForestService`**. **`behavioral_score`** is always **`null`** in v2.1 (column retained for legacy rows).
 
 ---
 
-## Data Flow Summary
+## Data flow summary (current wiring)
 
 ```
-User Action
+Fund succeeds (dashboard)
     │
-    ├──► DeviceFingerprintService → fingerprint stored in Turso
-    ├──► BehavioralSignalsService → session patterns logged
-    ├──► AIRiskService (Stage 1) → rule-based score
-    ├──► Flask /api/v1/score (Stage 2) → ML score
-    ├──► [Optional] Gemini (Stage 3) → contextual hint
+    ├──► DeviceFingerprintService.identify() (best effort)
+    ├──► RiskEngineService.evaluate(...)
+    ├──► IsolationForestService.scoreTransaction(...)  →  Flask /api/v1/score
     │
     ▼
-Combined Risk Score → logged to `ai_risk_logs` table
+AnomalyDetectionEngine → compositeScore + decision
     │
-    ├── >80 → Transaction BLOCKED
-    ├── 50-80 → WARNING shown, user can proceed
-    └── <50 → PASS, proceed normally
+    ├──► Persist anomaly_decisions / ai_risk_logs (when DB layer succeeds)
+    └──► TrustEngineService.onAnomalyEvaluated(...)  →  last_anomaly_score + trust_score recalc
 ```
+
+**Important:** this diagram reflects the **post-fund** pipeline. A future **pre-fund** variant would insert the same `evaluate()` call *before* `transitionState(..., 'Funded_Locked')` and optionally hard-stop the UI.

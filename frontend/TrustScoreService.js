@@ -104,8 +104,11 @@ class TrustScoreService {
       // Calculate trust score with recency weighting (Requirement 2.7)
       const score = this.applyRecencyWeighting(transactions);
       
-      // Count successful transactions (not disputed)
-      const successfulTransactions = transactions.filter(t => !t.disputed || t.disputed === 0).length;
+      // Count successful transactions (not disputed). Turso often returns INTEGER
+      // columns as strings (e.g. "0"); strict `=== 0` would treat clean deals as disputed.
+      const successfulTransactions = transactions.filter(
+        (t) => Number(t.disputed) !== 1 && t.disputed !== true
+      ).length;
       
       console.log('[TrustScoreService] ✅ Trust score calculated:', {
         score,
@@ -169,10 +172,12 @@ class TrustScoreService {
       const daysAgo = (now - completedAt) / (1000 * 60 * 60 * 24);
       
       // Calculate exponential decay weight: weight = e^(-days/30)
-      const weight = Math.exp(-daysAgo / this.DECAY_CONSTANT);
+      const weight = Number.isFinite(daysAgo) ? Math.exp(-daysAgo / this.DECAY_CONSTANT) : 1;
       
-      // Transaction score: 100 if successful (not disputed), 0 if disputed
-      const txnScore = (!txn.disputed || txn.disputed === 0) ? 100 : 0;
+      // Transaction score: 100 if successful (not disputed), 0 if disputed.
+      // Coerce disputed — SQLite/Turso may return `"0"` / `"1"` strings.
+      const isDisputed = Number(txn.disputed) === 1 || txn.disputed === true;
+      const txnScore = isDisputed ? 0 : 100;
       
       // Accumulate weighted score
       weightedScore += txnScore * weight;

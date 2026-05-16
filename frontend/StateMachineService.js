@@ -414,7 +414,9 @@ class StateMachineService {
     // Calculate deadline: funded_at + delivery_timeline_days
     const fundedDate = new Date(transaction.funded_at);
     const deadlineDate = new Date(fundedDate);
-    deadlineDate.setDate(deadlineDate.getDate() + transaction.delivery_timeline_days);
+    const timelineDays =
+      Number(transaction.delivery_timeline_days) > 0 ? Number(transaction.delivery_timeline_days) : 7;
+    deadlineDate.setDate(deadlineDate.getDate() + timelineDays);
     
     const timeUntilDeadline = deadlineDate.getTime() - Date.now();
     
@@ -563,9 +565,10 @@ class StateMachineService {
    * @returns {void}
    */
   scheduleAutoRelease(transaction) {
-    // Auto-release period = delivery_timeline_days + 7 days
-    const autoReleaseDays = transaction.delivery_timeline_days + 7;
-    
+    const timelineDays =
+      Number(transaction.delivery_timeline_days) > 0 ? Number(transaction.delivery_timeline_days) : 7;
+    const autoReleaseDays = timelineDays + 7;
+
     console.log('[StateMachineService] Scheduling auto-release:', {
       transactionId: transaction.transaction_id,
       shippedAt: transaction.shipped_at,

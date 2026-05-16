@@ -11,7 +11,7 @@ For the system-wide overview, see the [root README](../README.md). For an exhaus
 | File | Purpose |
 |---|---|
 | `web.html` | Landing page. Hero + feature highlights + Create Account / Sign In CTAs. |
-| `account-creation.html` | 9-stage signup: phone → OTP → BVN → name → Squad verify → liveness blink → email + email OTP → address → PIN. Captures and uploads the face reference to Cloudinary. |
+| `account-creation.html` | **10-stage** signup: phone **+ email** → **email OTP** → BVN → name/DOB/gender → Squad virtual account → face intro → blink liveness → address → **6-digit PIN** → success. Captures/uploads face reference to Cloudinary when available. |
 | `sign-in.html` | Phone + 6-digit PIN authentication. SHA-256 hash with phone as salt. |
 | `dashboard.html` | The main app. ~9,000 lines of HTML + inline JS that orchestrates all services. Lists transactions, lets users create/join/fund/ship/accept/dispute, shows trust score, balance, notifications bell, profile panel. |
 | `admin.html` | Phase G admin console. Gated by `users.is_admin = 1`. Pending dispute queue, face verification audit, risky transaction monitor, user directory. |
@@ -24,10 +24,9 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 
 | File | Class | Responsibility |
 |---|---|---|
-| `AIRiskService.js` | `AIRiskService` | HTTP client for the Python Isolation Forest engine; logs every call to `ai_risk_logs`. |
-| `AnomalyDetectionEngine.js` | `AnomalyDetectionEngine` | v2 umbrella that composes ML + rules + behavioural signals into one `compositeScore` + decision. |
+| `IsolationForestService.js` | `IsolationForestService` | HTTP client for the Python Isolation Forest engine; logs every call to `ai_risk_logs`. |
+| `AnomalyDetectionEngine.js` | `AnomalyDetectionEngine` | Umbrella that composes rules + ML into one `compositeScore` + decision. |
 | `BalanceService.js` | `BalanceService` | Available vs locked balance calculations across virtual accounts. |
-| `BehavioralSignalsService.js` | `BehavioralSignalsService` | Session-scoped keystroke / mouse / dwell-time collector feeding the anomaly engine. |
 | `CloudinaryService.js` | `CloudinaryService` | Browser-side unsigned uploads to Cloudinary. Three preset profiles: disputes, fulfillment, face refs. |
 | `DashboardService.js` | `DashboardService` | Top-level UI orchestrator. Called from `dashboard.html` after sign-in. |
 | `DeviceFingerprintService.js` | `DeviceFingerprintService` | FingerprintJS v4 wrapper. Returns stable `visitorId`, persisted to `device_fingerprints`. Legacy hash fallback. |
@@ -37,7 +36,7 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 | `FaceVerificationService.js` | `FaceVerificationService` | Gemini multimodal face re-verification (Phase F). `shouldReverify()` decision function + `verify()` Gemini call. Persists every attempt to `face_verifications`. |
 | `InputValidationService.js` | `InputValidationService` | Format validators for phone, BVN, email, PIN, amounts. |
 | `NotificationService.js` | `NotificationService` | Per-user notification persistence + Resend email proxy. Powers the dashboard bell icon. |
-| `RiskProfilingService.js` | `RiskProfilingService` | Deterministic rule-based risk weights (new account, off-hours, large amount, etc.). |
+| `RiskEngineService.js` | `RiskEngineService` | Deterministic rule-based risk engine (new account, off-hours, large amount, etc.). |
 | `SessionService.js` | `SessionService` | localStorage-backed session with 24h expiry + 30min inactivity timeout. |
 | `StateMachineService.js` | `StateMachineService` | The transaction lifecycle. `transition(txnId, newState, actorId, metadata)` is the single entry point; runs validation + side effects + audit + notifications. |
 | `ToastNotificationService.js` | `ToastNotificationService` | Transient in-tab toasts (success / error / info / warning). |
@@ -71,7 +70,7 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 | File | What it is |
 |---|---|
 | `escrow-schema.sql` | Reference SQL for the core escrow tables. The runtime schema is created by `turso-db-service.js`; this file is for human reading. |
-| `anomaly-engine-schema.sql` | Reference SQL for the AI / behavioural-signals tables. |
+| `anomaly-engine-schema.sql` | Reference SQL for the AI / anomaly audit tables. |
 
 ### Data
 
@@ -90,8 +89,8 @@ Each file exports a single class onto `window.*`. JSDoc-documented; many have in
 2. **Database & session** — `turso-db-service.js`, `SessionService.js`
 3. **External APIs** — `squad-api-service.js`
 4. **Validation & utilities** — `InputValidationService.js`, `error-handler-service.js`, `ToastNotificationService.js`
-5. **Fingerprinting + behavioural signals** — `DeviceFingerprintService.js`, `BehavioralSignalsService.js`
-6. **Risk pipeline** — `AIRiskService.js`, `RiskProfilingService.js`, `AnomalyDetectionEngine.js`
+5. **Device fingerprinting** — `DeviceFingerprintService.js`
+6. **Risk pipeline** — `IsolationForestService.js`, `RiskEngineService.js`, `AnomalyDetectionEngine.js`
 7. **Domain services** — `BalanceService.js`, `TrustEngineService.js`, `TrustScoreService.js`
 8. **Cloudinary + notifications** — `CloudinaryService.js`, `NotificationService.js`
 9. **Dispute system** — `DisputeAgentService.js`, `DisputeService.js`

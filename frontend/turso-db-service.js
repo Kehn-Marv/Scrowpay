@@ -997,7 +997,7 @@ class TursoDBService {
 
             // The composite decision produced by AnomalyDetectionEngine
 
-            // (combining rules + ML + behavioral). Cached on the row so
+            // (combining rules + ML). Cached on the row so
 
             // re-renders don't re-evaluate. Distinct from `ai_verdict`
 
@@ -1409,7 +1409,7 @@ class TursoDBService {
 
       // user across many fingerprints = device-rotation pattern. Both
 
-      // are flagged by BehavioralSignalsService.
+      // are flagged by the risk profiling / anomaly stack.
 
       try {
 
@@ -2772,7 +2772,7 @@ class TursoDBService {
 
       // Create ai_risk_logs table
 
-      const createAIRiskLogsTableSql = `
+      const createIsolationForestLogsTableSql = `
 
         CREATE TABLE IF NOT EXISTS ai_risk_logs (
 
@@ -2808,15 +2808,15 @@ class TursoDBService {
 
       
 
-      await this._executeHttp(createAIRiskLogsTableSql);
+      await this._executeHttp(createIsolationForestLogsTableSql);
 
-      console.log('[TursoDBService] ✅ AI risk logs table created');
+      console.log('[TursoDBService] ✅ Isolation Forest ML logs table (ai_risk_logs) created');
 
       
 
       // Create indexes for ai_risk_logs table
 
-      const aiRiskLogIndexes = [
+      const isolationForestLogIndexes = [
 
         'CREATE INDEX IF NOT EXISTS idx_risk_log_transaction_id ON ai_risk_logs(transaction_id)',
 
@@ -2828,7 +2828,7 @@ class TursoDBService {
 
       
 
-      for (const indexSql of aiRiskLogIndexes) {
+      for (const indexSql of isolationForestLogIndexes) {
 
         try {
 

@@ -54,6 +54,50 @@ class ToastNotificationService {
       ...options
     });
   }
+
+  /**
+   * First-time dashboard welcome — matches the dark wallet hero + lime brand.
+   * @param {string} firstName - User's first name (HTML-escaped internally)
+   * @returns {string} Toast ID
+   */
+  showWelcome(firstName, options = {}) {
+    const safe = this._escapeHtml(firstName || 'there');
+    const duration = options.duration != null ? options.duration : 6000;
+    const toastId = `toast-${++this.toastCounter}`;
+
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast toast-success toast-welcome';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    toast.innerHTML = `
+      <div class="toast-content toast-welcome-content">
+        <div class="toast-welcome-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="toast-welcome-copy">
+          <p class="toast-welcome-kicker">Welcome aboard</p>
+          <p class="toast-welcome-body">Hi <strong>${safe}</strong> — you're all set on ScrowPay. Here's a quick tour of your dashboard.</p>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    this.toasts.set(toastId, {
+      element: toast,
+      config: { type: 'welcome', autoDismiss: true, duration }
+    });
+
+    if (duration > 0) {
+      setTimeout(() => this.dismiss(toastId), duration);
+    }
+
+    return toastId;
+  }
   
   /**
    * Shows a warning notification (requires manual dismissal)

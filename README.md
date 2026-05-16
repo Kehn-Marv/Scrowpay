@@ -4,7 +4,7 @@
 
 **AI-powered escrow for Nigerian peer-to-peer commerce.**
 
-Money sits in a holding account until both sides honour the deal. Fraud is caught before funds move, not after.
+Money sits in a holding account until both sides honour the deal. **Risk stack:** deterministic rules + Isolation Forest feed an umbrella score; in the **current dashboard build** the composite run is **post-fund** (non-blocking) and updates trust — see `FRAUD_DETECTION_FLOW.md`. Escrow releases and payouts still go through Squad-backed flows.
 
 [![Built for](https://img.shields.io/badge/Built%20for-Squad%20Hackathon-caff04?style=flat-square)](https://squadco.com)
 [![Stack](https://img.shields.io/badge/Stack-Vanilla%20JS%20%2B%20Flask%20%2B%20Turso-111111?style=flat-square)](#-tech-stack)
@@ -50,9 +50,9 @@ ScrowPay is a **peer-to-peer escrow platform** where money is held in a Squad vi
 
 | Layer | What it does |
 |---|---|
-| **Escrow engine** | 9-state machine managing the full transaction lifecycle from creation through completion, dispute, or cancellation |
+| **Escrow engine** | State machine over **`Created` → `Funded_Locked` → `In_Transit` → (`Completed` \| `Disputed`)** plus **`Cancelled` / `Refunded`** terminal paths in the DB schema and `TransactionService` |
 | **Squad payment rails** | Virtual accounts for every user + a central holding account + NIP transfers for payouts |
-| **AI risk scoring** | Two-stage anomaly detection (deterministic rules + Isolation Forest ML model) that blocks high-risk transactions *before* funds move |
+| **AI risk scoring** | `AnomalyDetectionEngine`: **`RiskEngineService`** (rules) + **`IsolationForestService`** (Flask Isolation Forest). **Wired today:** `evaluate()` runs **after** a successful fund and feeds **`TrustEngineService.onAnomalyEvaluated`** — non-blocking. *Product goal:* optional pre-fund gate. |
 | **AI dispute agent** | Gemini 2.0 Flash multimodal agent that reads complaints + photo evidence and issues binding verdicts |
 | **Face re-verification** | Gemini-powered face match for high-risk actions (large withdrawals) against signup reference photo |
 | **Trust engine** | Dynamic 0-100 reputation score with tiers, history, and Instant Release eligibility |
@@ -103,15 +103,14 @@ The dashboard polls Squad every 30 seconds for the live available balance, combi
 
 ScrowPay addresses **two AI pillars**: **Fraud Prevention** and **Automated Dispute Resolution**.
 
-### Pillar 1: Pre-Funding Fraud Detection
+### Pillar 1: Fraud / anomaly detection (rules + ML)
 
-A two-stage anomaly pipeline scores every transaction **before** any money moves:
+1. **`RiskEngineService`** — deterministic, in-browser rules (counterparty, amount, time-of-day, etc.). **No Gemini** in this path today (legacy listing check was removed).
+2. **`IsolationForestService`** — browser client → **Python `ai-engine`** Isolation Forest **`/api/v1/score`**.
 
-1. **Stage 1 — Deterministic rules** (runs in-browser): account age, transaction velocity, amount outliers, time-of-day, device fingerprint, counterparty trust score
-2. **Stage 2 — Isolation Forest ML model** (runs in Flask microservice): trained on 10,000 synthetic Nigerian transaction patterns, returns a 0-100 risk score
-3. **Optional Stage 3 — Gemini sanity check**: for borderline cases, the transaction description is sent to Gemini for a contextual fraud hint
+**Current product wiring (`dashboard.html`):** after a buyer **successfully** funds, `anomalyEngine.evaluate()` runs in the background and **`trustEngine.onAnomalyEvaluated`** ingests the composite score. Funding itself is **not** blocked by this call in the present implementation (see `FRAUD_DETECTION_FLOW.md`). Verdicts and features are still logged for audit when the pipeline runs.
 
-Transactions scoring >80 are **blocked**. Scores 50-80 trigger warnings. All scores are logged for audit.
+**Design thresholds** (umbrella): see `AnomalyDetectionEngine.js` (`BLOCK_THRESHOLD` / `REVIEW_THRESHOLD`) — distinct from any copy that still mentions “>80 block” from older marketing drafts.
 
 ### Pillar 2: Multimodal Dispute Resolution
 
@@ -122,9 +121,9 @@ When a buyer raises a dispute:
 
 ### Additional AI Features
 
-- **Face re-verification** — High-risk actions trigger a Gemini multimodal face match (live capture vs. signup reference)
-- **Behavioral signals** — Device fingerprinting, session patterns, and velocity tracking feed into the risk profile
-- **Trust Score engine** — Counter-based reputation (0-100) updated after every terminal event, with tier-based UI verdicts
+- **Face re-verification** — High-value withdrawals: Gemini multimodal compare vs. optional Cloudinary signup reference (`FaceVerificationService`)
+- **Device fingerprint** — **`DeviceFingerprintService`** (FingerprintJS) supplies visitor ID for ML features + audit; not a separate “behavioural model” layer in `AnomalyDetectionEngine` v2.1 (`behavioral_score` is **null**)
+- **Trust Score engine** — **`TrustEngineService`**: deterministic 0–100 score from counters + **`last_anomaly_score`**; tiers **Low / Building / Trusted / Elite**; marketing copy on `web.html` maps these to three plain-language bands
 
 > Full technical deep-dive: [docs/AI_INTELLIGENCE.md](docs/AI_INTELLIGENCE.md)
 
@@ -134,21 +133,22 @@ When a buyer raises a dispute:
 
 A step-by-step walkthrough of the complete product experience:
 
-### Account Creation (9 stages)
-1. **Phone number** — Enter Nigerian mobile number
-2. **OTP verification** — Confirm ownership
-3. **Identity document** — BVN entry
-4. **Personal details** — Name, DOB, gender (must match BVN via Squad NIBSS validation)
-5. **Liveness check** — MediaPipe blink detection captures a face reference photo
-6. **Address** — State, LGA, area selection from Nigerian geo-data
-7. **PIN setup** — 4-digit transaction PIN
-8. **Virtual account creation** — Squad creates a real NUBAN (bank-grade KYC built in)
-9. **Welcome** — Dashboard access granted
+### Account Creation (10 stages)
+1. **Phone + email**
+2. **Email OTP** (6-digit; demo fallback **`123456`** when engine unreachable)
+3. **BVN**
+4. **Name + gender + DOB** (must match BVN / NIBSS)
+5. **Squad virtual account** creation (NUBAN)
+6. **Face intro**
+7. **Blink liveness** (MediaPipe) + optional Cloudinary reference upload
+8. **Address** (state → LGA → ward)
+9. **6-digit PIN** (hashed via `PINService`)
+10. **Success** → sign in
 
 ### Core Transaction Flow
-1. **Seller creates listing** — Item description, price (₦100 – ₦10M), delivery timeline, inspection period
-2. **Buyer joins** — Enters transaction ID, sees seller's Trust Score and AI risk assessment
-3. **Buyer funds escrow** — Money transfers to the Squad holding virtual account
+1. **Seller creates listing** — Description, price (₦100 – ₦10M), delivery timeline (inspection UI optional / legacy field)
+2. **Buyer joins** — Enters **`TXN-{uuid}`**; sees seller trust + listing context (pre-fund anomaly UI is limited in current wiring)
+3. **Buyer funds escrow** — **Demo path:** `demo_balance` debit + state → `Funded_Locked`; **Squad** still powers VA, payouts, and releases in the wider system
 4. **Seller ships** — Marks as shipped; both parties notified
 5. **Buyer inspects** — Confirms receipt OR raises a dispute
 6. **Money releases** — Funds transfer to seller's bank via Squad NIP payout
@@ -329,8 +329,8 @@ This is the path to take to see everything working in ~5 minutes:
 │   │  • TransactionService     • StateMachineService                 │ │
 │   │  • BalanceService         • TrustEngineService                  │ │
 │   │  • DisputeService         • DisputeAgentService (Gemini)        │ │
-│   │  • AIRiskService          • RiskProfilingService                │ │
-│   │  • AnomalyDetectionEngine • BehavioralSignalsService            │ │
+│   │  • IsolationForestService • RiskEngineService                   │ │
+│   │  • AnomalyDetectionEngine • DeviceFingerprintService             │ │
 │   │  • FaceVerificationService (Phase F, Gemini multimodal)         │ │
 │   │  • CloudinaryService      • NotificationService                 │ │
 │   │  • EmailOTPService        • DeviceFingerprintService            │ │
@@ -373,20 +373,17 @@ For a top-to-bottom walkthrough of every service, table, and flow, see **[APP_GU
 ## ✨ Features
 
 ### Core escrow flow
-- 9-stage account creation with BVN verification via Squad
-- MediaPipe blink liveness check, with the captured frame uploaded to Cloudinary as a face reference
-- Buyer-funded transactions held in a Squad virtual holding account
+- **10-stage** account creation (phone **+ email**, **email OTP**, BVN, Squad VA, liveness, address, **6-digit PIN**) with BVN verification via Squad
+- MediaPipe blink liveness check, with the captured frame uploaded to Cloudinary as a face reference (non-blocking if upload fails)
+- Buyer-funded transactions: **demo build** debits `demo_balance` then locks state; **Squad** virtual accounts + holding/payout paths power real money movement in integrated environments
 - Deterministic state machine: `Created → Funded_Locked → In_Transit → Completed` (plus `Disputed`, `Cancelled`, `Refunded`)
-- Auto-release when the inspection window expires
-- Trust score with tiers (Building / Trusted / Elite) and Instant Release eligibility
+- Auto-release when delivery / inspection timers fire (`StateMachineService`)
+- Trust score with tiers (**Low / Building / Trusted / Elite**) and Instant Release eligibility
 
 ### AI safety net
-- **Pre-funding risk scoring** combining:
-  - Rule-based weights (new account, large amount, off-hours, etc.)
-  - Python Isolation Forest model trained on 10k synthetic transactions
-  - Optional Gemini sanity check on suspicious descriptions
+- **Anomaly pipeline (`AnomalyDetectionEngine`)** — `RiskEngineService` (rules) + `IsolationForestService` (Flask ML). **Current dashboard wiring:** runs **`evaluate()` post-fund** and feeds `TrustEngineService` (non-blocking). Optional Gemini on listings is **not** enabled in code today.
 - **Multimodal dispute resolution agent** — Gemini 2.0 Flash reads the complaint + up to 4 photos and returns a structured JSON verdict (`favoredParty`, `confidence`, `payout`, `reasoning`, `evidenceCited`)
-- **Face re-verification gate** — on high-risk actions, compares a fresh capture against the signup reference photo using Gemini multimodal; results are persisted to `face_verifications` for audit
+- **Face re-verification gate** — on high-value withdrawals, compares a fresh capture against the signup reference photo using Gemini multimodal; results are persisted to `face_verifications` for audit
 
 ### Notifications & communication
 - Per-user notification feed with category filters and unread counts (bell icon)
@@ -446,8 +443,8 @@ scrowpay/
 ├── frontend/                        ← all UI + business logic (vanilla JS)
 │   ├── README.md                    ← per-file service index
 │   ├── web.html                     ← landing page
-│   ├── account-creation.html        ← 9-stage signup
-│   ├── sign-in.html                 ← phone + PIN login
+│   ├── account-creation.html        ← 10-stage signup
+│   ├── sign-in.html                 ← phone + 6-digit PIN login
 │   ├── dashboard.html               ← main app (the big one)
 │   ├── admin.html                   ← Phase G admin console
 │   ├── *.js                         ← 30+ services; one class per file on window.*

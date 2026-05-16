@@ -410,16 +410,10 @@ def score_transaction():
         # Identify anomaly indicators
         anomaly_indicators = identify_anomaly_indicators(features_dict, risk_score)
 
-        # ----- Optional behavioral-signal boost (v2 callers) -----
-        # The umbrella AnomalyDetectionEngine on the frontend may pass a
-        # `behavioral_signals` dict alongside the standard 6-feature
-        # vector. We don't retrain on these (the model is fixed) —
-        # instead, we apply explicit, auditable additive boosts so the
-        # ML sub-score reflects strong behavioral cues. The umbrella
-        # then re-combines this with its own behavioral score, which is
-        # fine: we don't double-count because the JS layer applies the
-        # same boosts independently and the engine takes a weighted
-        # average, not a sum.
+        # ----- Optional extra-signal boost (legacy / other callers) -----
+        # Request body may include a `behavioral_signals` dict; the browser
+        # umbrella no longer sends it after BehavioralSignalsService removal.
+        # If present, apply small auditable boosts to the ML sub-score only.
         bx = data.get('behavioral_signals') or {}
         ml_boost = 0
         if isinstance(bx, dict):

@@ -171,7 +171,7 @@
 
     /**
      * Returns { distinctUsers, totalSeen, firstSeenAt } for a fingerprint.
-     * Used by BehavioralSignalsService to detect sock-puppet patterns.
+     * Used for device-linked risk signals (e.g. multi-account patterns in DB).
      */
     async getDeviceStats(fingerprintId) {
       const fallback = { distinctUsers: 0, totalSeen: 0, firstSeenAt: null };
